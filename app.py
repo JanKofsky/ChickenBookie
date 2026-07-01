@@ -353,32 +353,30 @@ def inject_theme_css() -> None:
         """
         <style>
         :root {
-            --barn-red: #c73b32;
-            --comb-red: #e44f43;
-            --egg: #fff7df;
-            --straw: #f5c844;
-            --feed: #b97122;
-            --grass: #7fc343;
-            --pasture: #b6df45;
-            --leaf: #2f7a3c;
-            --sky: #ffe57a;
-            --ink: #fff9e8;
-            --muted: #f5e8c5;
-            --rail: #2b1712;
-            --coop: #1c120f;
-            --coop-panel: #321b16;
-            --coop-panel-2: #243316;
+            --barn-red: #b63d34;
+            --comb-red: #e15a4e;
+            --egg: #fff3d8;
+            --straw: #d9aa3c;
+            --feed: #a66928;
+            --grass: #6fa34b;
+            --pasture: #88b94f;
+            --leaf: #294f2b;
+            --ink: #fff3d8;
+            --muted: #dbcaa7;
+            --rail: #281611;
+            --coop: #120f0d;
+            --coop-panel: #231814;
+            --coop-panel-2: #182317;
         }
 
         .stApp {
             background:
-                radial-gradient(circle at 16% 9%, rgba(255, 255, 236, 0.92) 0 1.9rem, transparent 2rem),
-                radial-gradient(ellipse at 84% 22%, rgba(255, 255, 255, 0.72) 0 5.5rem, transparent 5.7rem),
-                radial-gradient(ellipse at 28% 24%, rgba(255, 255, 255, 0.64) 0 4.8rem, transparent 5rem),
-                radial-gradient(ellipse at 70% 74%, rgba(127, 195, 67, 0.92) 0 24rem, transparent 24.2rem),
-                radial-gradient(ellipse at 22% 78%, rgba(182, 223, 69, 0.95) 0 26rem, transparent 26.2rem),
-                linear-gradient(160deg, transparent 0 62%, rgba(47, 122, 60, 0.55) 62% 66%, transparent 66%),
-                linear-gradient(180deg, #ffe57a 0%, #fff3a7 28%, #b6df45 58%, #5ba838 100%);
+                radial-gradient(ellipse at 18% 0%, rgba(217, 170, 60, 0.14), transparent 26rem),
+                radial-gradient(ellipse at 86% 10%, rgba(182, 61, 52, 0.18), transparent 24rem),
+                radial-gradient(ellipse at 72% 100%, rgba(111, 163, 75, 0.20), transparent 30rem),
+                linear-gradient(160deg, transparent 0 58%, rgba(111, 163, 75, 0.10) 58% 64%, transparent 64%),
+                repeating-linear-gradient(90deg, rgba(255, 243, 216, 0.028) 0 1px, transparent 1px 42px),
+                linear-gradient(180deg, #11100d 0%, #1d1712 46%, #10180f 100%);
             color: var(--ink);
         }
 
@@ -400,19 +398,19 @@ def inject_theme_css() -> None:
         }
 
         div[data-testid="stForm"], div[data-testid="stExpander"] {
-            border: 1px solid rgba(255, 247, 223, 0.28);
+            border: 1px solid rgba(255, 243, 216, 0.16);
             border-radius: 8px;
             background:
-                linear-gradient(180deg, rgba(62, 34, 24, 0.94), rgba(36, 51, 22, 0.92));
+                linear-gradient(180deg, rgba(35, 24, 20, 0.96), rgba(24, 35, 23, 0.94));
             box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
         }
 
         div[data-testid="stMetric"] {
-            background: linear-gradient(180deg, rgba(199, 59, 50, 0.95), rgba(93, 34, 24, 0.95));
-            border: 1px solid rgba(255, 247, 223, 0.28);
+            background: linear-gradient(180deg, rgba(47, 31, 24, 0.96), rgba(27, 39, 24, 0.96));
+            border: 1px solid rgba(255, 243, 216, 0.16);
             border-radius: 8px;
             padding: 0.75rem 0.9rem;
-            box-shadow: inset 0 -3px 0 rgba(255, 247, 223, 0.24);
+            box-shadow: inset 0 -3px 0 rgba(111, 163, 75, 0.24);
         }
 
         .stButton > button, div[data-testid="stFormSubmitButton"] button {
@@ -437,12 +435,12 @@ def inject_theme_css() -> None:
         }
 
         .coop-hero {
-            border: 2px solid rgba(255, 247, 223, 0.72);
+            border: 1px solid rgba(255, 243, 216, 0.22);
             border-radius: 10px;
             background:
-                linear-gradient(135deg, rgba(255, 247, 223, 0.88) 0 12%, transparent 12%),
-                repeating-linear-gradient(90deg, rgba(255, 247, 223, 0.14) 0 3px, transparent 3px 34px),
-                linear-gradient(90deg, rgba(199, 59, 50, 0.98), rgba(138, 42, 32, 0.98));
+                linear-gradient(135deg, rgba(255, 243, 216, 0.08) 0 14%, transparent 14%),
+                repeating-linear-gradient(90deg, rgba(255, 243, 216, 0.055) 0 2px, transparent 2px 32px),
+                linear-gradient(90deg, rgba(98, 34, 29, 0.98), rgba(32, 46, 25, 0.98));
             padding: 0;
             margin-bottom: 1rem;
             box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
@@ -455,16 +453,15 @@ def inject_theme_css() -> None:
             position: absolute;
             inset: auto 0 0 0;
             height: 5px;
-            background: linear-gradient(90deg, #fff7df, #7fc343, #c73b32, #fff7df);
+            background: linear-gradient(90deg, #fff3d8, #6fa34b, #b63d34, #fff3d8);
         }
 
         .coop-hero-inner {
             background:
-                linear-gradient(90deg, rgba(255, 247, 223, 0.16) 2px, transparent 2px) 0 0 / 34px 100%,
-                radial-gradient(circle at 92% 16%, rgba(255, 247, 223, 0.28), transparent 8rem),
-                linear-gradient(135deg, rgba(47, 122, 60, 0.36), transparent 38%),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.10), transparent);
-            border-left: 8px solid #fff7df;
+                radial-gradient(circle at 92% 16%, rgba(255, 243, 216, 0.10), transparent 8rem),
+                linear-gradient(135deg, rgba(111, 163, 75, 0.18), transparent 38%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
+            border-left: 7px solid #b63d34;
             padding: 1.55rem 1.65rem 1.75rem;
             color: var(--ink);
         }
@@ -474,7 +471,7 @@ def inject_theme_css() -> None:
             font-weight: 900;
             letter-spacing: 0.10em;
             text-transform: uppercase;
-            color: #fff7df;
+            color: #f1c852;
         }
 
         .coop-title {
@@ -482,7 +479,7 @@ def inject_theme_css() -> None:
             line-height: 1;
             font-weight: 950;
             margin: 0.2rem 0 0.45rem;
-            color: #fff7df;
+            color: #fff3d8;
             text-shadow: 0 3px 18px rgba(0, 0, 0, 0.45);
         }
 
@@ -497,10 +494,10 @@ def inject_theme_css() -> None:
             display: inline-block;
             margin-top: 0.85rem;
             padding: 0.38rem 0.62rem;
-            border: 1px solid rgba(255, 247, 223, 0.70);
+            border: 1px solid rgba(255, 243, 216, 0.26);
             border-radius: 999px;
-            background: rgba(255, 247, 223, 0.20);
-            color: #fff7df;
+            background: rgba(18, 15, 13, 0.42);
+            color: #fff3d8;
             font-weight: 850;
         }
 
@@ -512,10 +509,10 @@ def inject_theme_css() -> None:
         }
 
         .poster-badge {
-            border: 1px solid rgba(255, 247, 223, 0.72);
+            border: 1px solid rgba(255, 243, 216, 0.24);
             border-radius: 999px;
-            background: rgba(255, 247, 223, 0.90);
-            color: #2f7a3c;
+            background: rgba(255, 243, 216, 0.12);
+            color: #f5d989;
             font-size: 0.8rem;
             font-weight: 850;
             padding: 0.28rem 0.55rem;
@@ -529,19 +526,19 @@ def inject_theme_css() -> None:
         }
 
         .coop-stat {
-            background: rgba(255, 247, 223, 0.94);
-            color: #2f3b1c;
-            border: 1px solid rgba(255, 247, 223, 0.78);
+            background: rgba(18, 15, 13, 0.52);
+            color: var(--muted);
+            border: 1px solid rgba(255, 243, 216, 0.18);
             border-radius: 6px;
             padding: 0.55rem 0.8rem;
             min-width: 130px;
-            box-shadow: inset 0 -3px 0 rgba(47, 122, 60, 0.22);
+            box-shadow: inset 0 -3px 0 rgba(111, 163, 75, 0.22);
         }
 
         .coop-stat strong {
             display: block;
             font-size: 1.25rem;
-            color: #c73b32;
+            color: #fff3d8;
         }
 
         .coop-rail {
@@ -577,9 +574,9 @@ def inject_theme_css() -> None:
 
         .race-card, .roster-name, .payment-callout {
             border-radius: 8px;
-            border: 1px solid rgba(255, 247, 223, 0.38);
+            border: 1px solid rgba(255, 243, 216, 0.18);
             background:
-                linear-gradient(180deg, rgba(199, 59, 50, 0.94), rgba(49, 94, 35, 0.92));
+                linear-gradient(180deg, rgba(43, 29, 24, 0.96), rgba(24, 38, 22, 0.94));
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
         }
 
@@ -596,11 +593,11 @@ def inject_theme_css() -> None:
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #fff7df, #7fc343, #c73b32);
+            background: linear-gradient(90deg, #b63d34, #d9aa3c, #6fa34b);
         }
 
         .race-card b {
-            color: #fff7df;
+            color: #fff3d8;
             display: block;
             font-size: 1.05rem;
         }
@@ -608,7 +605,7 @@ def inject_theme_css() -> None:
         .race-card em {
             display: inline-block;
             margin-bottom: 0.28rem;
-            color: #d7ff8e;
+            color: #95ca68;
             font-style: normal;
             font-size: 0.72rem;
             font-weight: 900;
@@ -625,13 +622,13 @@ def inject_theme_css() -> None:
             padding: 0.55rem 0.65rem;
             text-align: center;
             font-weight: 950;
-            color: #fff7df;
-            border-top: 3px solid rgba(255, 247, 223, 0.84);
+            color: #fff3d8;
+            border-top: 3px solid rgba(182, 61, 52, 0.84);
         }
 
         div[data-testid="stImage"] img {
             border-radius: 10px;
-            border: 2px solid rgba(255, 247, 223, 0.82);
+            border: 1px solid rgba(255, 243, 216, 0.20);
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
         }
 
@@ -649,12 +646,12 @@ def inject_theme_css() -> None:
         }
 
         .coop-callout {
-            border: 1px solid rgba(255, 247, 223, 0.36);
+            border: 1px solid rgba(255, 243, 216, 0.16);
             border-left: 5px solid var(--barn-red);
             border-radius: 8px;
             background:
-                linear-gradient(90deg, rgba(255, 247, 223, 0.20), transparent 44%),
-                rgba(36, 51, 22, 0.88);
+                linear-gradient(90deg, rgba(111, 163, 75, 0.14), transparent 44%),
+                rgba(24, 35, 23, 0.92);
             color: var(--muted);
             font-weight: 750;
             padding: 0.62rem 0.75rem;
@@ -1272,7 +1269,7 @@ def render_event_gate() -> sqlite3.Row | None:
 
     st.subheader("Enter the Coop")
     st.markdown(
-        '<div class="coop-callout">Enter the event code for your chicken race. Example: <b>birthday corn</b>.</div>',
+        '<div class="coop-callout">Enter the event code for your chicken race.</div>',
         unsafe_allow_html=True,
     )
     with st.form("event_login_form"):
