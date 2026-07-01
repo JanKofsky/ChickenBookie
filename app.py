@@ -20,6 +20,8 @@ CHICKEN_COUNT = 12
 ADMIN_CODE = "NekoFatty123!"
 EASTERN_TZ = timezone(timedelta(hours=-4), "Eastern")
 BETTING_CLOSE_AT = datetime(2026, 7, 18, 17, 30, tzinfo=EASTERN_TZ)
+DEFAULT_EVENT_CODE = "birthday corn"
+DEFAULT_EVENT_NAME = "Birthday Corn"
 
 DEFAULT_CHICKEN_NAMES = [
     "Tilly",
@@ -64,6 +66,12 @@ RACE_NAMES = {
     3: "Race 3 - The Coop Gauntlet",
 }
 
+RACE_DESCRIPTIONS = {
+    1: "Straight coop sprint. First bird to the marshmallow wins.",
+    2: "Obstacles enter the barnyard. Marshmallow target still decides it.",
+    3: "Maximum chicken-race nonsense, final marshmallow glory.",
+}
+
 
 @dataclass(frozen=True)
 class SettlementLine:
@@ -79,8 +87,112 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+def normalize_event_code(code: str) -> str:
+    return " ".join(code.strip().lower().split())
+
+
+def close_at_to_text(close_at: datetime) -> str:
+    return close_at.isoformat()
+
+
+def close_at_from_text(value: str | None) -> datetime:
+    if not value:
+        return BETTING_CLOSE_AT
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=EASTERN_TZ)
+    return parsed.astimezone(EASTERN_TZ)
+
+
 def init_db() -> None:
     with connect() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                admin_code TEXT NOT NULL,
+                betting_close_at TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS event_chickens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                slot INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                photo BLOB,
+                photo_mime TEXT,
+                UNIQUE(event_id, slot),
+                FOREIGN KEY (event_id) REFERENCES events(id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS event_races (
+                event_id INTEGER NOT NULL,
+                race INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                PRIMARY KEY (event_id, race),
+                FOREIGN KEY (event_id) REFERENCES events(id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS event_bettors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(event_id, name),
+                FOREIGN KEY (event_id) REFERENCES events(id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS event_bets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                bettor_id INTEGER NOT NULL,
+                bet_type TEXT NOT NULL,
+                stake REAL NOT NULL,
+                race INTEGER,
+                chicken_1 INTEGER,
+                chicken_2 INTEGER,
+                chicken_3 INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (event_id) REFERENCES events(id),
+                FOREIGN KEY (bettor_id) REFERENCES event_bettors(id),
+                FOREIGN KEY (chicken_1) REFERENCES event_chickens(id),
+                FOREIGN KEY (chicken_2) REFERENCES event_chickens(id),
+                FOREIGN KEY (chicken_3) REFERENCES event_chickens(id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS event_results (
+                event_id INTEGER NOT NULL,
+                race INTEGER NOT NULL,
+                chicken_id INTEGER NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (event_id, race),
+                FOREIGN KEY (event_id) REFERENCES events(id),
+                FOREIGN KEY (chicken_id) REFERENCES event_chickens(id)
+            )
+            """
+        )
+        ensure_column(conn, "event_chickens", "photo", "BLOB")
+        ensure_column(conn, "event_chickens", "photo_mime", "TEXT")
+        ensure_default_event(conn)
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS chickens (
@@ -143,12 +255,55 @@ def init_db() -> None:
                 )
 
 
+def ensure_event_defaults(conn: sqlite3.Connection, event_id: int) -> None:
+    existing_chickens = conn.execute(
+        "SELECT COUNT(*) FROM event_chickens WHERE event_id = ?", (event_id,)
+    ).fetchone()[0]
+    if existing_chickens == 0:
+        conn.executemany(
+            "INSERT INTO event_chickens (event_id, slot, name) VALUES (?, ?, ?)",
+            [(event_id, i, name) for i, name in enumerate(DEFAULT_CHICKEN_NAMES, start=1)],
+        )
+
+    existing_races = conn.execute(
+        "SELECT COUNT(*) FROM event_races WHERE event_id = ?", (event_id,)
+    ).fetchone()[0]
+    if existing_races == 0:
+        conn.executemany(
+            "INSERT INTO event_races (event_id, race, name, description) VALUES (?, ?, ?, ?)",
+            [(event_id, race, name, RACE_DESCRIPTIONS[race]) for race, name in RACE_NAMES.items()],
+        )
+
+
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def ensure_default_event(conn: sqlite3.Connection) -> None:
+    code = normalize_event_code(DEFAULT_EVENT_CODE)
+    row = conn.execute("SELECT id FROM events WHERE code = ?", (code,)).fetchone()
+    if row is None:
+        cursor = conn.execute(
+            """
+            INSERT INTO events (code, name, admin_code, betting_close_at, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (code, DEFAULT_EVENT_NAME, ADMIN_CODE, close_at_to_text(BETTING_CLOSE_AT), now()),
+        )
+        event_id = int(cursor.lastrowid)
+    else:
+        event_id = int(row["id"])
+    ensure_event_defaults(conn, event_id)
+
+
 def now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def betting_is_open() -> bool:
-    return datetime.now(EASTERN_TZ) < BETTING_CLOSE_AT
+def betting_is_open(event: sqlite3.Row | pd.Series | dict[str, Any]) -> bool:
+    return datetime.now(EASTERN_TZ) < close_at_from_text(event["betting_close_at"])
 
 
 def money(value: float) -> str:
@@ -178,7 +333,11 @@ def bet_probability(bet_type: str) -> float:
     return SINGLE_RACE_WIN_PROBABILITY
 
 
-def format_race(race: int) -> str:
+def format_race(race: int, races: pd.DataFrame | None = None) -> str:
+    if races is not None and not races.empty:
+        match = races[races["race"] == race]
+        if not match.empty:
+            return str(match.iloc[0]["name"])
     return RACE_NAMES.get(race, f"Race {race}")
 
 
@@ -525,12 +684,6 @@ def render_hero(bets: pd.DataFrame) -> None:
                     <span class="poster-badge">12 birds</span>
                     <span class="poster-badge">3 marshmallow races</span>
                 </div>
-                <div class="coop-rail">
-                    <div><b>Starting Flock</b>Inspect the birds</div>
-                    <div><b>Betting Coop</b>Place tickets</div>
-                    <div><b>Marshmallow</b>First beak wins</div>
-                    <div><b>Winner's Circle</b>Settle up</div>
-                </div>
                 <div class="coop-stats">
                     <div class="coop-stat"><span>Total Pool</span><strong>{money(total_pool)}</strong></div>
                     <div class="coop-stat"><span>Gamblers</span><strong>{bettors}</strong></div>
@@ -542,13 +695,14 @@ def render_hero(bets: pd.DataFrame) -> None:
     )
 
 
-def render_countdown() -> None:
+def render_countdown(event: sqlite3.Row | pd.Series | dict[str, Any]) -> None:
+    close_at = close_at_from_text(event["betting_close_at"])
     close_label = (
-        f"{BETTING_CLOSE_AT.strftime('%B')} {BETTING_CLOSE_AT.day}, "
-        f"{BETTING_CLOSE_AT.year} at {BETTING_CLOSE_AT.hour % 12 or 12}:"
-        f"{BETTING_CLOSE_AT.minute:02d} {BETTING_CLOSE_AT.strftime('%p')} Eastern"
+        f"{close_at.strftime('%B')} {close_at.day}, "
+        f"{close_at.year} at {close_at.hour % 12 or 12}:"
+        f"{close_at.minute:02d} {close_at.strftime('%p')} Eastern"
     )
-    target_iso = BETTING_CLOSE_AT.isoformat()
+    target_iso = close_at.isoformat()
     components.html(
         f"""
         <div class="countdown-wrap">
@@ -667,36 +821,68 @@ def render_countdown() -> None:
     )
 
 
-def render_race_strip() -> None:
+def render_race_strip(races: pd.DataFrame | None = None) -> None:
+    race_rows = []
+    for race in range(1, RACE_COUNT + 1):
+        if races is not None and not races.empty:
+            match = races[races["race"] == race]
+            if not match.empty:
+                race_rows.append((race, str(match.iloc[0]["name"]), str(match.iloc[0]["description"])))
+                continue
+        race_rows.append((race, RACE_NAMES[race], RACE_DESCRIPTIONS[race]))
     st.markdown(
-        """
+        f"""
         <div class="race-strip">
-            <div class="race-card"><em>Race 1</em><b>Barnyard Dash</b><span>Straight coop sprint. First bird to the marshmallow wins.</span></div>
-            <div class="race-card"><em>Race 2</em><b>The Hay Bale Hustle</b><span>Obstacles enter the barnyard. Marshmallow target still decides it.</span></div>
-            <div class="race-card"><em>Race 3</em><b>The Coop Gauntlet</b><span>Maximum chicken-race nonsense, final marshmallow glory.</span></div>
+            <div class="race-card"><em>Race 1</em><b>{race_rows[0][1]}</b><span>{race_rows[0][2]}</span></div>
+            <div class="race-card"><em>Race 2</em><b>{race_rows[1][1]}</b><span>{race_rows[1][2]}</span></div>
+            <div class="race-card"><em>Race 3</em><b>{race_rows[2][1]}</b><span>{race_rows[2][2]}</span></div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def get_chickens() -> pd.DataFrame:
+def get_event_by_code(code: str) -> sqlite3.Row | None:
+    cleaned = normalize_event_code(code)
+    if not cleaned:
+        return None
     with connect() as conn:
-        return pd.read_sql_query("SELECT id, name FROM chickens ORDER BY id", conn)
+        row = conn.execute("SELECT * FROM events WHERE code = ?", (cleaned,)).fetchone()
+        if row is not None:
+            ensure_event_defaults(conn, int(row["id"]))
+        return row
 
 
-def get_bettors() -> pd.DataFrame:
+def get_events() -> pd.DataFrame:
     with connect() as conn:
-        return pd.read_sql_query("SELECT id, name, created_at FROM bettors ORDER BY name", conn)
+        return pd.read_sql_query("SELECT id, code, name, created_at FROM events ORDER BY name", conn)
 
 
-def get_results() -> dict[int, int]:
+def get_chickens(event_id: int) -> pd.DataFrame:
     with connect() as conn:
-        rows = conn.execute("SELECT race, chicken_id FROM results").fetchall()
+        return pd.read_sql_query(
+            "SELECT id, slot, name, photo, photo_mime FROM event_chickens WHERE event_id = ? ORDER BY slot",
+            conn,
+            params=(event_id,),
+        )
+
+
+def get_races(event_id: int) -> pd.DataFrame:
+    with connect() as conn:
+        return pd.read_sql_query(
+            "SELECT race, name, description FROM event_races WHERE event_id = ? ORDER BY race",
+            conn,
+            params=(event_id,),
+        )
+
+
+def get_results(event_id: int) -> dict[int, int]:
+    with connect() as conn:
+        rows = conn.execute("SELECT race, chicken_id FROM event_results WHERE event_id = ?", (event_id,)).fetchall()
     return {int(row["race"]): int(row["chicken_id"]) for row in rows}
 
 
-def get_bets() -> pd.DataFrame:
+def get_bets(event_id: int) -> pd.DataFrame:
     with connect() as conn:
         return pd.read_sql_query(
             """
@@ -713,31 +899,36 @@ def get_bets() -> pd.DataFrame:
                 b.chicken_2,
                 b.chicken_3,
                 b.created_at
-            FROM bets b
-            JOIN bettors p ON p.id = b.bettor_id
-            LEFT JOIN chickens c1 ON c1.id = b.chicken_1
-            LEFT JOIN chickens c2 ON c2.id = b.chicken_2
-            LEFT JOIN chickens c3 ON c3.id = b.chicken_3
+            FROM event_bets b
+            JOIN event_bettors p ON p.id = b.bettor_id
+            LEFT JOIN event_chickens c1 ON c1.id = b.chicken_1
+            LEFT JOIN event_chickens c2 ON c2.id = b.chicken_2
+            LEFT JOIN event_chickens c3 ON c3.id = b.chicken_3
+            WHERE b.event_id = ?
             ORDER BY b.created_at DESC, b.id DESC
             """,
             conn,
+            params=(event_id,),
         )
 
 
-def upsert_bettor(name: str) -> int:
+def upsert_bettor(event_id: int, name: str) -> int:
     cleaned = " ".join(name.strip().split())
     if not cleaned:
         raise ValueError("Enter a gambler name.")
     with connect() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO bettors (name, created_at) VALUES (?, ?)",
-            (cleaned, now()),
+            "INSERT OR IGNORE INTO event_bettors (event_id, name, created_at) VALUES (?, ?, ?)",
+            (event_id, cleaned, now()),
         )
-        row = conn.execute("SELECT id FROM bettors WHERE name = ?", (cleaned,)).fetchone()
+        row = conn.execute(
+            "SELECT id FROM event_bettors WHERE event_id = ? AND name = ?", (event_id, cleaned)
+        ).fetchone()
         return int(row["id"])
 
 
 def add_bet(
+    event_id: int,
     bettor_id: int,
     bet_type: str,
     stake: float,
@@ -751,46 +942,154 @@ def add_bet(
     with connect() as conn:
         conn.execute(
             """
-            INSERT INTO bets
-                (bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO event_bets
+                (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (bettor_id, bet_type, float(stake), race, chicken_1, chicken_2, chicken_3, now()),
+            (event_id, bettor_id, bet_type, float(stake), race, chicken_1, chicken_2, chicken_3, now()),
         )
 
 
-def save_results(results: dict[int, int]) -> None:
+def save_results(event_id: int, results: dict[int, int]) -> None:
     if len(results) != RACE_COUNT:
         raise ValueError("Pick a winner for all 3 races.")
     with connect() as conn:
         conn.executemany(
             """
-            INSERT INTO results (race, chicken_id, updated_at)
-            VALUES (?, ?, ?)
-            ON CONFLICT(race) DO UPDATE SET
+            INSERT INTO event_results (event_id, race, chicken_id, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(event_id, race) DO UPDATE SET
                 chicken_id = excluded.chicken_id,
                 updated_at = excluded.updated_at
             """,
-            [(race, chicken_id, now()) for race, chicken_id in results.items()],
+            [(event_id, race, chicken_id, now()) for race, chicken_id in results.items()],
         )
 
 
-def delete_bet(bet_id: int) -> None:
+def delete_bet(event_id: int, bet_id: int) -> None:
     with connect() as conn:
-        conn.execute("DELETE FROM bets WHERE id = ?", (bet_id,))
+        conn.execute("DELETE FROM event_bets WHERE event_id = ? AND id = ?", (event_id, bet_id))
 
 
-def clear_bets() -> None:
+def clear_bets(event_id: int) -> None:
     with connect() as conn:
-        conn.execute("DELETE FROM bets")
-        conn.execute("DELETE FROM bettors")
+        conn.execute("DELETE FROM event_bets WHERE event_id = ?", (event_id,))
+        conn.execute("DELETE FROM event_bettors WHERE event_id = ?", (event_id,))
 
 
-def reset_all() -> None:
+def reset_all(event_id: int) -> None:
     with connect() as conn:
-        conn.execute("DELETE FROM bets")
-        conn.execute("DELETE FROM bettors")
-        conn.execute("DELETE FROM results")
+        conn.execute("DELETE FROM event_bets WHERE event_id = ?", (event_id,))
+        conn.execute("DELETE FROM event_bettors WHERE event_id = ?", (event_id,))
+        conn.execute("DELETE FROM event_results WHERE event_id = ?", (event_id,))
+
+
+def update_event_settings(event_id: int, name: str, admin_code: str, close_at: datetime) -> None:
+    clean_name = " ".join(name.strip().split())
+    clean_admin = admin_code.strip()
+    if not clean_name:
+        raise ValueError("Enter an event name.")
+    if not clean_admin:
+        raise ValueError("Enter an admin code.")
+    with connect() as conn:
+        conn.execute(
+            """
+            UPDATE events
+            SET name = ?, admin_code = ?, betting_close_at = ?
+            WHERE id = ?
+            """,
+            (clean_name, clean_admin, close_at_to_text(close_at), event_id),
+        )
+
+
+def update_chickens(event_id: int, names_by_slot: dict[int, str]) -> None:
+    cleaned = {slot: " ".join(name.strip().split()) for slot, name in names_by_slot.items()}
+    if any(not name for name in cleaned.values()):
+        raise ValueError("Every chicken needs a name.")
+    with connect() as conn:
+        conn.executemany(
+            "UPDATE event_chickens SET name = ? WHERE event_id = ? AND slot = ?",
+            [(name, event_id, slot) for slot, name in cleaned.items()],
+        )
+
+
+def update_chicken_photo(event_id: int, slot: int, photo: bytes, mime: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "UPDATE event_chickens SET photo = ?, photo_mime = ? WHERE event_id = ? AND slot = ?",
+            (photo, mime, event_id, slot),
+        )
+
+
+def update_races(event_id: int, race_data: dict[int, tuple[str, str]]) -> None:
+    cleaned: dict[int, tuple[str, str]] = {}
+    for race, (name, description) in race_data.items():
+        clean_name = " ".join(name.strip().split())
+        clean_description = " ".join(description.strip().split())
+        if not clean_name:
+            raise ValueError("Every race needs a name.")
+        cleaned[race] = (clean_name, clean_description)
+    with connect() as conn:
+        conn.executemany(
+            """
+            UPDATE event_races
+            SET name = ?, description = ?
+            WHERE event_id = ? AND race = ?
+            """,
+            [(name, description, event_id, race) for race, (name, description) in cleaned.items()],
+        )
+
+
+def create_event(code: str, name: str, admin_code: str, source_event_id: int | None = None) -> int:
+    clean_code = normalize_event_code(code)
+    clean_name = " ".join(name.strip().split())
+    clean_admin = admin_code.strip()
+    if not clean_code:
+        raise ValueError("Enter an event code.")
+    if not clean_name:
+        raise ValueError("Enter an event name.")
+    if not clean_admin:
+        raise ValueError("Enter an admin code.")
+
+    with connect() as conn:
+        existing = conn.execute("SELECT id FROM events WHERE code = ?", (clean_code,)).fetchone()
+        if existing is not None:
+            raise ValueError("That event code already exists.")
+
+        source = None
+        if source_event_id is not None:
+            source = conn.execute("SELECT * FROM events WHERE id = ?", (source_event_id,)).fetchone()
+        close_at = source["betting_close_at"] if source is not None else close_at_to_text(BETTING_CLOSE_AT)
+
+        cursor = conn.execute(
+            """
+            INSERT INTO events (code, name, admin_code, betting_close_at, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (clean_code, clean_name, clean_admin, close_at, now()),
+        )
+        event_id = int(cursor.lastrowid)
+
+        if source_event_id is None:
+            ensure_event_defaults(conn, event_id)
+        else:
+            source_chickens = conn.execute(
+                "SELECT slot, name, photo, photo_mime FROM event_chickens WHERE event_id = ? ORDER BY slot",
+                (source_event_id,),
+            ).fetchall()
+            conn.executemany(
+                "INSERT INTO event_chickens (event_id, slot, name, photo, photo_mime) VALUES (?, ?, ?, ?, ?)",
+                [(event_id, row["slot"], row["name"], row["photo"], row["photo_mime"]) for row in source_chickens],
+            )
+            source_races = conn.execute(
+                "SELECT race, name, description FROM event_races WHERE event_id = ? ORDER BY race",
+                (source_event_id,),
+            ).fetchall()
+            conn.executemany(
+                "INSERT INTO event_races (event_id, race, name, description) VALUES (?, ?, ?, ?)",
+                [(event_id, row["race"], row["name"], row["description"]) for row in source_races],
+            )
+        return event_id
 
 
 def is_winning_bet(row: pd.Series, results: dict[int, int]) -> bool:
@@ -809,10 +1108,10 @@ def is_winning_bet(row: pd.Series, results: dict[int, int]) -> bool:
     return False
 
 
-def describe_bet(row: pd.Series) -> str:
+def describe_bet(row: pd.Series, races: pd.DataFrame | None = None) -> str:
     label = BET_TYPES.get(row.bet_type, row.bet_type)
     if row.bet_type == "race_winner":
-        return f"{format_race(int(row.race))} winner: {row.pick_1}"
+        return f"{format_race(int(row.race), races)} winner: {row.pick_1}"
     if row.bet_type == "sweep":
         return f"{row.pick_1} wins all 3"
     if row.bet_type == "exact_ticket":
@@ -904,13 +1203,13 @@ def make_payment_plan(people: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(payments)
 
 
-def format_bet_table(bets: pd.DataFrame) -> pd.DataFrame:
+def format_bet_table(bets: pd.DataFrame, races: pd.DataFrame | None = None) -> pd.DataFrame:
     if bets.empty:
         return bets
     shown = bets.copy()
     shown["Bet type"] = shown["bet_type"].map(BET_TYPES)
     shown["Weight"] = shown["bet_type"].map(weight_label)
-    shown["Bet"] = shown.apply(describe_bet, axis=1)
+    shown["Bet"] = shown.apply(lambda row: describe_bet(row, races), axis=1)
     shown["Stake ($)"] = shown["stake"].map(money)
     return shown[["id", "bettor", "Bet type", "Weight", "Bet", "Stake ($)", "created_at"]].rename(
         columns={"id": "ID", "bettor": "Gambler", "created_at": "Entered"}
@@ -935,6 +1234,70 @@ def chicken_image_path(chicken_id: int) -> Path:
     return ASSET_DIR / "chickens" / "placeholder.png"
 
 
+def render_event_gate() -> sqlite3.Row | None:
+    saved_code = st.session_state.get("event_code", DEFAULT_EVENT_CODE)
+    event = get_event_by_code(saved_code)
+    if event is not None:
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            st.markdown(
+                f'<div class="coop-callout">Current event: <b>{event["name"]}</b> | code: <b>{event["code"]}</b></div>',
+                unsafe_allow_html=True,
+            )
+        with c2:
+            if st.button("Switch event"):
+                st.session_state.pop("event_code", None)
+                st.rerun()
+        return event
+
+    st.subheader("Enter the Coop")
+    st.markdown(
+        '<div class="coop-callout">Enter the event code for your chicken race. Example: <b>birthday corn</b>.</div>',
+        unsafe_allow_html=True,
+    )
+    with st.form("event_login_form"):
+        code = st.text_input("Event code", value=saved_code)
+        submitted = st.form_submit_button("Open event", type="primary")
+    if submitted:
+        event = get_event_by_code(code)
+        if event is None:
+            st.error("No event found with that code.")
+        else:
+            st.session_state["event_code"] = normalize_event_code(code)
+            st.rerun()
+
+    with st.expander("Make a new event"):
+        events = get_events()
+        source_options = [0] + events["id"].tolist() if not events.empty else [0]
+        source_names = {0: "Start from the default flock"}
+        if not events.empty:
+            source_names.update({int(row.id): f"Copy {row.name} ({row.code})" for row in events.itertuples(index=False)})
+        with st.form("create_event_form"):
+            new_name = st.text_input("New event name")
+            new_code = st.text_input("New event code")
+            new_admin = st.text_input("New admin code", type="password")
+            source_id = st.selectbox(
+                "Starting setup",
+                options=source_options,
+                format_func=lambda id_: source_names[int(id_)],
+            )
+            create_submitted = st.form_submit_button("Create event")
+        if create_submitted:
+            try:
+                event_id = create_event(
+                    new_code,
+                    new_name,
+                    new_admin,
+                    None if int(source_id) == 0 else int(source_id),
+                )
+                st.session_state["event_code"] = normalize_event_code(new_code)
+                st.success(f"Event created. ID {event_id}.")
+                st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+    return None
+
+
 def render_roster(chickens: pd.DataFrame) -> None:
     st.subheader("Starting Flock")
     st.markdown(
@@ -945,13 +1308,19 @@ def render_roster(chickens: pd.DataFrame) -> None:
     cols = st.columns(4)
     for idx, row in chickens.iterrows():
         with cols[idx % 4]:
-            st.image(str(chicken_image_path(int(row["id"]))), use_container_width=True)
-            st.markdown(f'<div class="roster-name">#{int(row["id"])} {row["name"]}</div>', unsafe_allow_html=True)
+            slot = int(row.get("slot", row["id"]))
+            photo = row.get("photo")
+            if isinstance(photo, bytes):
+                st.image(photo, use_container_width=True)
+            else:
+                st.image(str(chicken_image_path(slot)), use_container_width=True)
+            st.markdown(f'<div class="roster-name">#{slot} {row["name"]}</div>', unsafe_allow_html=True)
 
 
-def render_betting(chickens: pd.DataFrame) -> None:
+def render_betting(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame) -> None:
     st.subheader("Betting Coop")
-    is_open = betting_is_open()
+    event_id = int(event["id"])
+    is_open = betting_is_open(event)
     if not is_open:
         st.error("Betting is closed. No new tickets can be added.")
     st.markdown(
@@ -981,18 +1350,18 @@ def render_betting(chickens: pd.DataFrame) -> None:
         chicken_1 = chicken_2 = chicken_3 = None
 
         if bet_type == "race_winner":
-            race = st.selectbox("Race", options=[1, 2, 3], format_func=format_race)
+            race = st.selectbox("Race", options=[1, 2, 3], format_func=lambda race_id: format_race(race_id, races))
             chicken_1 = select_chicken("Bird to get the marshmallow first", chickens, "race_winner_pick")
         elif bet_type == "sweep":
             chicken_1 = select_chicken("Bird to rule the whole barnyard", chickens, "sweep_pick")
         elif bet_type == "exact_ticket":
             cols = st.columns(3)
             with cols[0]:
-                chicken_1 = select_chicken(format_race(1), chickens, "exact_1")
+                chicken_1 = select_chicken(format_race(1, races), chickens, "exact_1")
             with cols[1]:
-                chicken_2 = select_chicken(format_race(2), chickens, "exact_2")
+                chicken_2 = select_chicken(format_race(2, races), chickens, "exact_2")
             with cols[2]:
-                chicken_3 = select_chicken(format_race(3), chickens, "exact_3")
+                chicken_3 = select_chicken(format_race(3, races), chickens, "exact_3")
         elif bet_type == "any_win":
             chicken_1 = select_chicken("Bird to win at least one race", chickens, "any_win_pick")
         elif bet_type == "any_order_three":
@@ -1009,21 +1378,22 @@ def render_betting(chickens: pd.DataFrame) -> None:
 
     if submitted:
         try:
-            if not betting_is_open():
+            if not betting_is_open(event):
                 raise ValueError("Betting is closed. No new tickets can be added.")
             if bet_type == "any_order_three" and not all([chicken_1, chicken_2, chicken_3]):
                 raise ValueError("Pick exactly 3 chickens for this bet.")
-            bettor_id = upsert_bettor(bettor_name)
-            add_bet(bettor_id, bet_type, stake, race, int(chicken_1), chicken_2, chicken_3)
+            bettor_id = upsert_bettor(event_id, bettor_name)
+            add_bet(event_id, bettor_id, bet_type, stake, race, int(chicken_1), chicken_2, chicken_3)
             st.success("Bet added.")
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
 
 
-def render_results(chickens: pd.DataFrame) -> None:
+def render_results(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame) -> None:
     st.subheader("Winner's Perch")
-    current = get_results()
+    event_id = int(event["id"])
+    current = get_results(event_id)
 
     with st.form("results_form"):
         selections: dict[int, int] = {}
@@ -1035,7 +1405,7 @@ def render_results(chickens: pd.DataFrame) -> None:
                 index = options.index(default) if default in options else 0
                 selections[race] = int(
                     st.selectbox(
-                        f"{format_race(race)} winner",
+                        f"{format_race(race, races)} winner",
                         options=options,
                         index=index,
                         format_func=lambda id_: chickens.set_index("id").loc[id_, "name"],
@@ -1045,23 +1415,23 @@ def render_results(chickens: pd.DataFrame) -> None:
 
     if submitted:
         try:
-            save_results(selections)
+            save_results(event_id, selections)
             st.success("Results saved.")
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
 
 
-def render_settlement(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
+def render_settlement(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame, bets: pd.DataFrame) -> None:
     st.subheader("Settle the Scratch")
-    results = get_results()
+    results = get_results(int(event["id"]))
     names_by_id = dict(zip(chickens["id"], chickens["name"]))
 
     if len(results) != RACE_COUNT:
         st.info("Enter all 3 race winners before settling.")
         return
 
-    result_text = " | ".join(f"{format_race(race)}: {names_by_id[chicken_id]}" for race, chicken_id in sorted(results.items()))
+    result_text = " | ".join(f"{format_race(race, races)}: {names_by_id[chicken_id]}" for race, chicken_id in sorted(results.items()))
     st.markdown(f'<div class="section-note">{result_text}</div>', unsafe_allow_html=True)
 
     settled, people = calculate_settlement(bets, results)
@@ -1117,7 +1487,7 @@ def render_settlement(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
     detail = settled.copy()
     detail["Bet type"] = detail["bet_type"].map(BET_TYPES)
     detail["Weight"] = detail["weight"].map(lambda value: f"{value:g}x")
-    detail["Bet"] = detail.apply(describe_bet, axis=1)
+    detail["Bet"] = detail.apply(lambda row: describe_bet(row, races), axis=1)
     detail["Stake ($)"] = detail["stake"].map(money)
     detail["Payout weight"] = detail["payout_weight"].map(lambda value: f"{value:,.2f}")
     detail["Payout"] = detail["payout"].map(money)
@@ -1132,21 +1502,90 @@ def render_settlement(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
     )
 
 
-def render_admin(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
+def render_admin(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame, bets: pd.DataFrame) -> None:
     st.subheader("Coop Boss")
+    event_id = int(event["id"])
     code = st.text_input("Admin code", type="password")
-    if code != ADMIN_CODE:
+    if code != event["admin_code"]:
         st.caption("Enter the admin code to manage chickens, bets, and event resets.")
         return
+
+    with st.expander("Event setup", expanded=True):
+        close_at = close_at_from_text(event["betting_close_at"])
+        with st.form("event_settings_form"):
+            event_name = st.text_input("Event name", value=event["name"])
+            admin_code = st.text_input("Admin code for this event", value=event["admin_code"], type="password")
+            close_date = st.date_input("Bets open until date", value=close_at.date())
+            close_time = st.time_input("Bets open until time", value=close_at.time().replace(tzinfo=None))
+            if st.form_submit_button("Save event setup"):
+                try:
+                    new_close_at = datetime.combine(close_date, close_time, tzinfo=EASTERN_TZ)
+                    update_event_settings(event_id, event_name, admin_code, new_close_at)
+                    st.success("Event setup saved.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+
+    with st.expander("Edit race cards"):
+        with st.form("race_settings_form"):
+            race_updates: dict[int, tuple[str, str]] = {}
+            for row in races.itertuples(index=False):
+                st.markdown(f"**Race {int(row.race)}**")
+                race_name = st.text_input(f"Race {int(row.race)} name", value=row.name, key=f"race_name_{row.race}")
+                race_description = st.text_input(
+                    f"Race {int(row.race)} type/description",
+                    value=row.description,
+                    key=f"race_desc_{row.race}",
+                )
+                race_updates[int(row.race)] = (race_name, race_description)
+            if st.form_submit_button("Save races"):
+                try:
+                    update_races(event_id, race_updates)
+                    st.success("Race cards saved.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+
+    with st.expander("Edit chickens and photos"):
+        with st.form("chicken_names_form"):
+            chicken_updates: dict[int, str] = {}
+            cols = st.columns(2)
+            for idx, row in enumerate(chickens.itertuples(index=False)):
+                with cols[idx % 2]:
+                    chicken_updates[int(row.slot)] = st.text_input(
+                        f"Chicken #{int(row.slot)}",
+                        value=row.name,
+                        key=f"chicken_name_{row.slot}",
+                    )
+            if st.form_submit_button("Save chicken names"):
+                try:
+                    update_chickens(event_id, chicken_updates)
+                    st.success("Chicken names saved.")
+                    st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
+
+        st.write("Upload one photo at a time. Photos are saved to this event.")
+        photo_slot = st.selectbox(
+            "Chicken photo slot",
+            options=chickens["slot"].tolist(),
+            format_func=lambda slot: f"#{int(slot)} - {chickens.set_index('slot').loc[slot, 'name']}",
+        )
+        uploaded = st.file_uploader("Chicken photo", type=["png", "jpg", "jpeg"])
+        if st.button("Save chicken photo", disabled=uploaded is None):
+            if uploaded is not None:
+                update_chicken_photo(event_id, int(photo_slot), uploaded.getvalue(), uploaded.type)
+                st.success("Chicken photo saved.")
+                st.rerun()
 
     with st.expander("Delete accidental bet", expanded=True):
         if bets.empty:
             st.write("No bets to delete.")
         else:
             st.write("Pick one mistaken bet below. This only deletes the selected bet.")
-            st.dataframe(format_bet_table(bets), use_container_width=True, hide_index=True)
+            st.dataframe(format_bet_table(bets, races), use_container_width=True, hide_index=True)
             bet_options = {
-                int(row.id): f"#{int(row.id)} - {row.bettor} - {money(float(row.stake))} - {describe_bet(row)}"
+                int(row.id): f"#{int(row.id)} - {row.bettor} - {money(float(row.stake))} - {describe_bet(row, races)}"
                 for row in bets.itertuples(index=False)
             }
             bet_id = st.selectbox(
@@ -1156,7 +1595,7 @@ def render_admin(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
             )
             confirm_delete = st.checkbox("I want to delete only this selected bet")
             if st.button("Delete selected bet", disabled=not confirm_delete):
-                delete_bet(int(bet_id))
+                delete_bet(event_id, int(bet_id))
                 st.success("Bet deleted.")
                 st.rerun()
 
@@ -1164,7 +1603,7 @@ def render_admin(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
         st.warning("This clears all gamblers and bets. Chicken names, photos, and saved race results stay.")
         confirm = st.text_input('Type "CLEAR BETS" to clear all bets')
         if st.button("Clear all bets") and confirm == "CLEAR BETS":
-            clear_bets()
+            clear_bets(event_id)
             st.success("Bets cleared.")
             st.rerun()
 
@@ -1172,7 +1611,7 @@ def render_admin(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
         st.warning("This clears gamblers, bets, and results. Chicken names stay.")
         confirm = st.text_input('Type "RESET" to clear this event')
         if st.button("Clear event") and confirm == "RESET":
-            reset_all()
+            reset_all(event_id)
             st.success("Event cleared.")
             st.rerun()
 
@@ -1182,14 +1621,20 @@ def main() -> None:
     inject_theme_css()
     init_db()
 
-    chickens = get_chickens()
-    bets = get_bets()
+    event = render_event_gate()
+    if event is None:
+        return
+
+    event_id = int(event["id"])
+    chickens = get_chickens(event_id)
+    races = get_races(event_id)
+    bets = get_bets(event_id)
     render_hero(bets)
-    render_countdown()
+    render_countdown(event)
 
     tabs = st.tabs(["Betting Coop", "Starting Flock", "Ticket Board", "Winner's Circle", "Coop Boss"])
     with tabs[0]:
-        render_betting(chickens)
+        render_betting(event, chickens, races)
     with tabs[1]:
         render_roster(chickens)
     with tabs[2]:
@@ -1201,12 +1646,12 @@ def main() -> None:
         if bets.empty:
             st.info("No bets entered yet.")
         else:
-            st.dataframe(format_bet_table(bets), use_container_width=True, hide_index=True)
+            st.dataframe(format_bet_table(bets, races), use_container_width=True, hide_index=True)
     with tabs[3]:
-        render_results(chickens)
-        render_settlement(chickens, bets)
+        render_results(event, chickens, races)
+        render_settlement(event, chickens, races, bets)
     with tabs[4]:
-        render_admin(chickens, bets)
+        render_admin(event, chickens, races, bets)
 
 
 if __name__ == "__main__":
