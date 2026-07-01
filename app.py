@@ -203,11 +203,12 @@ def inject_theme_css() -> None:
 
         .stApp {
             background:
-                linear-gradient(90deg, rgba(247, 231, 190, 0.025) 1px, transparent 1px) 0 0 / 42px 42px,
-                radial-gradient(circle at top left, rgba(238, 102, 88, 0.16), transparent 26rem),
-                radial-gradient(circle at 78% 18%, rgba(216, 168, 63, 0.16), transparent 22rem),
-                radial-gradient(circle at bottom right, rgba(114, 179, 109, 0.12), transparent 30rem),
-                linear-gradient(180deg, #16100e 0%, #211813 55%, #172015 100%);
+                linear-gradient(90deg, rgba(84, 43, 24, 0.22) 0 1px, transparent 1px 44px),
+                repeating-linear-gradient(180deg, rgba(247, 231, 190, 0.035) 0 2px, transparent 2px 34px),
+                radial-gradient(circle at 12% 8%, rgba(216, 168, 63, 0.20), transparent 20rem),
+                radial-gradient(circle at 88% 18%, rgba(154, 49, 38, 0.22), transparent 22rem),
+                radial-gradient(circle at bottom right, rgba(114, 179, 109, 0.16), transparent 32rem),
+                linear-gradient(180deg, #140f0d 0%, #2a1a12 46%, #171f13 100%);
             color: var(--ink);
         }
 
@@ -268,8 +269,9 @@ def inject_theme_css() -> None:
             border: 1px solid rgba(247, 231, 190, 0.20);
             border-radius: 10px;
             background:
-                repeating-linear-gradient(90deg, rgba(247, 231, 190, 0.055) 0 2px, transparent 2px 24px),
-                linear-gradient(180deg, rgba(55, 38, 27, 0.98), rgba(31, 23, 18, 0.98));
+                repeating-linear-gradient(90deg, rgba(116, 62, 34, 0.32) 0 2px, transparent 2px 30px),
+                linear-gradient(90deg, rgba(85, 36, 26, 0.72), transparent 44%),
+                linear-gradient(180deg, rgba(62, 39, 24, 0.98), rgba(29, 21, 17, 0.98));
             padding: 0;
             margin-bottom: 1rem;
             box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
@@ -287,8 +289,9 @@ def inject_theme_css() -> None:
 
         .coop-hero-inner {
             background:
-                radial-gradient(circle at 92% 16%, rgba(247, 231, 190, 0.12), transparent 8rem),
-                linear-gradient(135deg, rgba(143, 59, 47, 0.30), transparent 38%),
+                linear-gradient(90deg, rgba(247, 231, 190, 0.045) 1px, transparent 1px) 0 0 / 28px 100%,
+                radial-gradient(circle at 92% 16%, rgba(247, 231, 190, 0.14), transparent 8rem),
+                linear-gradient(135deg, rgba(143, 59, 47, 0.36), transparent 38%),
                 linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
             border-left: 6px solid #b88a31;
             padding: 1.55rem 1.65rem 1.75rem;
@@ -521,10 +524,6 @@ def render_hero(bets: pd.DataFrame) -> None:
                 <div class="poster-badges">
                     <span class="poster-badge">12 birds</span>
                     <span class="poster-badge">3 marshmallow races</span>
-                    <span class="poster-badge">barnyard odds</span>
-                    <span class="poster-badge">one shared pot</span>
-                    <span class="poster-badge">coop ticket math</span>
-                    <span class="poster-badge">farm-fair chaos</span>
                 </div>
                 <div class="coop-rail">
                     <div><b>Starting Flock</b>Inspect the birds</div>
@@ -534,9 +533,7 @@ def render_hero(bets: pd.DataFrame) -> None:
                 </div>
                 <div class="coop-stats">
                     <div class="coop-stat"><span>Total Pool</span><strong>{money(total_pool)}</strong></div>
-                    <div class="coop-stat"><span>Bets Placed</span><strong>{len(bets)}</strong></div>
-                    <div class="coop-stat"><span>Bettors</span><strong>{bettors}</strong></div>
-                    <div class="coop-stat"><span>Races</span><strong>{RACE_COUNT}</strong></div>
+                    <div class="coop-stat"><span>Gamblers</span><strong>{bettors}</strong></div>
                 </div>
             </div>
         </div>
@@ -730,7 +727,7 @@ def get_bets() -> pd.DataFrame:
 def upsert_bettor(name: str) -> int:
     cleaned = " ".join(name.strip().split())
     if not cleaned:
-        raise ValueError("Enter a bettor name.")
+        raise ValueError("Enter a gambler name.")
     with connect() as conn:
         conn.execute(
             "INSERT OR IGNORE INTO bettors (name, created_at) VALUES (?, ?)",
@@ -916,7 +913,7 @@ def format_bet_table(bets: pd.DataFrame) -> pd.DataFrame:
     shown["Bet"] = shown.apply(describe_bet, axis=1)
     shown["Stake ($)"] = shown["stake"].map(money)
     return shown[["id", "bettor", "Bet type", "Weight", "Bet", "Stake ($)", "created_at"]].rename(
-        columns={"id": "ID", "bettor": "Bettor", "created_at": "Entered"}
+        columns={"id": "ID", "bettor": "Gambler", "created_at": "Entered"}
     )
 
 
@@ -954,12 +951,11 @@ def render_roster(chickens: pd.DataFrame) -> None:
 
 def render_betting(chickens: pd.DataFrame) -> None:
     st.subheader("Betting Coop")
-    render_race_strip()
     is_open = betting_is_open()
     if not is_open:
         st.error("Betting is closed. No new tickets can be added.")
     st.markdown(
-        '<div class="coop-callout">Use the same bettor name each time. Stake is the dollar amount you are betting. Every dollar goes into one shared pot. Winning tickets get their stake back, then split the losing money by bet difficulty. A big pot only pays big if not too much of that pot is also on winning tickets.</div>',
+        '<div class="coop-callout">Use the same name each time you submit a bet. Every dollar you bet (stake) goes into one shared pot. Winning tickets get their stake back, then split the losing money by odds.</div>',
         unsafe_allow_html=True,
     )
     with st.expander("Bet difficulty weights"):
@@ -979,7 +975,7 @@ def render_betting(chickens: pd.DataFrame) -> None:
     bet_type = next(key for key, value in BET_TYPES.items() if value == bet_type_label)
 
     with st.form("bet_form", clear_on_submit=False):
-        bettor_name = st.text_input("Bettor name")
+        bettor_name = st.text_input("Gambler name")
         stake = st.number_input("Stake ($)", min_value=1.0, value=5.0, step=1.0, format="%.2f")
         race = None
         chicken_1 = chicken_2 = chicken_3 = None
@@ -1093,7 +1089,7 @@ def render_settlement(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
     st.markdown("**Winner's Circle Ledger**")
     st.dataframe(
         people_display.rename(
-            columns={"bettor": "Bettor", "total_staked": "Staked", "payout": "Payout", "net": "Net"}
+            columns={"bettor": "Gambler", "total_staked": "Staked", "payout": "Payout", "net": "Net"}
         ),
         use_container_width=True,
         hide_index=True,
@@ -1129,7 +1125,7 @@ def render_settlement(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
     detail["Result"] = detail["result"]
     st.dataframe(
         detail[["bettor", "Bet type", "Weight", "Bet", "Stake ($)", "Payout weight", "Result", "Payout", "Net"]].rename(
-            columns={"bettor": "Bettor"}
+            columns={"bettor": "Gambler"}
         ),
         use_container_width=True,
         hide_index=True,
@@ -1165,7 +1161,7 @@ def render_admin(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
                 st.rerun()
 
     with st.expander("Clear bets"):
-        st.warning("This clears all bettors and bets. Chicken names, photos, and saved race results stay.")
+        st.warning("This clears all gamblers and bets. Chicken names, photos, and saved race results stay.")
         confirm = st.text_input('Type "CLEAR BETS" to clear all bets')
         if st.button("Clear all bets") and confirm == "CLEAR BETS":
             clear_bets()
@@ -1173,7 +1169,7 @@ def render_admin(chickens: pd.DataFrame, bets: pd.DataFrame) -> None:
             st.rerun()
 
     with st.expander("Start over"):
-        st.warning("This clears bettors, bets, and results. Chicken names stay.")
+        st.warning("This clears gamblers, bets, and results. Chicken names stay.")
         confirm = st.text_input('Type "RESET" to clear this event')
         if st.button("Clear event") and confirm == "RESET":
             reset_all()
