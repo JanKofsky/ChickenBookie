@@ -1249,58 +1249,6 @@ def select_chicken(label: str, chickens: pd.DataFrame, key: str) -> int:
     return int(selected)
 
 
-def chicken_image_source(row: pd.Series) -> bytes | str:
-    photo = row.get("photo")
-    if isinstance(photo, bytes):
-        return photo
-    slot = int(row.get("slot", row["id"]))
-    return str(chicken_image_path(slot))
-
-
-def select_chicken_card(label: str, chickens: pd.DataFrame, key: str) -> int:
-    ids = [int(value) for value in chickens["id"].tolist()]
-    if key not in st.session_state or int(st.session_state[key]) not in ids:
-        st.session_state[key] = ids[0]
-
-    st.markdown(f"**{label}**")
-    selected = int(st.session_state[key])
-    cols = st.columns(min(4, len(chickens)))
-    for idx, (_, row) in enumerate(chickens.iterrows()):
-        chicken_id = int(row["id"])
-        slot = int(row.get("slot", row["id"]))
-        name = str(row["name"])
-        with cols[idx % len(cols)]:
-            st.image(chicken_image_source(row), use_container_width=True)
-            is_selected = chicken_id == selected
-            label_prefix = "Selected" if is_selected else "Pick"
-            if st.button(f"{label_prefix} #{slot} {name}", key=f"{key}_{chicken_id}", disabled=is_selected):
-                st.session_state[key] = chicken_id
-    return int(st.session_state[key])
-
-
-def select_chicken_cards(label: str, chickens: pd.DataFrame, key: str, limit: int) -> list[int]:
-    selected = [int(value) for value in st.session_state.get(key, []) if int(value) in chickens["id"].tolist()]
-    st.session_state[key] = selected
-    st.markdown(f"**{label}**")
-    st.caption(f"Pick exactly {limit}. Selected: {len(selected)}/{limit}")
-    cols = st.columns(min(4, len(chickens)))
-    for idx, (_, row) in enumerate(chickens.iterrows()):
-        chicken_id = int(row["id"])
-        slot = int(row.get("slot", row["id"]))
-        name = str(row["name"])
-        is_selected = chicken_id in selected
-        with cols[idx % len(cols)]:
-            st.image(chicken_image_source(row), use_container_width=True)
-            if is_selected:
-                if st.button(f"Remove #{slot} {name}", key=f"{key}_remove_{chicken_id}"):
-                    st.session_state[key] = [value for value in selected if value != chicken_id]
-            else:
-                disabled = len(selected) >= limit
-                if st.button(f"Pick #{slot} {name}", key=f"{key}_pick_{chicken_id}", disabled=disabled):
-                    st.session_state[key] = selected + [chicken_id]
-    return [int(value) for value in st.session_state.get(key, [])]
-
-
 def chicken_image_path(chicken_id: int) -> Path:
     fallback_id = ((chicken_id - 1) % FALLBACK_CHICKEN_IMAGE_COUNT) + 1
     specific = ASSET_DIR / "chickens" / f"chicken_{fallback_id:02d}.png"
@@ -1433,22 +1381,28 @@ def render_betting(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFra
 
     if bet_type == "race_winner":
         race = st.selectbox("Race", options=[1, 2, 3], format_func=lambda race_id: format_race(race_id, races))
-        chicken_1 = select_chicken_card("Pick the bird to win this race", chickens, "race_winner_pick")
+        chicken_1 = select_chicken("Pick the bird to win this race", chickens, "race_winner_pick")
     elif bet_type == "sweep":
-        chicken_1 = select_chicken_card("Pick the bird to rule the whole barnyard", chickens, "sweep_pick")
+        chicken_1 = select_chicken("Pick the bird to rule the whole barnyard", chickens, "sweep_pick")
     elif bet_type == "exact_ticket":
-        with st.expander(format_race(1, races), expanded=True):
-            chicken_1 = select_chicken_card(f"Pick winner for {format_race(1, races)}", chickens, "exact_1")
-        with st.expander(format_race(2, races), expanded=True):
-            chicken_2 = select_chicken_card(f"Pick winner for {format_race(2, races)}", chickens, "exact_2")
-        with st.expander(format_race(3, races), expanded=True):
-            chicken_3 = select_chicken_card(f"Pick winner for {format_race(3, races)}", chickens, "exact_3")
+        cols = st.columns(3)
+        with cols[0]:
+            chicken_1 = select_chicken(format_race(1, races), chickens, "exact_1")
+        with cols[1]:
+            chicken_2 = select_chicken(format_race(2, races), chickens, "exact_2")
+        with cols[2]:
+            chicken_3 = select_chicken(format_race(3, races), chickens, "exact_3")
     elif bet_type == "any_win":
-        chicken_1 = select_chicken_card("Pick the bird to win at least one race", chickens, "any_win_pick")
+        chicken_1 = select_chicken("Pick the bird to win at least one race", chickens, "any_win_pick")
     elif bet_type == "any_order_three":
-        picked = select_chicken_cards("Pick the 3 race winners, any order", chickens, "any_order_three_pick", 3)
+        picked = st.multiselect(
+            "Pick exactly 3 chickens",
+            options=chickens["id"].tolist(),
+            format_func=lambda id_: chickens.set_index("id").loc[id_, "name"],
+            max_selections=3,
+        )
         if len(picked) == 3:
-            chicken_1, chicken_2, chicken_3 = picked
+            chicken_1, chicken_2, chicken_3 = [int(value) for value in picked]
 
     submitted = st.button("Add bet", type="primary", disabled=not is_open)
 
