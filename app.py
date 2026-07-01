@@ -17,10 +17,11 @@ DB_PATH = Path(__file__).with_name("chicken_race.db")
 ASSET_DIR = Path(__file__).with_name("assets")
 RACE_COUNT = 3
 CHICKEN_COUNT = 12
+FALLBACK_CHICKEN_IMAGE_COUNT = 60
 ADMIN_CODE = "NekoFatty123!"
 EASTERN_TZ = timezone(timedelta(hours=-4), "Eastern")
 BETTING_CLOSE_AT = datetime(2026, 7, 18, 17, 30, tzinfo=EASTERN_TZ)
-DEFAULT_EVENT_CODE = "birthday corn"
+DEFAULT_EVENT_CODE = "corn hub"
 DEFAULT_EVENT_NAME = "The Great American Chicken Race"
 DEFAULT_OFFICIAL_RULE = "First chicken to get the marshmallow wins."
 
@@ -288,6 +289,10 @@ def ensure_default_event(conn: sqlite3.Connection) -> None:
     code = normalize_event_code(DEFAULT_EVENT_CODE)
     row = conn.execute("SELECT id FROM events WHERE code = ?", (code,)).fetchone()
     if row is None:
+        row = conn.execute("SELECT id FROM events WHERE code = ?", ("birthday corn",)).fetchone()
+        if row is not None:
+            conn.execute("UPDATE events SET code = ? WHERE id = ?", (code, int(row["id"])))
+    if row is None:
         cursor = conn.execute(
             """
             INSERT INTO events (code, name, admin_code, betting_close_at, official_rule, created_at)
@@ -371,12 +376,12 @@ def inject_theme_css() -> None:
 
         .stApp {
             background:
-                radial-gradient(ellipse at 18% 0%, rgba(217, 170, 60, 0.14), transparent 26rem),
-                radial-gradient(ellipse at 86% 10%, rgba(182, 61, 52, 0.18), transparent 24rem),
-                radial-gradient(ellipse at 72% 100%, rgba(111, 163, 75, 0.20), transparent 30rem),
-                linear-gradient(160deg, transparent 0 58%, rgba(111, 163, 75, 0.10) 58% 64%, transparent 64%),
-                repeating-linear-gradient(90deg, rgba(255, 243, 216, 0.028) 0 1px, transparent 1px 42px),
-                linear-gradient(180deg, #11100d 0%, #1d1712 46%, #10180f 100%);
+                linear-gradient(90deg, rgba(221, 151, 70, 0.22) 0 2px, transparent 2px 5px, rgba(7, 12, 8, 0.28) 5px 8px, transparent 8px 82px),
+                repeating-linear-gradient(90deg, rgba(255, 229, 153, 0.075) 0 1px, transparent 1px 41px, rgba(0, 0, 0, 0.22) 41px 44px, transparent 44px 82px),
+                repeating-linear-gradient(0deg, rgba(255, 229, 153, 0.026) 0 1px, transparent 1px 17px),
+                radial-gradient(ellipse at 18% 8%, rgba(221, 151, 70, 0.16), transparent 24rem),
+                radial-gradient(ellipse at 76% 18%, rgba(255, 214, 128, 0.12), transparent 22rem),
+                linear-gradient(90deg, #122218 0%, #1f3a29 42%, #172d20 68%, #10170f 100%);
             color: var(--ink);
         }
 
@@ -438,9 +443,9 @@ def inject_theme_css() -> None:
             border: 1px solid rgba(255, 243, 216, 0.22);
             border-radius: 10px;
             background:
-                linear-gradient(135deg, rgba(255, 243, 216, 0.08) 0 14%, transparent 14%),
-                repeating-linear-gradient(90deg, rgba(255, 243, 216, 0.055) 0 2px, transparent 2px 32px),
-                linear-gradient(90deg, rgba(98, 34, 29, 0.98), rgba(32, 46, 25, 0.98));
+                linear-gradient(135deg, transparent 0 45%, rgba(221, 151, 70, 0.22) 45% 47%, transparent 47%),
+                repeating-linear-gradient(90deg, rgba(255, 229, 153, 0.10) 0 2px, transparent 2px 44px),
+                linear-gradient(90deg, rgba(23, 47, 32, 0.98), rgba(67, 42, 22, 0.92));
             padding: 0;
             margin-bottom: 1rem;
             box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
@@ -461,7 +466,7 @@ def inject_theme_css() -> None:
                 radial-gradient(circle at 92% 16%, rgba(255, 243, 216, 0.10), transparent 8rem),
                 linear-gradient(135deg, rgba(111, 163, 75, 0.18), transparent 38%),
                 linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
-            border-left: 7px solid #b63d34;
+            border-left: 7px solid #dd9746;
             padding: 1.55rem 1.65rem 1.75rem;
             color: var(--ink);
         }
@@ -675,24 +680,27 @@ def inject_theme_css() -> None:
     )
 
 
-def render_hero(event: sqlite3.Row, bets: pd.DataFrame) -> None:
+def clean_sentence(value: str) -> str:
+    return str(value).strip().rstrip(".")
+
+
+def render_hero(event: sqlite3.Row, bets: pd.DataFrame, chickens: pd.DataFrame, races: pd.DataFrame) -> None:
     total_pool = float(bets["stake"].sum()) if not bets.empty else 0.0
     bettors = int(bets["bettor"].nunique()) if not bets.empty else 0
-    official_rule = str(event["official_rule"]).strip().rstrip(".")
+    official_rule = clean_sentence(event["official_rule"])
+    chicken_count = len(chickens)
+    race_count = len(races)
     st.markdown(
         f"""
         <div class="coop-hero">
             <div class="coop-hero-inner">
                 <div class="coop-kicker">Chicken Bookie</div>
                 <div class="coop-title">{event["name"]}</div>
-                <div class="coop-subtitle">
-                    Barnyard race-day betting.
-                    Check the flock, place your coop tickets, then settle up after the pecking order is official.
-                </div>
+                <div class="coop-subtitle">Barnyard race-day betting. Check the flock, place your coop tickets, then settle up after the pecking order is official.</div>
                 <div class="marshmallow-pill">Official rule: {official_rule}.</div>
                 <div class="poster-badges">
-                    <span class="poster-badge">12 birds</span>
-                    <span class="poster-badge">3 marshmallow races</span>
+                    <span class="poster-badge">{chicken_count} birds</span>
+                    <span class="poster-badge">{race_count} races</span>
                 </div>
                 <div class="coop-stats">
                     <div class="coop-stat"><span>Total Pool</span><strong>{money(total_pool)}</strong></div>
@@ -1241,8 +1249,61 @@ def select_chicken(label: str, chickens: pd.DataFrame, key: str) -> int:
     return int(selected)
 
 
+def chicken_image_source(row: pd.Series) -> bytes | str:
+    photo = row.get("photo")
+    if isinstance(photo, bytes):
+        return photo
+    slot = int(row.get("slot", row["id"]))
+    return str(chicken_image_path(slot))
+
+
+def select_chicken_card(label: str, chickens: pd.DataFrame, key: str) -> int:
+    ids = [int(value) for value in chickens["id"].tolist()]
+    if key not in st.session_state or int(st.session_state[key]) not in ids:
+        st.session_state[key] = ids[0]
+
+    st.markdown(f"**{label}**")
+    selected = int(st.session_state[key])
+    cols = st.columns(min(4, len(chickens)))
+    for idx, (_, row) in enumerate(chickens.iterrows()):
+        chicken_id = int(row["id"])
+        slot = int(row.get("slot", row["id"]))
+        name = str(row["name"])
+        with cols[idx % len(cols)]:
+            st.image(chicken_image_source(row), use_container_width=True)
+            is_selected = chicken_id == selected
+            label_prefix = "Selected" if is_selected else "Pick"
+            if st.button(f"{label_prefix} #{slot} {name}", key=f"{key}_{chicken_id}", disabled=is_selected):
+                st.session_state[key] = chicken_id
+    return int(st.session_state[key])
+
+
+def select_chicken_cards(label: str, chickens: pd.DataFrame, key: str, limit: int) -> list[int]:
+    selected = [int(value) for value in st.session_state.get(key, []) if int(value) in chickens["id"].tolist()]
+    st.session_state[key] = selected
+    st.markdown(f"**{label}**")
+    st.caption(f"Pick exactly {limit}. Selected: {len(selected)}/{limit}")
+    cols = st.columns(min(4, len(chickens)))
+    for idx, (_, row) in enumerate(chickens.iterrows()):
+        chicken_id = int(row["id"])
+        slot = int(row.get("slot", row["id"]))
+        name = str(row["name"])
+        is_selected = chicken_id in selected
+        with cols[idx % len(cols)]:
+            st.image(chicken_image_source(row), use_container_width=True)
+            if is_selected:
+                if st.button(f"Remove #{slot} {name}", key=f"{key}_remove_{chicken_id}"):
+                    st.session_state[key] = [value for value in selected if value != chicken_id]
+            else:
+                disabled = len(selected) >= limit
+                if st.button(f"Pick #{slot} {name}", key=f"{key}_pick_{chicken_id}", disabled=disabled):
+                    st.session_state[key] = selected + [chicken_id]
+    return [int(value) for value in st.session_state.get(key, [])]
+
+
 def chicken_image_path(chicken_id: int) -> Path:
-    specific = ASSET_DIR / "chickens" / f"chicken_{chicken_id:02d}.png"
+    fallback_id = ((chicken_id - 1) % FALLBACK_CHICKEN_IMAGE_COUNT) + 1
+    specific = ASSET_DIR / "chickens" / f"chicken_{fallback_id:02d}.png"
     if specific.exists():
         return specific
     return ASSET_DIR / "chickens" / "placeholder.png"
@@ -1284,28 +1345,32 @@ def render_event_gate() -> sqlite3.Row | None:
             st.rerun()
 
     with st.expander("Make a new event"):
-        events = get_events()
-        source_options = [0] + events["id"].tolist() if not events.empty else [0]
-        source_names = {0: "Start from the default flock"}
-        if not events.empty:
-            source_names.update({int(row.id): f"Copy {row.name} ({row.code})" for row in events.itertuples(index=False)})
         with st.form("create_event_form"):
             new_name = st.text_input("New event name")
             new_code = st.text_input("New event code")
             new_admin = st.text_input("New admin code", type="password")
-            source_id = st.selectbox(
+            starting_setup = st.radio(
                 "Starting setup",
-                options=source_options,
-                format_func=lambda id_: source_names[int(id_)],
+                options=["Start from default", "Copy event code"],
+                horizontal=True,
             )
+            copy_code = ""
+            if starting_setup == "Copy event code":
+                copy_code = st.text_input("Event code to copy")
             create_submitted = st.form_submit_button("Create event")
         if create_submitted:
             try:
+                source_event_id = None
+                if starting_setup == "Copy event code":
+                    source = get_event_by_code(copy_code)
+                    if source is None:
+                        raise ValueError("No event found with that code to copy.")
+                    source_event_id = int(source["id"])
                 event_id = create_event(
                     new_code,
                     new_name,
                     new_admin,
-                    None if int(source_id) == 0 else int(source_id),
+                    source_event_id,
                 )
                 st.session_state["event_code"] = normalize_event_code(new_code)
                 st.success(f"Event created. ID {event_id}.")
@@ -1315,10 +1380,11 @@ def render_event_gate() -> sqlite3.Row | None:
     return None
 
 
-def render_roster(chickens: pd.DataFrame) -> None:
+def render_roster(event: sqlite3.Row, chickens: pd.DataFrame) -> None:
     st.subheader("Starting Flock")
+    official_rule = clean_sentence(event["official_rule"])
     st.markdown(
-        '<div class="coop-callout">Twelve contenders enter the coop. First beak to the marshmallow takes the race, farm rules.</div>',
+        f'<div class="coop-callout">{len(chickens)} contenders enter the coop. {official_rule}, farm rules.</div>',
         unsafe_allow_html=True,
     )
 
@@ -1360,43 +1426,38 @@ def render_betting(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFra
     bet_type_label = st.selectbox("Bet type", options=list(BET_TYPES.values()))
     bet_type = next(key for key, value in BET_TYPES.items() if value == bet_type_label)
 
-    with st.form("bet_form", clear_on_submit=False):
-        bettor_name = st.text_input("Gambler name")
-        stake = st.number_input("Stake ($)", min_value=1.0, value=5.0, step=1.0, format="%.2f")
-        race = None
-        chicken_1 = chicken_2 = chicken_3 = None
+    bettor_name = st.text_input("Gambler name")
+    stake = st.number_input("Stake ($)", min_value=1.0, value=5.0, step=1.0, format="%.2f")
+    race = None
+    chicken_1 = chicken_2 = chicken_3 = None
 
-        if bet_type == "race_winner":
-            race = st.selectbox("Race", options=[1, 2, 3], format_func=lambda race_id: format_race(race_id, races))
-            chicken_1 = select_chicken("Bird to get the marshmallow first", chickens, "race_winner_pick")
-        elif bet_type == "sweep":
-            chicken_1 = select_chicken("Bird to rule the whole barnyard", chickens, "sweep_pick")
-        elif bet_type == "exact_ticket":
-            cols = st.columns(3)
-            with cols[0]:
-                chicken_1 = select_chicken(format_race(1, races), chickens, "exact_1")
-            with cols[1]:
-                chicken_2 = select_chicken(format_race(2, races), chickens, "exact_2")
-            with cols[2]:
-                chicken_3 = select_chicken(format_race(3, races), chickens, "exact_3")
-        elif bet_type == "any_win":
-            chicken_1 = select_chicken("Bird to win at least one race", chickens, "any_win_pick")
-        elif bet_type == "any_order_three":
-            picked = st.multiselect(
-                "Pick exactly 3 chickens",
-                options=chickens["id"].tolist(),
-                format_func=lambda id_: chickens.set_index("id").loc[id_, "name"],
-                max_selections=3,
-            )
-            if len(picked) == 3:
-                chicken_1, chicken_2, chicken_3 = [int(value) for value in picked]
+    if bet_type == "race_winner":
+        race = st.selectbox("Race", options=[1, 2, 3], format_func=lambda race_id: format_race(race_id, races))
+        chicken_1 = select_chicken_card("Pick the bird to win this race", chickens, "race_winner_pick")
+    elif bet_type == "sweep":
+        chicken_1 = select_chicken_card("Pick the bird to rule the whole barnyard", chickens, "sweep_pick")
+    elif bet_type == "exact_ticket":
+        with st.expander(format_race(1, races), expanded=True):
+            chicken_1 = select_chicken_card(f"Pick winner for {format_race(1, races)}", chickens, "exact_1")
+        with st.expander(format_race(2, races), expanded=True):
+            chicken_2 = select_chicken_card(f"Pick winner for {format_race(2, races)}", chickens, "exact_2")
+        with st.expander(format_race(3, races), expanded=True):
+            chicken_3 = select_chicken_card(f"Pick winner for {format_race(3, races)}", chickens, "exact_3")
+    elif bet_type == "any_win":
+        chicken_1 = select_chicken_card("Pick the bird to win at least one race", chickens, "any_win_pick")
+    elif bet_type == "any_order_three":
+        picked = select_chicken_cards("Pick the 3 race winners, any order", chickens, "any_order_three_pick", 3)
+        if len(picked) == 3:
+            chicken_1, chicken_2, chicken_3 = picked
 
-        submitted = st.form_submit_button("Add bet", type="primary", disabled=not is_open)
+    submitted = st.button("Add bet", type="primary", disabled=not is_open)
 
     if submitted:
         try:
             if not betting_is_open(event):
                 raise ValueError("Betting is closed. No new tickets can be added.")
+            if chicken_1 is None:
+                raise ValueError("Pick a chicken for this bet.")
             if bet_type == "any_order_three" and not all([chicken_1, chicken_2, chicken_3]):
                 raise ValueError("Pick exactly 3 chickens for this bet.")
             bettor_id = upsert_bettor(event_id, bettor_name)
@@ -1567,6 +1628,7 @@ def render_admin(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame
     with st.expander("Edit chickens and photos"):
         with st.form("chicken_names_form"):
             chicken_updates: dict[int, str] = {}
+            photo_updates: dict[int, Any] = {}
             cols = st.columns(2)
             for idx, row in enumerate(chickens.itertuples(index=False)):
                 with cols[idx % 2]:
@@ -1575,26 +1637,21 @@ def render_admin(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame
                         value=row.name,
                         key=f"chicken_name_{row.slot}",
                     )
-            if st.form_submit_button("Save chicken names"):
+                    photo_updates[int(row.slot)] = st.file_uploader(
+                        f"Photo for #{int(row.slot)}",
+                        type=["png", "jpg", "jpeg"],
+                        key=f"chicken_photo_{row.slot}",
+                    )
+            if st.form_submit_button("Save chickens"):
                 try:
                     update_chickens(event_id, chicken_updates)
-                    st.success("Chicken names saved.")
+                    for slot, uploaded in photo_updates.items():
+                        if uploaded is not None:
+                            update_chicken_photo(event_id, slot, uploaded.getvalue(), uploaded.type)
+                    st.success("Chicken names and photos saved.")
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))
-
-        st.write("Upload one photo at a time. Photos are saved to this event.")
-        photo_slot = st.selectbox(
-            "Chicken photo slot",
-            options=chickens["slot"].tolist(),
-            format_func=lambda slot: f"#{int(slot)} - {chickens.set_index('slot').loc[slot, 'name']}",
-        )
-        uploaded = st.file_uploader("Chicken photo", type=["png", "jpg", "jpeg"])
-        if st.button("Save chicken photo", disabled=uploaded is None):
-            if uploaded is not None:
-                update_chicken_photo(event_id, int(photo_slot), uploaded.getvalue(), uploaded.type)
-                st.success("Chicken photo saved.")
-                st.rerun()
 
     with st.expander("Delete accidental bet", expanded=True):
         if bets.empty:
@@ -1647,14 +1704,14 @@ def main() -> None:
     chickens = get_chickens(event_id)
     races = get_races(event_id)
     bets = get_bets(event_id)
-    render_hero(event, bets)
+    render_hero(event, bets, chickens, races)
     render_countdown(event)
 
     tabs = st.tabs(["Betting Coop", "Starting Flock", "Ticket Board", "Winner's Circle", "Coop Boss"])
     with tabs[0]:
         render_betting(event, chickens, races)
     with tabs[1]:
-        render_roster(chickens)
+        render_roster(event, chickens)
     with tabs[2]:
         st.subheader("Ticket Board")
         st.markdown(
