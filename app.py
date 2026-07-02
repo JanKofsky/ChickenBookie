@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -21,6 +23,7 @@ FALLBACK_CHICKEN_IMAGE_COUNT = 60
 ADMIN_CODE = "NekoFatty123!"
 EASTERN_TZ = timezone(timedelta(hours=-4), "Eastern")
 BETTING_CLOSE_AT = datetime(2026, 7, 18, 17, 30, tzinfo=EASTERN_TZ)
+DEFAULT_BETTING_WINDOW = timedelta(days=7)
 DEFAULT_EVENT_CODE = "corn hub"
 DEFAULT_EVENT_NAME = "The Great American Chicken Race"
 DEFAULT_OFFICIAL_RULE = "First chicken to get the marshmallow wins."
@@ -47,19 +50,6 @@ BET_TYPES = {
     "exact_ticket": "Exact 3-race ticket",
     "any_win": "Chicken wins at least one race",
     "any_order_three": "Three picked chickens win the 3 races, any order",
-}
-
-SINGLE_RACE_WIN_PROBABILITY = 1 / CHICKEN_COUNT
-ANY_WIN_PROBABILITY = 1 - ((CHICKEN_COUNT - 1) / CHICKEN_COUNT) ** RACE_COUNT
-ALL_RACES_EXACT_PROBABILITY = 1 / (CHICKEN_COUNT ** RACE_COUNT)
-ALL_RACES_ANY_ORDER_PROBABILITY = factorial(RACE_COUNT) / (CHICKEN_COUNT ** RACE_COUNT)
-
-BET_WEIGHTS = {
-    "any_win": SINGLE_RACE_WIN_PROBABILITY / ANY_WIN_PROBABILITY,
-    "race_winner": 1.0,
-    "any_order_three": SINGLE_RACE_WIN_PROBABILITY / ALL_RACES_ANY_ORDER_PROBABILITY,
-    "exact_ticket": SINGLE_RACE_WIN_PROBABILITY / ALL_RACES_EXACT_PROBABILITY,
-    "sweep": SINGLE_RACE_WIN_PROBABILITY / ALL_RACES_EXACT_PROBABILITY,
 }
 
 RACE_NAMES = {
@@ -171,6 +161,7 @@ def init_db() -> None:
                 chicken_1 INTEGER,
                 chicken_2 INTEGER,
                 chicken_3 INTEGER,
+                picks TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (event_id) REFERENCES events(id),
                 FOREIGN KEY (bettor_id) REFERENCES event_bettors(id),
@@ -194,6 +185,7 @@ def init_db() -> None:
             """
         )
         ensure_column(conn, "events", "official_rule", f"TEXT NOT NULL DEFAULT '{DEFAULT_OFFICIAL_RULE}'")
+        ensure_column(conn, "event_bets", "picks", "TEXT")
         ensure_column(conn, "event_chickens", "photo", "BLOB")
         ensure_column(conn, "event_chickens", "photo_mime", "TEXT")
         ensure_default_event(conn)
@@ -322,8 +314,33 @@ def money(value: float) -> str:
     return f"${value:,.2f}"
 
 
-def weight_label(bet_type: str) -> str:
-    weight = BET_WEIGHTS.get(bet_type, 1.0)
+def probability_context(chicken_count: int, race_count: int) -> dict[str, float]:
+    chicken_count = max(int(chicken_count), 1)
+    race_count = max(int(race_count), 1)
+    single = 1 / chicken_count
+    any_win = 1 - ((chicken_count - 1) / chicken_count) ** race_count
+    all_exact = 1 / (chicken_count ** race_count)
+    any_order = factorial(race_count) / (chicken_count ** race_count) if race_count <= chicken_count else 0.0
+    return {
+        "race_winner": single,
+        "any_win": any_win,
+        "exact_ticket": all_exact,
+        "sweep": all_exact,
+        "any_order_three": any_order,
+    }
+
+
+def bet_weights(chicken_count: int, race_count: int) -> dict[str, float]:
+    probabilities = probability_context(chicken_count, race_count)
+    single = probabilities["race_winner"]
+    return {
+        bet_type: (single / probability if probability > 0 else 0.0)
+        for bet_type, probability in probabilities.items()
+    }
+
+
+def weight_label(bet_type: str, chicken_count: int = CHICKEN_COUNT, race_count: int = RACE_COUNT) -> str:
+    weight = bet_weights(chicken_count, race_count).get(bet_type, 1.0)
     if weight >= 10:
         return f"{weight:,.0f}x"
     return f"{weight:.2f}".rstrip("0").rstrip(".") + "x"
@@ -333,16 +350,8 @@ def probability_label(probability: float) -> str:
     return f"{probability * 100:.3f}%"
 
 
-def bet_probability(bet_type: str) -> float:
-    if bet_type == "any_win":
-        return ANY_WIN_PROBABILITY
-    if bet_type == "race_winner":
-        return SINGLE_RACE_WIN_PROBABILITY
-    if bet_type == "any_order_three":
-        return ALL_RACES_ANY_ORDER_PROBABILITY
-    if bet_type in {"exact_ticket", "sweep"}:
-        return ALL_RACES_EXACT_PROBABILITY
-    return SINGLE_RACE_WIN_PROBABILITY
+def bet_probability(bet_type: str, chicken_count: int = CHICKEN_COUNT, race_count: int = RACE_COUNT) -> float:
+    return probability_context(chicken_count, race_count).get(bet_type, 1 / max(chicken_count, 1))
 
 
 def format_race(race: int, races: pd.DataFrame | None = None) -> str:
