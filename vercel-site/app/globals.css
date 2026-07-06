@@ -117,8 +117,6 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .site-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 14px;
-  flex-wrap: wrap;
   margin-top: 18px;
   color: var(--muted);
   font-size: 0.9rem;
