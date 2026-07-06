@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
-import { Lilita_One } from "next/font/google";
+import { Chewy } from "next/font/google";
 import "./globals.css";
 
-const lilita = Lilita_One({
+const playful = Chewy({
   subsets: ["latin"],
   weight: "400",
-  variable: "--font-lilita"
+  variable: "--font-playful"
 });
 
 export const metadata: Metadata = {
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={lilita.variable}>
+      <body className={playful.variable}>
         {children}
         <Analytics />
       </body>

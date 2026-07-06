@@ -70,7 +70,7 @@ export default function Home() {
 
       {error && <div className="notice error">{error}</div>}
       {loading && <div className="notice">Loading the coop...</div>}
-      {!payload ? <CreateEvent onCreated={setPayload} /> : (
+      {!payload ? <div className="setup-panel"><CreateEvent onCreated={setPayload} /></div> : (
         <>
           <div className="tabs" role="tablist">
             {[
