@@ -378,7 +378,7 @@ def inject_theme_css() -> None:
             --barn-red: #8f3029;
             --comb-red: #b74439;
             --egg: #fff3d8;
-            --straw: #d7a640;
+            --straw: #b98234;
             --feed: #b8843a;
             --grass: #6fa34b;
             --pasture: #88b94f;
@@ -438,10 +438,10 @@ def inject_theme_css() -> None:
         .stButton > button, div[data-testid="stFormSubmitButton"] button {
             border-radius: 6px;
             border: 1px solid rgba(255, 234, 177, 0.42);
-            background: linear-gradient(180deg, #e0b24d, #a97022);
+            background: linear-gradient(180deg, #c89446, #8a5a24);
             color: #20130a;
             font-weight: 900;
-            box-shadow: 0 3px 0 #563712;
+            box-shadow: 0 3px 0 #4b3218;
         }
 
         .stButton > button:disabled {
@@ -473,13 +473,13 @@ def inject_theme_css() -> None:
             position: absolute;
             inset: auto 0 0 0;
             height: 5px;
-            background: linear-gradient(90deg, #f0c65d, #f5e2aa, #c88d30);
+            background: linear-gradient(90deg, #bd8834, #d8b56f, #8f5f25);
         }
 
         .coop-hero-inner {
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent);
-            border-left: 7px solid #d7a640;
+            border-left: 7px solid #b98234;
             padding: 1.55rem 1.65rem 1.75rem;
             color: var(--ink);
         }
@@ -619,7 +619,7 @@ def inject_theme_css() -> None:
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #d7a640, #f1d48a, #9a6725);
+            background: linear-gradient(90deg, #b98234, #d1a35a, #8a5a24);
         }
 
         .race-card b {
@@ -1728,6 +1728,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 

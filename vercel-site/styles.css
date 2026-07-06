@@ -4,9 +4,9 @@
   --panel: rgba(7, 11, 8, 0.68);
   --panel-strong: rgba(7, 11, 8, 0.82);
   --line: rgba(255, 243, 216, 0.18);
-  --mustard: #d7a640;
-  --mustard-light: #efce78;
-  --wood: #a97022;
+  --mustard: #b98234;
+  --mustard-light: #d1a35a;
+  --wood: #8a5a24;
   --green: #102118;
 }
 
@@ -34,7 +34,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(245, 203, 109, 0.08), transparent 18%, transparent 82%, rgba(245, 203, 109, 0.06));
+  background: linear-gradient(90deg, rgba(184, 130, 52, 0.08), transparent 18%, transparent 82%, rgba(184, 130, 52, 0.06));
 }
 
 .shell {
@@ -78,7 +78,7 @@ body::before {
   padding: 0 18px;
   color: #20130a;
   background: linear-gradient(180deg, var(--mustard-light), var(--wood));
-  box-shadow: 0 3px 0 #563712;
+  box-shadow: 0 3px 0 #4b3218;
   font-weight: 900;
   text-decoration: none;
 }
@@ -111,7 +111,7 @@ h1 {
   line-height: 0.84;
   letter-spacing: 0;
   text-wrap: balance;
-  text-shadow: 0 5px 0 rgba(86, 55, 18, 0.42), 0 16px 34px rgba(0, 0, 0, 0.38);
+  text-shadow: 0 5px 0 rgba(75, 50, 24, 0.38), 0 16px 34px rgba(0, 0, 0, 0.38);
 }
 
 .lede {
@@ -222,3 +222,4 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+
