@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import SiteHeader from "../components/SiteHeader";
 
 export const metadata: Metadata = {
-  title: "Terms + Privacy",
-  description: "Privacy and terms for Chicken Bookie, including event data, Cluck Bucks, payment notes, and basic site analytics.",
+  title: "Terms",
+  description: "Terms for Chicken Bookie, including event data, Cluck Bucks, payment notes, privacy, and basic site analytics.",
   alternates: { canonical: "/privacy" }
 };
 
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <SiteHeader />
       <section className="panel">
         <p className="eyebrow">Chicken Bookie</p>
-        <h1>Terms + Privacy</h1>
+        <h1>Terms</h1>
         <h2>Privacy</h2>
         <p className="muted">
           Chicken Bookie stores event setup, chicken names, race details, pool entries, results, and settlement math so race hosts can run their event.
