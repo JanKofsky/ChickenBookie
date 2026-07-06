@@ -84,6 +84,7 @@ export default function Home() {
           {tab === "winners" && <Winners payload={payload} />}
           {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} />}
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
+          <footer className="site-footer"><a href="/privacy">Privacy</a></footer>
         </>
       )}
     </main>

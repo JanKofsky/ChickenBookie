@@ -113,3 +113,33 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket { grid-template-columns: 1fr; }
   .ticket b { text-align: left; }
 }
+
+.site-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+.site-footer a,
+.text-link {
+  color: var(--mustard-light);
+  text-decoration: none;
+}
+.site-footer a:hover,
+.text-link:hover {
+  text-decoration: underline;
+}
+.simple-page {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+}
+.simple-page h1 {
+  font-size: clamp(3rem, 8vw, 6rem);
+  margin-bottom: 1rem;
+}
+.simple-page .panel {
+  max-width: 760px;
+}
