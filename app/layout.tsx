@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
-import { Bagel_Fat_One, Singlet } from "next/font/google";
+import { Gluten, Singlet } from "next/font/google";
 import "./globals.css";
 
-const chunky = Bagel_Fat_One({
+const chunky = Gluten({
   subsets: ["latin"],
-  weight: "400",
+  weight: "900",
   variable: "--font-chunky"
 });
 
