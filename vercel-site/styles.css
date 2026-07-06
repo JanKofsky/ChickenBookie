@@ -106,12 +106,12 @@ body::before {
 
 h1 {
   margin: 0;
-  font-family: Fraunces, Georgia, serif;
-  font-size: clamp(4rem, 13vw, 9.5rem);
-  line-height: 0.88;
+  font-family: "Lilita One", Inter, system-ui, sans-serif;
+  font-size: clamp(4.4rem, 13vw, 9.8rem);
+  line-height: 0.84;
   letter-spacing: 0;
   text-wrap: balance;
-  text-shadow: 0 8px 38px rgba(0, 0, 0, 0.52);
+  text-shadow: 0 5px 0 rgba(86, 55, 18, 0.42), 0 16px 34px rgba(0, 0, 0, 0.38);
 }
 
 .lede {
@@ -149,7 +149,7 @@ h1 {
   border-radius: 8px;
   background: var(--panel);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(3px);
+  backdrop-filter: blur(2px);
 }
 
 .scoreboard div {
@@ -178,7 +178,7 @@ h1 {
 }
 
 .panels article {
-  min-height: 170px;
+  min-height: 154px;
   padding: 22px;
   background: var(--panel-strong);
 }
