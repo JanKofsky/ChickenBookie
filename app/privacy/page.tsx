@@ -2,8 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy",
-  description: "Privacy policy for Chicken Bookie, including event data, payment notes, and Vercel Web Analytics.",
+  title: "Privacy & Terms",
+  description: "Privacy and terms for Chicken Bookie, including event data, Cluck Bucks, payment notes, and Vercel Web Analytics.",
   alternates: { canonical: "/privacy" }
 };
 
@@ -12,7 +12,8 @@ export default function PrivacyPage() {
     <main className="shell simple-page">
       <section className="panel">
         <p className="eyebrow">Chicken Bookie</p>
-        <h1>Privacy</h1>
+        <h1>Privacy & Terms</h1>
+        <h2>Privacy</h2>
         <p className="muted">
           Chicken Bookie stores event setup, chicken names, race details, pool entries, results, and settlement math so race hosts can run their event.
         </p>
@@ -21,6 +22,22 @@ export default function PrivacyPage() {
         </p>
         <p className="muted">
           The site uses Vercel Web Analytics for basic traffic measurement. It does not need ad tracking or malware-like redirects to work.
+        </p>
+        <h2>Terms</h2>
+        <p className="muted">
+          Chicken Bookie is a private event scorekeeping and pool-tracking tool. It does not collect, hold, transfer, process, or guarantee any money.
+        </p>
+        <p className="muted">
+          Cluck Bucks are event scorekeeping units entered by the host or participants. They are not purchased through Chicken Bookie and have no value inside the app.
+        </p>
+        <p className="muted">
+          Event hosts are responsible for following the rules where they live and where their guests participate. Do not use Chicken Bookie for unlawful wagering, commercial gambling, public sportsbook activity, or anything involving minors.
+        </p>
+        <p className="muted">
+          If your event uses real money, keep it private, voluntary, no-rake, and legal for everyone involved. When in doubt, do not use real money.
+        </p>
+        <p className="muted">
+          Chicken Bookie settlement output is informational only. People handle any payments outside the app at their own discretion.
         </p>
         <Link className="text-link" href="/">Back to the coop</Link>
       </section>

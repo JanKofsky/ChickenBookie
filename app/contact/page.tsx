@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import ContactForm from "./ContactForm";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -14,11 +15,12 @@ export default function ContactPage() {
         <p className="eyebrow">Contact</p>
         <h1>Contact</h1>
         <p className="muted">
-          Questions, race-day issues, merch ideas, or chicken-related business can go here once email for the domain is set up.
+          Questions, race-day issues, merch ideas, or chicken-related business can go here.
         </p>
         <p className="muted">
-          For now, Chicken Bookie does not collect support messages through a form. That keeps the site simple while the app is still early.
+          Messages are relayed privately. The inbox address stays off the page.
         </p>
+        <ContactForm />
         <Link className="text-link" href="/">Back to the coop</Link>
       </section>
     </main>

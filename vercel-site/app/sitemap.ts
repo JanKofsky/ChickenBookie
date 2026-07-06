@@ -26,12 +26,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3
-    },
-    {
-      url: "https://chickenbookie.com/terms",
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3
     }
   ];
 }

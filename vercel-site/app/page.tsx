@@ -49,7 +49,7 @@ export default function Home() {
       <header className="hero">
         <nav className="topbar" aria-label="Primary">
           <div className="brand"><img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" /><span>Chicken Bookie</span></div>
-          <div className="nav-links" aria-label="Site pages"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></div>
+          <div className="nav-links" aria-label="Site pages"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy & Terms</a></div>
         </nav>
         <section className="hero-grid">
           <div>
@@ -96,7 +96,7 @@ export default function Home() {
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
         </>
       )}
-      <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
+      <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy & Terms</a></footer>
     </main>
   );
 }
