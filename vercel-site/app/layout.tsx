@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
-import { Bagel_Fat_One } from "next/font/google";
+import { Bagel_Fat_One, Nunito } from "next/font/google";
 import "./globals.css";
 
-const playful = Bagel_Fat_One({
+const chunky = Bagel_Fat_One({
   subsets: ["latin"],
   weight: "400",
-  variable: "--font-playful"
+  variable: "--font-chunky"
+});
+
+const rounded = Nunito({
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+  variable: "--font-rounded"
 });
 
 export const metadata: Metadata = {
@@ -53,7 +59,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={playful.variable}>
+      <body className={`${chunky.variable} ${rounded.variable}`}>
         {children}
         <Analytics />
       </body>
