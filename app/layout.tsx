@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
-import { Chewy } from "next/font/google";
+import { Bagel_Fat_One } from "next/font/google";
 import "./globals.css";
 
-const playful = Chewy({
+const playful = Bagel_Fat_One({
   subsets: ["latin"],
   weight: "400",
   variable: "--font-playful"

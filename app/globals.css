@@ -32,7 +32,7 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 .shell { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 18px 0 34px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: clamp(26px, 5vw, 56px); }
-.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); font-family: var(--font-playful), Inter, system-ui, sans-serif; font-size: 1.5rem; font-weight: 400; text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); font-family: var(--font-playful), Inter, system-ui, sans-serif; font-size: 1.55rem; font-weight: 400; text-decoration: none; }
 .brand img { width: 44px; height: 44px; object-fit: contain; }
 .brand span {
   color: var(--ink);
@@ -79,11 +79,11 @@ h1 {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-playful), Inter, system-ui, sans-serif;
-  font-size: clamp(3.6rem, 10vw, 8rem);
+  font-size: clamp(4rem, 11vw, 8.8rem);
   font-weight: 400;
   line-height: 0.86;
   letter-spacing: 0;
-  text-shadow: 0 5px 0 rgba(75, 50, 24, 0.38), 0 16px 34px rgba(0, 0, 0, 0.38);
+  text-shadow: 0 6px 0 rgba(75, 50, 24, 0.36), 0 18px 36px rgba(0, 0, 0, 0.38);
 }
 .setup-panel { margin-top: clamp(34px, 6vw, 76px); }
 .panel h2, .panel h3 { font-family: var(--font-playful), Inter, system-ui, sans-serif; font-weight: 400; }
