@@ -53,10 +53,12 @@ export default function Home() {
         </nav>
         <section className="hero-grid">
           <div>
-            {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />}
             <p className="eyebrow">A private barnyard betting tool</p>
-            <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
-            <p className="lede">{payload ? `${payload.event.officialRule} Keep the pool private, the math clean, and the settlement list short.` : "A tiny tracker for forecasts and payout."}</p>
+            <div className="hero-title">
+              {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />}
+              <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
+            </div>
+            {payload && <p className="lede">{payload.event.officialRule} Keep the pool private, the math clean, and the settlement list short.</p>}
             <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
               <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Enter coop code" />
               <button type="submit">Open coop</button>
