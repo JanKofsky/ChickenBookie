@@ -42,7 +42,7 @@ export default function Home() {
     <main className="shell">
       <header className="hero">
         <nav className="topbar" aria-label="Primary">
-          <div className="brand"><img src="/assets/chicken_bookie_logo.png" alt="" /><span>Chicken Bookie</span></div>
+          <div className="brand"><img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" /><span>Chicken Bookie</span></div>
           <form className="event-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
             <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" />
             <button type="submit">Open coop</button>
@@ -50,12 +50,12 @@ export default function Home() {
         </nav>
         <section className="hero-grid">
           <div>
-            <p className="eyebrow">Barnyard race-day betting</p>
+            <p className="eyebrow">Private race-day pool tracker</p>
             <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
-            <p className="lede">{payload ? `${payload.event.officialRule} Keep the bets weird, the math clean, and the Venmo list short.` : "A tiny betting booth for chicken races, party pools, and first-beak-to-the-snack chaos."}</p>
+            <p className="lede">{payload ? `${payload.event.officialRule} Keep the pool private, the math clean, and the settlement list short.` : "A tiny pool tracker for chicken races, party events, and first-beak-to-the-snack chaos."}</p>
           </div>
           <div className="scoreboard">
-            <Stat label="Feed bucket" value={money(totalPool)} />
+            <Stat label="Cluck bucket" value={money(totalPool)} />
             <Stat label="Gamblers" value={String(gamblers)} />
             <Stat label="Event code" value={payload?.event.code ?? "corn hub"} />
           </div>
@@ -84,7 +84,7 @@ export default function Home() {
           {tab === "winners" && <Winners payload={payload} />}
           {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} />}
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
-          <footer className="site-footer"><a href="/privacy">Privacy</a></footer>
+          <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
         </>
       )}
     </main>
@@ -132,9 +132,9 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     const data = await response.json();
     if (!response.ok) setMessage(data.error ?? "Could not add bet."); else { setPayload(data); setPicks([]); setMessage("Bet added."); }
   }
-  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every dollar goes into one shared feed bucket.</p><form className="bet-form" onSubmit={submit}>
+  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Private events only. Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><form className="bet-form" onSubmit={submit}>
     <label>Gambler name<input value={bettor} onChange={(event) => setBettor(event.target.value)} /></label>
-    <label>Stake ($)<input type="number" min="1" step="1" value={stake} onChange={(event) => setStake(Number(event.target.value))} /></label>
+    <label>Cluck Bucks<input type="number" min="1" step="1" value={stake} onChange={(event) => setStake(Number(event.target.value))} /></label>
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{betTypeOrder.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
     {betType === "race_winner" && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket"} races={payload.races} />
@@ -161,7 +161,7 @@ function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; 
 function Winners({ payload }: { payload: EventPayload }) {
   if (payload.bets.length < 2) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">Oh cluck, not enough bets yet. Add at least two tickets before the feed bucket math is worth settling.</p></section>;
   if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">The Coop Boss needs to enter every race winner before settlement is shown.</p></section>;
-  return <section className="panel"><h2>Winner's Circle</h2><div className="payment-list">{payload.settlement.payments.length === 0 ? <p>No payments needed.</p> : payload.settlement.payments.map((payment, idx) => <div className="payment" key={idx}>{payment.from} pays {payment.to} <strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><div className="table">{payload.settlement.people.map((person) => <div className="ticket" key={person.bettor}><strong>{person.bettor}</strong><span>Staked {money(person.staked)}</span><span>Payout {money(person.payout)}</span><b>{money(person.net)}</b></div>)}</div></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><div className="payment-list">{payload.settlement.payments.length === 0 ? <p>No payments needed.</p> : payload.settlement.payments.map((payment, idx) => <div className="payment" key={idx}>{payment.from} pays {payment.to} <strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><div className="table">{payload.settlement.people.map((person) => <div className="ticket" key={person.bettor}><strong>{person.bettor}</strong><span>Cluck Bucks {money(person.staked)}</span><span>Payout {money(person.payout)}</span><b>{money(person.net)}</b></div>)}</div></section>;
 }
 
 function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {

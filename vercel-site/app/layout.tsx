@@ -9,13 +9,13 @@ export const metadata: Metadata = {
     default: "Chicken Bookie",
     template: "%s | Chicken Bookie"
   },
-  description: "Barnyard race-day betting for chicken races, party pools, and easy settlement.",
+  description: "A private race-day pool tracker for chicken races, party events, and simple settlement.",
   alternates: {
     canonical: "/"
   },
   openGraph: {
     title: "Chicken Bookie",
-    description: "Barnyard race-day betting for chicken races, party pools, and easy settlement.",
+    description: "A private race-day pool tracker for chicken races, party events, and simple settlement.",
     url: "https://chickenbookie.com",
     siteName: "Chicken Bookie",
     type: "website"
