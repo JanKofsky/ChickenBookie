@@ -314,6 +314,13 @@ def money(value: float) -> str:
     return f"${value:,.2f}"
 
 
+def asset_data_uri(path: Path, mime_type: str) -> str:
+    if not path.exists():
+        return ""
+    payload = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime_type};base64,{payload}"
+
+
 def probability_context(chicken_count: int, race_count: int) -> dict[str, float]:
     chicken_count = max(int(chicken_count), 1)
     race_count = max(int(race_count), 1)
@@ -363,6 +370,7 @@ def format_race(race: int, races: pd.DataFrame | None = None) -> str:
 
 
 def inject_theme_css() -> None:
+    bg_uri = asset_data_uri(ASSET_DIR / "barn_panel_background.jpg", "image/jpeg")
     st.markdown(
         """
         <style>
@@ -478,6 +486,14 @@ def inject_theme_css() -> None:
             border-left: 7px solid #dd9746;
             padding: 1.55rem 1.65rem 1.75rem;
             color: var(--ink);
+        }
+
+        .coop-logo {
+            width: 68px;
+            height: 68px;
+            object-fit: contain;
+            margin-bottom: 0.35rem;
+            opacity: 0.96;
         }
 
         .coop-kicker {
@@ -687,6 +703,22 @@ def inject_theme_css() -> None:
         """,
         unsafe_allow_html=True,
     )
+    if bg_uri:
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background-image:
+                    linear-gradient(rgba(7, 12, 8, 0.72), rgba(7, 12, 8, 0.86)),
+                    url("{bg_uri}") !important;
+                background-size: cover !important;
+                background-position: center top !important;
+                background-attachment: fixed !important;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def clean_sentence(value: str) -> str:
@@ -699,10 +731,13 @@ def render_hero(event: sqlite3.Row, bets: pd.DataFrame, chickens: pd.DataFrame, 
     official_rule = clean_sentence(event["official_rule"])
     chicken_count = len(chickens)
     race_count = len(races)
+    logo_uri = asset_data_uri(ASSET_DIR / "chicken_bookie_logo.png", "image/png")
+    logo_html = f'<img class="coop-logo" src="{logo_uri}" alt="Chicken Bookie logo">' if logo_uri else ""
     st.markdown(
         f"""
         <div class="coop-hero">
             <div class="coop-hero-inner">
+                {logo_html}
                 <div class="coop-kicker">Chicken Bookie</div>
                 <div class="coop-title">{event["name"]}</div>
                 <div class="coop-subtitle">Barnyard race-day betting. Check the flock, place your coop tickets, then settle up after the pecking order is official.</div>
@@ -1694,3 +1729,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
