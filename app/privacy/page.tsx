@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       <section className="panel">
         <p className="eyebrow">Chicken Bookie</p>
         <h1>Privacy & Terms</h1>
-        <h2>Privacy</h2>
+        <h2>privacy disclosure</h2>
         <p className="muted">
           Chicken Bookie stores event setup, chicken names, race details, pool entries, results, and settlement math so race hosts can run their event.
         </p>
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
         <p className="muted">
           The site may use basic privacy-friendly analytics to understand visits and keep the app working well.
         </p>
-        <h2>Terms</h2>
+        <h2>terms and conditions</h2>
         <p className="muted">
           Chicken Bookie is a private event scorekeeping and pool-tracking tool. It does not collect, hold, transfer, process, or guarantee any money.
         </p>

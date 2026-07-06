@@ -51,7 +51,7 @@ export default function Home() {
               <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
               {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />}
             </div>
-            <p className="hero-subtitle">A private barnyard betting tool</p>
+            <p className="hero-subtitle">a private barnyard betting tool</p>
             {payload && <p className="lede">{payload.event.officialRule} Keep the pool private, the math clean, and the settlement list short.</p>}
             <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
               <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Event code here" />
@@ -114,7 +114,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not create event.")); else onCreated(data);
   }
-  return <section className="panel"><h2>Make an event</h2><p className="muted">Start with the default flock, or copy an existing event code.</p><form className="grid-form" onSubmit={submit}>
+  return <section className="panel"><h2>Make an event</h2><form className="grid-form" onSubmit={submit}>
     <label>Event name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
     <label>Event code<input value={code} onChange={(event) => setCode(event.target.value)} /></label>
     <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>

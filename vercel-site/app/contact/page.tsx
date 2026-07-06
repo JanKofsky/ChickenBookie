@@ -15,7 +15,7 @@ export default function ContactPage() {
       <SiteHeader />
       <section className="panel">
         <p className="eyebrow">Contact</p>
-        <h1>Contact</h1>
+        <h1>hit us up</h1>
         <p className="muted">
           Questions, race-day issues, merch ideas, or chicken-related business can go here.
         </p>
