@@ -13,7 +13,8 @@ function errorMessage(error: unknown, fallback: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const code = request.nextUrl.searchParams.get("code") ?? "corn hub";
+    const code = request.nextUrl.searchParams.get("code")?.trim() ?? "";
+    if (!code) return NextResponse.json({ error: "Event code is required." }, { status: 400 });
     const payload = await getEventByCode(code);
     if (!payload) return NextResponse.json({ error: "No event found with that code." }, { status: 404 });
     return NextResponse.json(payload);

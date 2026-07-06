@@ -1,8 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { Bet, BetType, Chicken, EventPayload, Race, Results } from "../lib/chickenBookie";
-import SiteHeader from "./components/SiteHeader";
 
 const BET_TYPES: Record<BetType, string> = {
   race_winner: "Single-race winner",
@@ -23,7 +22,7 @@ function friendlyError(message: string) {
 }
 
 export default function Home() {
-  const [eventCode, setEventCode] = useState("corn hub");
+  const [eventCode, setEventCode] = useState("");
   const [payload, setPayload] = useState<EventPayload | null>(null);
   const [tab, setTab] = useState("bet");
   const [error, setError] = useState("");
@@ -41,22 +40,22 @@ export default function Home() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { loadEvent("corn hub"); }, []);
-
   const totalPool = useMemo(() => payload?.bets.reduce((sum, bet) => sum + Number(bet.stake), 0) ?? 0, [payload]);
 
   return (
     <main className="shell">
       <header className="hero">
-        <SiteHeader />
         <section className="hero-grid">
           <div>
             <p className="eyebrow">A private barnyard betting tool</p>
-            {payload && <h1>{payload.event.name}</h1>}
+            <div className="hero-title">
+              {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />}
+              <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
+            </div>
             {payload && <p className="lede">{payload.event.officialRule} Keep the pool private, the math clean, and the settlement list short.</p>}
             <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
-              <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Enter coop code" />
-              <button type="submit">Open coop</button>
+              <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Event code here" />
+              <button type="submit">Open event</button>
             </form>
           </div>
           {payload && (

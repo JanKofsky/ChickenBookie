@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
+import { Lilita_One } from "next/font/google";
 import "./globals.css";
+
+const lilita = Lilita_One({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-lilita"
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://chickenbookie.com"),
@@ -46,7 +53,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body>
+      <body className={lilita.variable}>
         {children}
         <Analytics />
       </body>
