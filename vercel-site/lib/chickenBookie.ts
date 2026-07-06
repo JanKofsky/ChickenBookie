@@ -51,7 +51,7 @@ const DEFAULT_CHICKENS = [
   "Squish", "Booger", "Dirty Boi", "Guppy Troupe", "Sheryl Crow", "Jiminy Giant"
 ];
 const DEFAULT_RACES: Race[] = [
-  { race: 1, name: "Race 1 - Barnyard Dash", description: "A clean sprint to the snack line." },
+  { race: 1, name: "Race 1 - Barnyard Dash", description: "A clean sprint across the coop." },
   { race: 2, name: "Race 2 - The Hay Bale Hustle", description: "A longer scoot with a little barnyard nonsense." },
   { race: 3, name: "Race 3 - The Coop Gauntlet", description: "The big finale, with the most distractions." }
 ];
@@ -151,7 +151,7 @@ async function ensureDefaultEvent() {
   if (existing.rowCount) return;
   const event = await sql`
     INSERT INTO events (code, name, admin_code, betting_close_at, official_rule)
-    VALUES ('corn hub', 'The Great American Chicken Race', 'NekoFatty123!', ${DEFAULT_CLOSE}, 'First chicken to get the marshmallow wins.')
+    VALUES ('corn hub', 'The Great American Chicken Race', 'NekoFatty123!', ${DEFAULT_CLOSE}, 'Official coop rules decide the winner.')
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (let i = 0; i < DEFAULT_CHICKENS.length; i += 1) {
@@ -203,7 +203,7 @@ export async function createEvent(input: { code: string; name: string; adminCode
   const close = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const event = await sql`
     INSERT INTO events (code, name, admin_code, betting_close_at, official_rule)
-    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${copied?.event.officialRule ?? "First chicken to get the snack wins."})
+    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${copied?.event.officialRule ?? "Official coop rules decide the winner."})
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (const chicken of sourceChickens) await sql`INSERT INTO chickens (event_id, slot, name, photo_url) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl})`;

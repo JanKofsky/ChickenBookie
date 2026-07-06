@@ -1,18 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import SiteHeader from "../components/SiteHeader";
 
 export const metadata: Metadata = {
-  title: "Privacy & Terms",
-  description: "Privacy and terms for Chicken Bookie, including event data, Cluck Bucks, payment notes, and Vercel Web Analytics.",
+  title: "Terms + Privacy",
+  description: "Privacy and terms for Chicken Bookie, including event data, Cluck Bucks, payment notes, and basic site analytics.",
   alternates: { canonical: "/privacy" }
 };
 
 export default function PrivacyPage() {
   return (
     <main className="shell simple-page">
+      <SiteHeader />
       <section className="panel">
         <p className="eyebrow">Chicken Bookie</p>
-        <h1>Privacy & Terms</h1>
+        <h1>Terms + Privacy</h1>
         <h2>Privacy</h2>
         <p className="muted">
           Chicken Bookie stores event setup, chicken names, race details, pool entries, results, and settlement math so race hosts can run their event.
@@ -21,7 +23,7 @@ export default function PrivacyPage() {
           Do not put sensitive personal information in event names, participant names, chicken names, or race details. Payment, if any, happens outside Chicken Bookie between the people in the event.
         </p>
         <p className="muted">
-          The site uses Vercel Web Analytics for basic traffic measurement. It does not need ad tracking or malware-like redirects to work.
+          The site may use basic privacy-friendly analytics to understand visits and keep the app working well.
         </p>
         <h2>Terms</h2>
         <p className="muted">

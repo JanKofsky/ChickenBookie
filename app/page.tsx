@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Bet, BetType, Chicken, EventPayload, Race, Results } from "../lib/chickenBookie";
+import SiteHeader from "./components/SiteHeader";
 
 const BET_TYPES: Record<BetType, string> = {
   race_winner: "Single-race winner",
@@ -47,10 +48,7 @@ export default function Home() {
   return (
     <main className="shell">
       <header className="hero">
-        <nav className="topbar" aria-label="Primary">
-          <div className="brand"><img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" /><span>Chicken Bookie</span></div>
-          <div className="nav-links" aria-label="Site pages"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy & Terms</a></div>
-        </nav>
+        <SiteHeader />
         <section className="hero-grid">
           <div>
             <p className="eyebrow">A private barnyard betting tool</p>
@@ -98,7 +96,7 @@ export default function Home() {
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
         </>
       )}
-      <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy & Terms</a></footer>
+      <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Terms + Privacy</a></footer>
     </main>
   );
 }

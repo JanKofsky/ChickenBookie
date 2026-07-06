@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import ContactForm from "./ContactForm";
+import SiteHeader from "../components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <main className="shell simple-page">
+      <SiteHeader />
       <section className="panel">
         <p className="eyebrow">Contact</p>
         <h1>Contact</h1>
