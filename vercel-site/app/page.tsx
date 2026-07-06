@@ -114,13 +114,13 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not create event.")); else onCreated(data);
   }
-  return <section className="panel"><h2>Make a coop</h2><p className="muted">Start with the default flock, or copy an existing event code.</p><form className="grid-form" onSubmit={submit}>
+  return <section className="panel"><h2>Make an event</h2><p className="muted">Start with the default flock, or copy an existing event code.</p><form className="grid-form" onSubmit={submit}>
     <label>Event name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
     <label>Event code<input value={code} onChange={(event) => setCode(event.target.value)} /></label>
     <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="Leave blank if you do not want one" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
     <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
     <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
-    <button type="submit">Create coop</button>{message && <p className="form-error">{message}</p>}
+    <button type="submit">Create</button>{message && <p className="form-error">{message}</p>}
   </form></section>;
 }
 

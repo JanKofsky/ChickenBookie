@@ -6,7 +6,7 @@ import "./globals.css";
 
 const chunky = Gluten({
   subsets: ["latin"],
-  weight: "900",
+  weight: ["500", "900"],
   variable: "--font-chunky"
 });
 
