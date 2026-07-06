@@ -59,6 +59,7 @@ input, select, textarea {
   outline: none;
 }
 textarea { min-height: 120px; padding: 11px; resize: vertical; }
+::placeholder { color: rgba(222, 209, 182, 0.38); opacity: 1; }
 select option { color: #111; }
 button {
   min-height: 42px;
