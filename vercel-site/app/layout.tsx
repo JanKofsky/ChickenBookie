@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
-import { Bagel_Fat_One, Nunito } from "next/font/google";
+import { Bagel_Fat_One, Singlet } from "next/font/google";
 import "./globals.css";
 
 const chunky = Bagel_Fat_One({
@@ -10,9 +10,9 @@ const chunky = Bagel_Fat_One({
   variable: "--font-chunky"
 });
 
-const rounded = Nunito({
+const rounded = Singlet({
   subsets: ["latin"],
-  weight: ["700", "800", "900"],
+  weight: "400",
   variable: "--font-rounded"
 });
 
