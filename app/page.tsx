@@ -52,10 +52,7 @@ export default function Home() {
         <section className="hero-grid">
           <div>
             <p className="eyebrow">A private barnyard betting tool</p>
-            <div className="hero-title">
-              {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />}
-              <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
-            </div>
+            {payload && <h1>{payload.event.name}</h1>}
             {payload && <p className="lede">{payload.event.officialRule} Keep the pool private, the math clean, and the settlement list short.</p>}
             <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
               <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Enter coop code" />
