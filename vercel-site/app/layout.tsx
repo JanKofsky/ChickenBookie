@@ -1,20 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
-import { Gluten, Singlet } from "next/font/google";
 import "./globals.css";
-
-const chunky = Gluten({
-  subsets: ["latin"],
-  weight: ["500", "900"],
-  variable: "--font-chunky"
-});
-
-const rounded = Singlet({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--font-rounded"
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://chickenbookie.com"),
@@ -59,7 +46,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${chunky.variable} ${rounded.variable}`}>
+      <body>
         {children}
         <Analytics />
       </body>

@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=DynaPuff:wght@500;700&family=Gluten:wght@500;900&family=Singlet&display=swap");
+
 :root {
   --ink: #fff3d8;
   --muted: #ded1b6;
@@ -9,6 +11,10 @@
   --wood: #8a5a24;
   --green: #102118;
   --danger: #b74439;
+  --font-chunky: "Gluten", system-ui, sans-serif;
+  --font-bubbly: "Cherry Bomb One", system-ui, sans-serif;
+  --font-puffy: "DynaPuff", system-ui, sans-serif;
+  --font-rounded: "Singlet", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
 html { min-height: 100%; background: #07100b; }
@@ -32,7 +38,7 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 .shell { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 18px 0 34px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: clamp(26px, 5vw, 56px); }
-.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); font-family: var(--font-rounded), Inter, system-ui, sans-serif; font-size: 1.28rem; font-weight: 400; text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); font-family: var(--font-bubbly), Inter, system-ui, sans-serif; font-size: 1.34rem; font-weight: 400; text-decoration: none; }
 .brand img { width: 44px; height: 44px; object-fit: contain; }
 .brand span {
   color: var(--ink);
@@ -69,7 +75,7 @@ button {
   color: var(--ink);
   background: rgba(185, 130, 52, 0.24);
   box-shadow: 0 2px 0 rgba(75, 50, 24, 0.55);
-  font-family: var(--font-rounded), Inter, system-ui, sans-serif;
+  font-family: var(--font-puffy), Inter, system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 400;
 }
@@ -88,7 +94,7 @@ h1 {
   text-shadow: 0 6px 0 rgba(75, 50, 24, 0.36), 0 18px 36px rgba(0, 0, 0, 0.38);
 }
 .setup-panel { margin-top: clamp(84px, 12vw, 160px); }
-.panel h2, .panel h3 { font-family: var(--font-rounded), Inter, system-ui, sans-serif; font-weight: 400; }
+.panel h2, .panel h3 { font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-weight: 700; }
 .lede { max-width: 720px; margin: 22px 0 0; color: var(--muted); font-size: clamp(1.03rem, 1.8vw, 1.24rem); line-height: 1.5; font-weight: 650; }
 .scoreboard { display: grid; gap: 10px; }
 .scoreboard div, .panel, .race-card, .bird, .ticket, .payment {
