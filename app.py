@@ -375,20 +375,20 @@ def inject_theme_css() -> None:
         """
         <style>
         :root {
-            --barn-red: #b63d34;
-            --comb-red: #e15a4e;
+            --barn-red: #8f3029;
+            --comb-red: #b74439;
             --egg: #fff3d8;
-            --straw: #d9aa3c;
-            --feed: #a66928;
+            --straw: #d7a640;
+            --feed: #b8843a;
             --grass: #6fa34b;
             --pasture: #88b94f;
             --leaf: #294f2b;
             --ink: #fff3d8;
-            --muted: #dbcaa7;
+            --muted: #ded1b6;
             --rail: #281611;
             --coop: #120f0d;
-            --coop-panel: #231814;
-            --coop-panel-2: #182317;
+            --coop-panel: #141915;
+            --coop-panel-2: #101611;
         }
 
         .stApp {
@@ -423,25 +423,25 @@ def inject_theme_css() -> None:
             border: 1px solid rgba(255, 243, 216, 0.16);
             border-radius: 8px;
             background:
-                linear-gradient(180deg, rgba(35, 24, 20, 0.96), rgba(24, 35, 23, 0.94));
-            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+                linear-gradient(180deg, rgba(12, 17, 13, 0.78), rgba(9, 13, 10, 0.70));
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
         }
 
         div[data-testid="stMetric"] {
-            background: linear-gradient(180deg, rgba(47, 31, 24, 0.96), rgba(27, 39, 24, 0.96));
+            background: linear-gradient(180deg, rgba(14, 19, 15, 0.80), rgba(10, 15, 11, 0.72));
             border: 1px solid rgba(255, 243, 216, 0.16);
             border-radius: 8px;
             padding: 0.75rem 0.9rem;
-            box-shadow: inset 0 -3px 0 rgba(111, 163, 75, 0.24);
+            box-shadow: inset 0 -3px 0 rgba(215, 166, 64, 0.22);
         }
 
         .stButton > button, div[data-testid="stFormSubmitButton"] button {
             border-radius: 6px;
-            border: 1px solid rgba(247, 231, 190, 0.25);
-            background: linear-gradient(180deg, #d85043, #9f2e28);
-            color: #fff5dc;
+            border: 1px solid rgba(255, 234, 177, 0.42);
+            background: linear-gradient(180deg, #e0b24d, #a97022);
+            color: #20130a;
             font-weight: 900;
-            box-shadow: 0 3px 0 #321611;
+            box-shadow: 0 3px 0 #563712;
         }
 
         .stButton > button:disabled {
@@ -460,12 +460,10 @@ def inject_theme_css() -> None:
             border: 1px solid rgba(255, 243, 216, 0.22);
             border-radius: 10px;
             background:
-                linear-gradient(135deg, transparent 0 45%, rgba(221, 151, 70, 0.22) 45% 47%, transparent 47%),
-                repeating-linear-gradient(90deg, rgba(255, 229, 153, 0.10) 0 2px, transparent 2px 44px),
-                linear-gradient(90deg, rgba(23, 47, 32, 0.98), rgba(67, 42, 22, 0.92));
+                linear-gradient(180deg, rgba(12, 18, 13, 0.76), rgba(8, 12, 9, 0.68));
             padding: 0;
             margin-bottom: 1rem;
-            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
             overflow: hidden;
             position: relative;
         }
@@ -475,15 +473,13 @@ def inject_theme_css() -> None:
             position: absolute;
             inset: auto 0 0 0;
             height: 5px;
-            background: linear-gradient(90deg, #fff3d8, #6fa34b, #b63d34, #fff3d8);
+            background: linear-gradient(90deg, #f0c65d, #f5e2aa, #c88d30);
         }
 
         .coop-hero-inner {
             background:
-                radial-gradient(circle at 92% 16%, rgba(255, 243, 216, 0.10), transparent 8rem),
-                linear-gradient(135deg, rgba(111, 163, 75, 0.18), transparent 38%),
-                linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
-            border-left: 7px solid #dd9746;
+                linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent);
+            border-left: 7px solid #d7a640;
             padding: 1.55rem 1.65rem 1.75rem;
             color: var(--ink);
         }
@@ -526,7 +522,7 @@ def inject_theme_css() -> None:
             padding: 0.38rem 0.62rem;
             border: 1px solid rgba(255, 243, 216, 0.26);
             border-radius: 999px;
-            background: rgba(18, 15, 13, 0.42);
+            background: rgba(7, 10, 8, 0.42);
             color: #fff3d8;
             font-weight: 850;
         }
@@ -541,7 +537,7 @@ def inject_theme_css() -> None:
         .poster-badge {
             border: 1px solid rgba(255, 243, 216, 0.24);
             border-radius: 999px;
-            background: rgba(255, 243, 216, 0.12);
+            background: rgba(255, 243, 216, 0.10);
             color: #f5d989;
             font-size: 0.8rem;
             font-weight: 850;
@@ -556,13 +552,13 @@ def inject_theme_css() -> None:
         }
 
         .coop-stat {
-            background: rgba(18, 15, 13, 0.52);
+            background: rgba(7, 10, 8, 0.46);
             color: var(--muted);
             border: 1px solid rgba(255, 243, 216, 0.18);
             border-radius: 6px;
             padding: 0.55rem 0.8rem;
             min-width: 130px;
-            box-shadow: inset 0 -3px 0 rgba(111, 163, 75, 0.22);
+            box-shadow: inset 0 -3px 0 rgba(215, 166, 64, 0.20);
         }
 
         .coop-stat strong {
@@ -606,7 +602,7 @@ def inject_theme_css() -> None:
             border-radius: 8px;
             border: 1px solid rgba(255, 243, 216, 0.18);
             background:
-                linear-gradient(180deg, rgba(43, 29, 24, 0.96), rgba(24, 38, 22, 0.94));
+                linear-gradient(180deg, rgba(12, 17, 13, 0.80), rgba(8, 13, 9, 0.72));
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
         }
 
@@ -623,7 +619,7 @@ def inject_theme_css() -> None:
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #b63d34, #d9aa3c, #6fa34b);
+            background: linear-gradient(90deg, #d7a640, #f1d48a, #9a6725);
         }
 
         .race-card b {
@@ -653,7 +649,7 @@ def inject_theme_css() -> None:
             text-align: center;
             font-weight: 950;
             color: #fff3d8;
-            border-top: 3px solid rgba(182, 61, 52, 0.84);
+            border-top: 3px solid rgba(215, 166, 64, 0.84);
         }
 
         div[data-testid="stImage"] img {
@@ -677,11 +673,11 @@ def inject_theme_css() -> None:
 
         .coop-callout {
             border: 1px solid rgba(255, 243, 216, 0.16);
-            border-left: 5px solid var(--barn-red);
+            border-left: 5px solid var(--straw);
             border-radius: 8px;
             background:
-                linear-gradient(90deg, rgba(111, 163, 75, 0.14), transparent 44%),
-                rgba(24, 35, 23, 0.92);
+                linear-gradient(90deg, rgba(215, 166, 64, 0.12), transparent 44%),
+                rgba(9, 14, 10, 0.72);
             color: var(--muted);
             font-weight: 750;
             padding: 0.62rem 0.75rem;
@@ -709,7 +705,7 @@ def inject_theme_css() -> None:
             <style>
             .stApp {{
                 background-image:
-                    linear-gradient(rgba(7, 12, 8, 0.72), rgba(7, 12, 8, 0.86)),
+                    linear-gradient(rgba(7, 12, 8, 0.58), rgba(7, 12, 8, 0.74)),
                     url("{bg_uri}") !important;
                 background-size: cover !important;
                 background-position: center top !important;
@@ -1195,7 +1191,8 @@ def calculate_settlement(bets: pd.DataFrame, results: dict[int, int]) -> tuple[p
 
     settled = bets.copy()
     settled["won"] = settled.apply(lambda row: is_winning_bet(row, results), axis=1)
-    settled["weight"] = settled["bet_type"].map(BET_WEIGHTS).fillna(1.0)
+    weight_lookup = bet_weights(CHICKEN_COUNT, RACE_COUNT)
+    settled["weight"] = settled["bet_type"].map(weight_lookup).fillna(1.0)
     settled["payout_weight"] = settled["stake"] * settled["weight"]
     settled["payout"] = 0.0
     settled["result"] = "Lost"
@@ -1467,7 +1464,7 @@ def render_betting(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFra
 
 
 def render_results(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame) -> None:
-    st.subheader("Winner's Perch")
+    st.markdown("**Enter race winners**")
     event_id = int(event["id"])
     current = get_results(event_id)
 
@@ -1504,7 +1501,7 @@ def render_settlement(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.Data
     names_by_id = dict(zip(chickens["id"], chickens["name"]))
 
     if len(results) != RACE_COUNT:
-        st.info("Enter all 3 race winners before settling.")
+        st.info("The Coop Boss needs to enter all 3 race winners before settlement is shown.")
         return
 
     result_text = " | ".join(f"{format_race(race, races)}: {names_by_id[chicken_id]}" for race, chicken_id in sorted(results.items()))
@@ -1602,6 +1599,9 @@ def render_admin(event: sqlite3.Row, chickens: pd.DataFrame, races: pd.DataFrame
                     st.rerun()
                 except ValueError as exc:
                     st.error(str(exc))
+
+    with st.expander("Enter race winners"):
+        render_results(event, chickens, races)
 
     with st.expander("Edit race numbers and details"):
         with st.form("race_settings_form"):
@@ -1721,7 +1721,6 @@ def main() -> None:
         else:
             st.dataframe(format_bet_table(bets, races), use_container_width=True, hide_index=True)
     with tabs[3]:
-        render_results(event, chickens, races)
         render_settlement(event, chickens, races, bets)
     with tabs[4]:
         render_admin(event, chickens, races, bets)
@@ -1729,4 +1728,8 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+
 
