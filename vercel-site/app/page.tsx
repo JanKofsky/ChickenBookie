@@ -300,10 +300,14 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   async function uploadChickenPhoto(chickenId: number, file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) { setMessage("That file is not a chicken-ready image."); return; }
-    setMessage("Squishing chicken photo...");
-    const photoUrl = await compressImage(file);
-    setChickens(chickens.map((chicken) => chicken.id === chickenId ? { ...chicken, photoUrl } : chicken));
-    setMessage("Chicken photo ready. Save event setup when you're done.");
+    try {
+      setMessage("Squishing chicken photo...");
+      const photoUrl = await compressImage(file);
+      setChickens(chickens.map((chicken) => chicken.id === chickenId ? { ...chicken, photoUrl } : chicken));
+      setMessage("Chicken photo ready. Save event setup when you're done.");
+    } catch {
+      setMessage("Could not resize that chicken photo. Try a different image.");
+    }
   }
   if (!unlocked) {
     return <section className="panel admin-gate"><h2>Coop Boss</h2><form className="admin-unlock" onSubmit={unlock}><label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label><button type="submit">Unlock admin</button>{message && <p className="form-error">{message}</p>}</form></section>;

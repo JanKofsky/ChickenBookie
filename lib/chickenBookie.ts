@@ -187,7 +187,8 @@ async function ensureDefaultEvent() {
 
 export async function getEventByCode(code: string) {
   await ensureSchema();
-  const normalized = normalizeCode(code || "corn hub");
+  const normalized = normalizeCode(code);
+  if (!normalized) return null;
   const event = await sql`SELECT * FROM events WHERE code = ${normalized} LIMIT 1`;
   if (!event.rowCount) return null;
   return getEventPayload(Number(event.rows[0].id));
@@ -430,17 +431,43 @@ function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
 }
 
 function makePayments(people: Array<{ bettor: string; staked: number; payout: number; net: number }>) {
-  const debtors = people.filter((person) => person.net < -0.004).map((person) => ({ name: person.bettor, amount: -person.net }));
-  const creditors = people.filter((person) => person.net > 0.004).map((person) => ({ name: person.bettor, amount: person.net }));
+  const debtors = people.filter((person) => person.net < -0.004).map((person) => ({ name: person.bettor, amount: -person.net })).sort((a, b) => b.amount - a.amount);
+  const creditors = people.filter((person) => person.net > 0.004).map((person) => ({ name: person.bettor, amount: person.net })).sort((a, b) => b.amount - a.amount);
   const payments: Array<{ from: string; to: string; amount: number }> = [];
-  let i = 0, j = 0;
-  while (i < debtors.length && j < creditors.length) {
-    const amount = Math.min(debtors[i].amount, creditors[j].amount);
-    if (amount > 0.004) payments.push({ from: debtors[i].name, to: creditors[j].name, amount: Math.round(amount * 100) / 100 });
-    debtors[i].amount -= amount; creditors[j].amount -= amount;
-    if (debtors[i].amount <= 0.004) i += 1;
-    if (creditors[j].amount <= 0.004) j += 1;
+  const hub = creditors[0];
+  const addPayment = (from: string, to: string, amount: number) => {
+    if (amount <= 0.004 || from === to) return;
+    const existing = payments.find((payment) => payment.from === from && payment.to === to);
+    if (existing) existing.amount += amount;
+    else payments.push({ from, to, amount });
+  };
+  const nextCreditor = () => creditors.find((creditor) => creditor.amount > 0.004 && creditor !== hub) ?? creditors.find((creditor) => creditor.amount > 0.004);
+
+  for (const debtor of debtors) {
+    const first = nextCreditor();
+    if (first) {
+      const amount = Math.min(debtor.amount, first.amount);
+      addPayment(debtor.name, first.name, amount);
+      debtor.amount -= amount;
+      first.amount -= amount;
+    }
+    if (debtor.amount > 0.004 && hub) {
+      addPayment(debtor.name, hub.name, debtor.amount);
+      hub.amount -= debtor.amount;
+      debtor.amount = 0;
+    }
   }
-  return payments;
+
+  if (hub) {
+    for (const creditor of creditors) {
+      if (creditor !== hub && creditor.amount > 0.004) {
+        addPayment(hub.name, creditor.name, creditor.amount);
+        hub.amount -= creditor.amount;
+        creditor.amount = 0;
+      }
+    }
+  }
+
+  return payments.map((payment) => ({ ...payment, amount: Math.round(payment.amount * 100) / 100 })).filter((payment) => payment.amount > 0);
 }
 
