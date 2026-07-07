@@ -174,6 +174,44 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .check-row input { width: auto; min-height: auto; }
 .form-ok { color: #d9f0c2; font-weight: 850; }
 .form-error { display: inline-block; }
+.chicken-stats {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 243, 216, 0.14);
+  border-radius: 8px;
+  background: rgba(7, 11, 8, 0.48);
+}
+.chicken-stats > div:first-child span {
+  display: block;
+  color: var(--title-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.chicken-stats > div:first-child strong { display: block; margin-top: 3px; font-size: 1.05rem; }
+.stat-bar {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.85fr) minmax(120px, 1.5fr) auto;
+  gap: 9px;
+  align-items: center;
+}
+.stat-bar span { font-weight: 900; overflow-wrap: anywhere; }
+.stat-bar div {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 243, 216, 0.12);
+}
+.stat-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mustard), var(--mustard-light));
+}
+.stat-bar b { color: var(--muted); font-size: 0.86rem; text-align: right; white-space: nowrap; }
 .pick-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .chicken-buttons { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .chicken-buttons button { min-height: 58px; color: var(--ink); background: rgba(8, 13, 9, 0.66); box-shadow: none; text-align: left; }
@@ -261,6 +299,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket-row { grid-template-columns: minmax(70px, 0.72fr) minmax(0, 1.5fr) minmax(68px, 0.62fr); gap: 6px; padding: 9px 8px; font-size: 0.88rem; }
   .ticket-head { font-size: 0.62rem; letter-spacing: 0.04em; }
   .ticket-row b { text-align: right; }
+  .stat-bar { grid-template-columns: 1fr; gap: 5px; }
+  .stat-bar b { text-align: left; white-space: normal; }
 }
 
 .site-footer {

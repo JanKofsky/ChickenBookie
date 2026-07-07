@@ -33,6 +33,10 @@ const countdownParts = (target: string, now: number) => {
   const seconds = Math.floor((remaining % 60_000) / 1_000);
   return { days, hours, minutes, seconds, closed: remaining === 0 };
 };
+const pickedChickenIds = (bet: Bet) => {
+  const ids = bet.picks.length ? bet.picks : [bet.chicken1, bet.chicken2, bet.chicken3];
+  return ids.map(Number).filter(Boolean);
+};
 
 function friendlyError(message: string) {
   if (message.includes("missing_connection_string") || message.includes("POSTGRES_URL")) {
@@ -59,6 +63,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(friendlyError(data.error ?? "Could not load event."));
       setPayload(data); setEventCode(data.event.code);
+      window.history.replaceState(null, "", `?event=${encodeURIComponent(data.event.code)}`);
     } catch (err) {
       setError(err instanceof Error ? friendlyError(err.message) : "Could not load event.");
     } finally { setLoading(false); }
@@ -69,6 +74,13 @@ export default function Home() {
     setEventCode("");
     setTab("bet");
     setError("");
+    window.history.replaceState(null, "", "/");
+  }
+
+  function openCreated(data: EventPayload) {
+    setPayload(data);
+    setEventCode(data.event.code);
+    window.history.replaceState(null, "", `?event=${encodeURIComponent(data.event.code)}`);
   }
 
   const totalPool = useMemo(() => payload?.bets.reduce((sum, bet) => sum + Number(bet.stake), 0) ?? 0, [payload]);
@@ -77,6 +89,11 @@ export default function Home() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("event");
+    if (code) loadEvent(code);
   }, []);
 
   return (
@@ -118,7 +135,7 @@ export default function Home() {
 
       {error && <div className="notice error">{error}</div>}
       {loading && <div className="notice">Loading the coop...</div>}
-      {!payload ? <div className="setup-panel"><CreateEvent onCreated={setPayload} /></div> : (
+      {!payload ? <div className="setup-panel"><CreateEvent onCreated={openCreated} /></div> : (
         <>
           <div className="tabs" role="tablist">
             {[
@@ -201,7 +218,7 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage("Bet added."); }
   }
-  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><form className="bet-form" onSubmit={submit}>
+  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><ChickenStatsPanel bets={payload.bets} chickens={payload.chickens} /><form className="bet-form" onSubmit={submit}>
     <label>Gambler name<input value={bettor} onChange={(event) => setBettor(event.target.value)} /></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
@@ -227,7 +244,16 @@ function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: 
 }
 
 function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; races: Race[] }) {
-  return <section className="panel"><h2>Ticket Board</h2>{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{bet.bettor}</strong><span>{describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+  return <section className="panel"><h2>Ticket Board</h2><ChickenStatsPanel bets={bets} chickens={chickens} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{bet.bettor}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+}
+
+function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[] }) {
+  const stats = chickens.map((chicken) => {
+    const matching = bets.filter((bet) => pickedChickenIds(bet).includes(chicken.id));
+    return { chicken, tickets: matching.length, cluckBucks: matching.reduce((sum, bet) => sum + Number(bet.stake), 0) };
+  }).sort((a, b) => b.tickets - a.tickets || b.cluckBucks - a.cluckBucks || a.chicken.slot - b.chicken.slot).slice(0, 3);
+  const maxTickets = Math.max(1, ...stats.map((stat) => stat.tickets));
+  return <div className="chicken-stats"><div><span>live flock board</span><strong>top chickens by tickets</strong></div>{stats.map((stat, idx) => <div className="stat-bar" key={stat.chicken.id}><span>#{idx + 1} {stat.chicken.name}</span><div><i style={{ width: `${Math.max(8, (stat.tickets / maxTickets) * 100)}%` }} /></div><b>{stat.tickets} ticket{stat.tickets === 1 ? "" : "s"} | {money(stat.cluckBucks)}</b></div>)}</div>;
 }
 
 function Winners({ payload }: { payload: EventPayload }) {
@@ -274,14 +300,10 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   async function uploadChickenPhoto(chickenId: number, file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) { setMessage("That file is not a chicken-ready image."); return; }
-    if (file.size > 1_500_000) { setMessage("Keep chicken photos under 1.5 MB for now."); return; }
-    const photoUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error("Could not read chicken photo."));
-      reader.readAsDataURL(file);
-    });
+    setMessage("Squishing chicken photo...");
+    const photoUrl = await compressImage(file);
     setChickens(chickens.map((chicken) => chicken.id === chickenId ? { ...chicken, photoUrl } : chicken));
+    setMessage("Chicken photo ready. Save event setup when you're done.");
   }
   if (!unlocked) {
     return <section className="panel admin-gate"><h2>Coop Boss</h2><form className="admin-unlock" onSubmit={unlock}><label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label><button type="submit">Unlock admin</button>{message && <p className="form-error">{message}</p>}</form></section>;
@@ -292,15 +314,40 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
 function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
   const name = (id: number | null | undefined) => chickens.find((chicken) => chicken.id === id)?.name ?? "Unknown bird";
   const raceName = races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`;
-  const pickNames = bet.picks.map((pick) => name(pick)).join(", ");
+  const pickNames = pickedChickenIds(bet).map((pick) => name(pick)).join(", ");
   if (bet.betType === "race_winner") return `${raceName}: ${name(bet.chicken1)}`;
   if (bet.betType === "race_place") return `${raceName}: ${name(bet.chicken1)}`;
   if (bet.betType === "race_show") return `${raceName}: ${name(bet.chicken1)}`;
-  if (bet.betType === "exacta") return `${raceName}: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
-  if (bet.betType === "trifecta") return `${raceName}: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
+  if (bet.betType === "exacta") return `${raceName}: ${pickedChickenIds(bet).map((pick) => name(pick)).join(" then ")}`;
+  if (bet.betType === "trifecta") return `${raceName}: ${pickedChickenIds(bet).map((pick) => name(pick)).join(" then ")}`;
   if (bet.betType === "sweep") return name(bet.chicken1);
-  if (bet.betType === "exact_ticket") return races.map((race, idx) => `${race.name}: ${name(bet.picks[idx])}`).join(" | ");
+  if (bet.betType === "exact_ticket") return races.map((race, idx) => `${race.name}: ${name(pickedChickenIds(bet)[idx])}`).join(" | ");
   if (bet.betType === "any_win") return name(bet.chicken1);
-  return pickNames;
+  return pickNames || "No chickens picked";
+}
+
+async function compressImage(file: File) {
+  const imageUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Could not read chicken photo."));
+      img.src = imageUrl;
+    });
+    const maxSide = 1100;
+    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not resize chicken photo.");
+    context.drawImage(image, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", 0.78);
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
 }
 

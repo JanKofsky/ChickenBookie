@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = process.env.RESEND_API_KEY;
-    const to = process.env.CONTACT_TO_EMAIL;
-    const from = process.env.CONTACT_FROM_EMAIL;
-    if (!apiKey || !to || !from) {
-      return NextResponse.json({ error: "Contact email is not wired up yet." }, { status: 503 });
+    const to = process.env.CONTACT_TO_EMAIL ?? "www.chickenbookie@gmail.com";
+    const from = process.env.CONTACT_FROM_EMAIL ?? "Chicken Bookie <onboarding@resend.dev>";
+    if (!apiKey) {
+      const mailto = `mailto:${to}?subject=${encodeURIComponent(`Chicken Bookie message from ${name}`)}&body=${encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`)}`;
+      return NextResponse.json({ error: "Open your email app to send this to Chicken Bookie.", mailto }, { status: 503 });
     }
 
     const response = await fetch("https://api.resend.com/emails", {

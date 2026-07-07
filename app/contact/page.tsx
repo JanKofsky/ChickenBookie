@@ -22,9 +22,6 @@ export default function ContactPage() {
         <p className="muted">
           Got a good idea for Chicken Bookie? Send it along.
         </p>
-        <p className="muted">
-          Messages are relayed privately. The inbox address stays off the page.
-        </p>
         <ContactForm />
         <Link className="text-link" href="/">Back to the coop</Link>
       </section>
