@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteBet, updateEventConfig } from "../../../lib/chickenBookie";
+import { checkAdmin, deleteBet, updateEventConfig } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,19 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not delete bet.") }, { status: 400 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const payload = await checkAdmin({
+      eventId: Number(body.eventId),
+      adminCode: String(body.adminCode ?? "")
+    });
+    return NextResponse.json(payload);
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not unlock admin.") }, { status: 400 });
   }
 }
 

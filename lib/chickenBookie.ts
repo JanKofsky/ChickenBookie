@@ -228,6 +228,8 @@ export async function createEvent(input: { code: string; name: string; adminCode
   await ensureSchema();
   const code = normalizeCode(input.code);
   if (!code || !input.name.trim()) throw new Error("Event name and event code are required.");
+  const existing = await sql`SELECT id FROM events WHERE code = ${code} LIMIT 1`;
+  if (existing.rowCount) throw new Error("That event code is already taken. Try another one.");
   const copied = input.copyCode ? await getEventByCode(input.copyCode) : null;
   const sourceChickens = copied?.chickens ?? DEFAULT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" }));
   const sourceRaces = copied?.races ?? DEFAULT_RACES;
@@ -347,6 +349,11 @@ export async function updateEventConfig(input: {
 async function assertAdmin(eventId: number, adminCode: string) {
   const event = await sql`SELECT admin_code FROM events WHERE id = ${eventId}`;
   if (!event.rowCount || event.rows[0].admin_code !== adminCode) throw new Error("Wrong admin code.");
+}
+
+export async function checkAdmin(input: { eventId: number; adminCode: string }) {
+  await assertAdmin(input.eventId, input.adminCode);
+  return { ok: true };
 }
 
 function rowToBet(row: Record<string, unknown>): Bet {

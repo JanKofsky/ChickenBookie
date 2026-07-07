@@ -8,6 +8,9 @@ function errorMessage(error: unknown, fallback: string) {
   if (message.includes("missing_connection_string") || message.includes("POSTGRES_URL")) {
     return "The coop database is not connected yet. Add the Supabase Postgres env vars in Vercel, then redeploy.";
   }
+  if (message.includes("duplicate key") || message.includes("events_code_key")) {
+    return "That event code is already taken. Try another one.";
+  }
   return message;
 }
 

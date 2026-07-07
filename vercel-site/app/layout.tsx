@@ -14,9 +14,12 @@ export const metadata: Metadata = {
     canonical: "/"
   },
   icons: {
-    icon: [{ url: "/assets/chicken_bookie_logo.png", type: "image/png" }],
-    shortcut: ["/assets/chicken_bookie_logo.png"],
-    apple: [{ url: "/assets/chicken_bookie_logo.png", type: "image/png" }]
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/icon.png", type: "image/png" }
+    ],
+    shortcut: ["/favicon.png"],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }]
   },
   openGraph: {
     title: "Chicken Bookie",
