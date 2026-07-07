@@ -227,7 +227,7 @@ function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: 
 }
 
 function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; races: Race[] }) {
-  return <section className="panel"><h2>Ticket Board</h2>{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{bet.bettor}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+  return <section className="panel"><h2>Ticket Board</h2>{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{bet.bettor}</strong><span>{describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
 }
 
 function Winners({ payload }: { payload: EventPayload }) {
@@ -291,14 +291,16 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
 
 function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
   const name = (id: number | null | undefined) => chickens.find((chicken) => chicken.id === id)?.name ?? "Unknown bird";
-  if (bet.betType === "race_winner") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} winner: ${name(bet.chicken1)}`;
-  if (bet.betType === "race_place") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} top-2 finisher: ${name(bet.chicken1)}`;
-  if (bet.betType === "race_show") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} top-3 finisher: ${name(bet.chicken1)}`;
-  if (bet.betType === "exacta") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} exact 1st/2nd: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
-  if (bet.betType === "trifecta") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} exact 1st/2nd/3rd: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
-  if (bet.betType === "sweep") return `${name(bet.chicken1)} wins every race`;
+  const raceName = races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`;
+  const pickNames = bet.picks.map((pick) => name(pick)).join(", ");
+  if (bet.betType === "race_winner") return `${raceName}: ${name(bet.chicken1)}`;
+  if (bet.betType === "race_place") return `${raceName}: ${name(bet.chicken1)}`;
+  if (bet.betType === "race_show") return `${raceName}: ${name(bet.chicken1)}`;
+  if (bet.betType === "exacta") return `${raceName}: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
+  if (bet.betType === "trifecta") return `${raceName}: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
+  if (bet.betType === "sweep") return name(bet.chicken1);
   if (bet.betType === "exact_ticket") return races.map((race, idx) => `${race.name}: ${name(bet.picks[idx])}`).join(" | ");
-  if (bet.betType === "any_win") return `${name(bet.chicken1)} wins at least one race`;
-  return `${bet.picks.map((pick) => name(pick)).join(", ")} win in any order`;
+  if (bet.betType === "any_win") return name(bet.chicken1);
+  return pickNames;
 }
 

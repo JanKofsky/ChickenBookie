@@ -229,6 +229,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   background: rgba(7, 11, 8, 0.58);
   box-shadow: none;
 }
+.ticket-row > * { overflow-wrap: anywhere; }
 .ticket-row b { text-align: right; }
 .ticket-head {
   color: var(--title-accent);
@@ -256,9 +257,10 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .chicken-admin-card { grid-template-columns: 1fr; }
   .ticket { grid-template-columns: 1fr; }
   .ticket b { text-align: left; }
-  .ticket-row { grid-template-columns: 1fr; }
-  .ticket-row b { text-align: left; }
-  .ticket-head { display: none; }
+  .ticket-table { gap: 5px; }
+  .ticket-row { grid-template-columns: minmax(70px, 0.72fr) minmax(0, 1.5fr) minmax(68px, 0.62fr); gap: 6px; padding: 9px 8px; font-size: 0.88rem; }
+  .ticket-head { font-size: 0.62rem; letter-spacing: 0.04em; }
+  .ticket-row b { text-align: right; }
 }
 
 .site-footer {
