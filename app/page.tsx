@@ -184,7 +184,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
 
 function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {
   const [bettor, setBettor] = useState("");
-  const [stake, setStake] = useState(5);
+  const [stake, setStake] = useState("");
   const [betType, setBetType] = useState<BetType>("race_winner");
   const [race, setRace] = useState(payload.races[0]?.race ?? 1);
   const [picks, setPicks] = useState<number[]>([]);
@@ -194,14 +194,16 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
   const selectedPicks = picks.slice(0, needed);
   async function submit(event: FormEvent) {
     event.preventDefault(); setMessage("");
+    const stakeValue = Number(stake);
+    if (!Number.isFinite(stakeValue) || stakeValue <= 0) { setMessage("Enter Cluck Bucks greater than zero."); return; }
     if (selectedPicks.length !== needed) { setMessage(`Pick ${needed} chicken${needed === 1 ? "" : "s"}.`); return; }
-    const response = await fetch("/api/bets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, bettor, stake, betType, race: raceBetTypes.includes(betType) ? race : null, picks: selectedPicks }) });
+    const response = await fetch("/api/bets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, bettor, stake: stakeValue, betType, race: raceBetTypes.includes(betType) ? race : null, picks: selectedPicks }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage("Bet added."); }
   }
   return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><form className="bet-form" onSubmit={submit}>
     <label>Gambler name<input value={bettor} onChange={(event) => setBettor(event.target.value)} /></label>
-    <label>Cluck Bucks<input type="number" min="1" step="1" value={stake} onChange={(event) => setStake(Number(event.target.value))} /></label>
+    <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
     {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
