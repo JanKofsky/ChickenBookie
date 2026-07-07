@@ -227,7 +227,7 @@ function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: 
 }
 
 function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; races: Race[] }) {
-  return <section className="panel"><h2>Ticket Board</h2>{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="table">{bets.map((bet) => <div className="ticket" key={bet.id}><strong>{bet.bettor}</strong><span>{BET_TYPES[bet.betType]}</span><span>{describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+  return <section className="panel"><h2>Ticket Board</h2>{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{bet.bettor}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
 }
 
 function Winners({ payload }: { payload: EventPayload }) {

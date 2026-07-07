@@ -132,7 +132,7 @@ h1 {
 .panel h2, .panel h3 { font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-weight: 700; }
 .lede { max-width: 720px; margin: 22px 0 0; color: var(--muted); font-size: clamp(1.03rem, 1.8vw, 1.24rem); line-height: 1.5; font-weight: 650; }
 .scoreboard { display: grid; gap: 10px; }
-.scoreboard div, .panel, .race-card, .bird, .ticket, .payment {
+.scoreboard div, .panel, .race-card, .bird, .ticket, .ticket-row, .payment {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -219,6 +219,26 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .table { display: grid; gap: 9px; margin-top: 14px; }
 .ticket { display: grid; grid-template-columns: 1fr 1.1fr 1.8fr auto; gap: 12px; align-items: center; padding: 12px 14px; }
 .ticket b { color: var(--ink); text-align: right; }
+.ticket-table { display: grid; gap: 7px; margin-top: 14px; }
+.ticket-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(220px, 2fr) minmax(96px, 0.55fr);
+  gap: 12px;
+  align-items: center;
+  padding: 11px 13px;
+  background: rgba(7, 11, 8, 0.58);
+  box-shadow: none;
+}
+.ticket-row b { text-align: right; }
+.ticket-head {
+  color: var(--title-accent);
+  background: rgba(7, 11, 8, 0.36);
+  box-shadow: none;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .payment-list { display: grid; gap: 10px; margin: 16px 0; }
 .payment { padding: 13px 15px; border-left: 5px solid var(--mustard); font-weight: 850; }
 .delete-row { display: block; width: 100%; margin: 8px 0; color: #ffe6df; background: rgba(183, 68, 57, 0.36); box-shadow: none; text-align: left; }
@@ -236,6 +256,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .chicken-admin-card { grid-template-columns: 1fr; }
   .ticket { grid-template-columns: 1fr; }
   .ticket b { text-align: left; }
+  .ticket-row { grid-template-columns: 1fr; }
+  .ticket-row b { text-align: left; }
+  .ticket-head { display: none; }
 }
 
 .site-footer {
