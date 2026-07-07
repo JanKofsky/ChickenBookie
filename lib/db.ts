@@ -31,7 +31,8 @@ function getClient() {
   return client;
 }
 
-export async function sql(strings: TemplateStringsArray, ...values: unknown[]): Promise<QueryResult> {
-  const rows = (await getClient()(strings, ...values)) as QueryRows;
+export async function sql(strings: TemplateStringsArray, ...values: any[]): Promise<QueryResult> {
+  const query = getClient() as any;
+  const rows = (await query(strings, ...values)) as QueryRows;
   return { rows, rowCount: typeof rows.count === "number" ? rows.count : rows.length };
 }
