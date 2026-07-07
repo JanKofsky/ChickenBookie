@@ -8,6 +8,7 @@
   --line: rgba(255, 243, 216, 0.18);
   --mustard: #c57935;
   --mustard-light: #f0d979;
+  --title-accent: #d1a35a;
   --accent-soft: rgba(197, 121, 53, 0.18);
   --accent-pop: rgba(240, 217, 121, 0.30);
   --wood: #9f6f34;
@@ -52,7 +53,7 @@ button { cursor: pointer; }
 }
 .hero-title { display: flex; align-items: center; gap: clamp(14px, 2.6vw, 28px); flex-wrap: nowrap; }
 .hero-logo { display: block; width: clamp(150px, 24vw, 290px); height: auto; flex: 0 0 auto; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.35)); }
-.hero-subtitle { margin: 16px 0 0; color: var(--mustard-light); font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-size: clamp(1.22rem, 2.5vw, 1.85rem); font-weight: 700; }
+.hero-subtitle { margin: 16px 0 0; color: var(--title-accent); font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-size: clamp(1.22rem, 2.5vw, 1.85rem); font-weight: 700; }
 .countdown {
   width: fit-content;
   margin-top: 20px;
@@ -116,7 +117,7 @@ button:hover { background: var(--accent-pop); border-color: rgba(255, 243, 216, 
 .ghost-button { background: rgba(7, 11, 8, 0.34); box-shadow: none; }
 .hero { min-height: 42vh; display: grid; align-items: end; }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.65fr); gap: 22px; align-items: end; }
-.eyebrow { margin: 0 0 10px; color: var(--mustard-light); font-size: 0.82rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.eyebrow { margin: 0 0 10px; color: var(--title-accent); font-size: 0.82rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
 h1 {
   margin: 0;
   color: var(--ink);
@@ -138,17 +139,17 @@ h1 {
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(2px);
 }
-.scoreboard div { position: relative; overflow: hidden; padding: 15px 16px 15px 18px; border-color: rgba(255, 243, 216, 0.14); background: rgba(7, 11, 8, 0.66); }
-.scoreboard div::before {
-  content: "";
-  position: absolute;
-  inset: 12px auto 12px 0;
-  width: 4px;
-  border-radius: 0 999px 999px 0;
-  background: linear-gradient(var(--mustard-light), var(--mustard));
-  opacity: 0.86;
+.scoreboard div {
+  padding: 15px 16px;
+  border-color: rgba(255, 243, 216, 0.14);
+  background:
+    radial-gradient(circle at 16% 12%, rgba(209, 163, 90, 0.13), transparent 34%),
+    rgba(7, 11, 8, 0.66);
+  box-shadow:
+    inset 0 0 18px rgba(209, 163, 90, 0.08),
+    0 16px 34px rgba(0, 0, 0, 0.28);
 }
-.scoreboard span, .bird span, .race-card span, .ticket span { display: block; color: var(--mustard-light); font-size: 0.77rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.scoreboard span, .bird span, .race-card span, .ticket span { display: block; color: var(--title-accent); font-size: 0.77rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .scoreboard strong { display: block; margin-top: 5px; font-size: 1.18rem; overflow-wrap: anywhere; }
 .notice { margin: 18px 0; border-left: 5px solid var(--mustard); border-radius: 8px; background: var(--panel-strong); padding: 12px 14px; color: var(--muted); font-weight: 800; }
 .notice.error, .form-error { color: #ffd0c8; font-family: var(--font-chunky), Inter, system-ui, sans-serif; font-style: oblique 10deg; font-weight: 500; }
@@ -176,7 +177,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .pick-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .chicken-buttons { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .chicken-buttons button { min-height: 58px; color: var(--ink); background: rgba(8, 13, 9, 0.66); box-shadow: none; text-align: left; }
-.chicken-buttons button span { display: block; color: var(--mustard-light); font-size: 0.75rem; }
+.chicken-buttons button span { display: block; color: var(--title-accent); font-size: 0.75rem; }
 .chicken-buttons button.selected { color: var(--ink); background: var(--accent-pop); border-color: rgba(255, 243, 216, 0.72); box-shadow: 0 2px 0 rgba(70, 58, 22, 0.32); }
 .split { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 14px; }
 .flock-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
@@ -249,7 +250,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 }
 .site-footer a,
 .text-link {
-  color: var(--mustard-light);
+  color: var(--title-accent);
   text-decoration: none;
 }
 .site-footer a:hover,

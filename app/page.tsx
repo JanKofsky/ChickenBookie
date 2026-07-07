@@ -172,7 +172,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
   }
   return <section className="panel"><h2>Make an event</h2><form className="grid-form" onSubmit={submit}>
     <label>Event name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
-    <label>Event code<input value={code} onChange={(event) => setCode(event.target.value.toLowerCase())} placeholder="corn hub" /></label>
+    <label>Event code<input value={code} onChange={(event) => setCode(event.target.value.toLowerCase())} /></label>
     <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
     <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
     <p className="fine-print wide-field">write this down now; Chicken Bookie will not show it again</p>
