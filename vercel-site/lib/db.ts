@@ -1,7 +1,7 @@
 import postgres from "postgres";
 
-type QueryRows = Array<Record<string, unknown>> & { count?: number };
-type QueryResult = { rows: Array<Record<string, unknown>>; rowCount: number };
+type QueryRows = Array<Record<string, any>> & { count?: number };
+type QueryResult = { rows: Array<Record<string, any>>; rowCount: number };
 
 let client: ReturnType<typeof postgres> | null = null;
 
