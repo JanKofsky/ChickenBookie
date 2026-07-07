@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/"
   },
+  icons: {
+    icon: [{ url: "/assets/chicken_bookie_logo.png", type: "image/png" }],
+    shortcut: ["/assets/chicken_bookie_logo.png"],
+    apple: [{ url: "/assets/chicken_bookie_logo.png", type: "image/png" }]
+  },
   openGraph: {
     title: "Chicken Bookie",
     description: "A private barnyard betting tool for forecasts, payout, and race-day settlement.",
