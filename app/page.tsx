@@ -4,15 +4,27 @@ import { FormEvent, useMemo, useState } from "react";
 import type { Bet, BetType, Chicken, EventPayload, Race, Results } from "../lib/chickenBookie";
 
 const BET_TYPES: Record<BetType, string> = {
-  race_winner: "Single-race winner",
+  race_winner: "Pick 1st place in one race",
+  race_place: "Pick a top-2 finisher",
+  race_show: "Pick a top-3 finisher",
+  exacta: "Pick exact 1st and 2nd",
+  trifecta: "Pick exact 1st, 2nd, and 3rd",
   sweep: "Same chicken wins every race",
   exact_ticket: "Exact winners for every race",
   any_win: "Chicken wins at least one race",
   any_order_three: "Picked chickens win in any order"
 };
-const betTypeOrder: BetType[] = ["race_winner", "any_win", "any_order_three", "exact_ticket", "sweep"];
+const simpleBetTypes: BetType[] = ["race_winner", "any_win", "any_order_three", "exact_ticket", "sweep"];
+const fullOrderBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta", "any_win", "any_order_three", "exact_ticket", "sweep"];
+const raceBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta"];
 const showMerchTab = false;
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
+const dateTimeInputValue = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
 
 function friendlyError(message: string) {
   if (message.includes("missing_connection_string") || message.includes("POSTGRES_URL")) {
@@ -85,7 +97,7 @@ export default function Home() {
             ))}
           </div>
           {tab === "bet" && <Betting payload={payload} setPayload={setPayload} />}
-          {tab === "flock" && <Flock chickens={payload.chickens} races={payload.races} />}
+          {tab === "flock" && <Flock chickens={payload.chickens} races={payload.races} officialRule={payload.event.officialRule} />}
           {tab === "tickets" && <Tickets bets={payload.bets} chickens={payload.chickens} races={payload.races} />}
           {tab === "winners" && <Winners payload={payload} />}
           {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} />}
@@ -106,17 +118,19 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
   const [code, setCode] = useState("");
   const [adminCode, setAdminCode] = useState("");
   const [showAdminCode, setShowAdminCode] = useState(false);
+  const [resultMode, setResultMode] = useState<"winner" | "full_order">("winner");
   const [copyCode, setCopyCode] = useState("");
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, copyCode }) });
+    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, resultMode, copyCode }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not create event.")); else onCreated(data);
   }
   return <section className="panel"><h2>Make an event</h2><form className="grid-form" onSubmit={submit}>
     <label>Event name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
     <label>Event code<input value={code} onChange={(event) => setCode(event.target.value)} /></label>
+    <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
     <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
     <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
     <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
@@ -131,35 +145,39 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
   const [race, setRace] = useState(payload.races[0]?.race ?? 1);
   const [picks, setPicks] = useState<number[]>([]);
   const [message, setMessage] = useState("");
-  const needed = betType === "exact_ticket" || betType === "any_order_three" ? payload.races.length : 1;
+  const availableBetTypes = payload.event.resultMode === "full_order" ? fullOrderBetTypes : simpleBetTypes;
+  const needed = betType === "exact_ticket" || betType === "any_order_three" ? payload.races.length : betType === "exacta" ? 2 : betType === "trifecta" ? 3 : 1;
   const selectedPicks = picks.slice(0, needed);
   async function submit(event: FormEvent) {
     event.preventDefault(); setMessage("");
     if (selectedPicks.length !== needed) { setMessage(`Pick ${needed} chicken${needed === 1 ? "" : "s"}.`); return; }
-    const response = await fetch("/api/bets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, bettor, stake, betType, race: betType === "race_winner" ? race : null, picks: selectedPicks }) });
+    const response = await fetch("/api/bets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, bettor, stake, betType, race: raceBetTypes.includes(betType) ? race : null, picks: selectedPicks }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage("Bet added."); }
   }
   return <section className="panel"><h2>Betting Coop</h2><p className="muted">Private events only. Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><form className="bet-form" onSubmit={submit}>
     <label>Gambler name<input value={bettor} onChange={(event) => setBettor(event.target.value)} /></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" value={stake} onChange={(event) => setStake(Number(event.target.value))} /></label>
-    <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{betTypeOrder.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
-    {betType === "race_winner" && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
-    <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket"} races={payload.races} />
+    <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
+    {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
+    <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
     <button type="submit">Add bet</button>{message && <p className={message.includes("added") ? "form-ok" : "form-error"}>{message}</p>}
   </form></section>;
 }
 
-function ChickenPicker({ chickens, picks, setPicks, count, exact, races }: { chickens: Chicken[]; picks: number[]; setPicks: (picks: number[]) => void; count: number; exact: boolean; races: Race[] }) {
-  if (exact) return <div className="pick-grid">{races.map((race, idx) => <label key={race.race}>{race.name}<select value={picks[idx] ?? ""} onChange={(event) => { const next = [...picks]; next[idx] = Number(event.target.value); setPicks(next); }}><option value="">Pick chicken</option>{chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}</div>;
+function ChickenPicker({ chickens, picks, setPicks, count, exact, races, labels }: { chickens: Chicken[]; picks: number[]; setPicks: (picks: number[]) => void; count: number; exact: boolean; races: Race[]; labels?: string[] }) {
+  if (exact) {
+    const fields = labels ?? races.map((race) => race.name);
+    return <div className="pick-grid">{fields.slice(0, count).map((label, idx) => <label key={label}>{label}<select value={picks[idx] ?? ""} onChange={(event) => { const next = [...picks]; next[idx] = Number(event.target.value); setPicks(next); }}><option value="">Pick chicken</option>{chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}</div>;
+  }
   return <div className="chicken-buttons">{chickens.map((chicken) => {
     const active = picks.includes(chicken.id);
     return <button type="button" key={chicken.id} className={active ? "selected" : ""} onClick={() => setPicks(active ? picks.filter((id) => id !== chicken.id) : [...picks, chicken.id].slice(-count))}><span>#{chicken.slot}</span>{chicken.name}</button>;
   })}</div>;
 }
 
-function Flock({ chickens, races }: { chickens: Chicken[]; races: Race[] }) {
-  return <section className="split"><div className="panel"><h2>Starting Flock</h2><div className="flock-grid">{chickens.map((chicken) => <div className="bird" key={chicken.id}><span>#{chicken.slot}</span><strong>{chicken.name}</strong></div>)}</div></div><div className="panel"><h2>Race card</h2>{races.map((race) => <article className="race-card" key={race.race}><span>Race {race.race}</span><h3>{race.name}</h3><p>{race.description}</p></article>)}</div></section>;
+function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: Race[]; officialRule: string }) {
+  return <section className="split"><div className="panel"><h2>Starting Flock</h2><div className="flock-grid">{chickens.map((chicken) => <div className="bird" key={chicken.id}>{chicken.photoUrl && <img src={chicken.photoUrl} alt={`${chicken.name} chicken`} />}<span>#{chicken.slot}</span><strong>{chicken.name}</strong>{chicken.bio && <p>{chicken.bio}</p>}</div>)}</div></div><div className="panel"><h2>Race card</h2><article className="race-card"><span>How results are determined</span><h3>race rules</h3><p>{officialRule}</p></article>{races.map((race) => <article className="race-card" key={race.race}><span>Race {race.race}</span><h3>{race.name}</h3><p>{race.description}</p></article>)}</div></section>;
 }
 
 function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; races: Race[] }) {
@@ -176,6 +194,12 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   const [adminCode, setAdminCode] = useState("");
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [results, setResults] = useState<Results>(payload.results ?? {});
+  const [eventName, setEventName] = useState(payload.event.name);
+  const [bettingCloseAt, setBettingCloseAt] = useState(dateTimeInputValue(payload.event.bettingCloseAt));
+  const [officialRule, setOfficialRule] = useState(payload.event.officialRule);
+  const [resultMode, setResultMode] = useState(payload.event.resultMode);
+  const [chickens, setChickens] = useState(payload.chickens);
+  const [races, setRaces] = useState(payload.races);
   const [message, setMessage] = useState("");
   async function save(event: FormEvent) {
     event.preventDefault(); setMessage("");
@@ -188,12 +212,34 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not delete bet.")); else { setPayload(data); setMessage("Bet deleted."); }
   }
-  return <section className="panel"><h2>Coop Boss</h2><label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>{payload.bets.length < 2 && <p className="muted">Oh cluck, not enough bets yet. You can save winners, but settlement waits until at least two tickets exist.</p>}<form className="grid-form" onSubmit={save}>{payload.races.map((race) => <label key={race.race}>{race.name}<select value={results[race.race] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: Number(event.target.value) })}><option value="">Pick winner</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}<button type="submit">Save winners</button></form>{message && <p className={message.includes("saved") || message.includes("deleted") ? "form-ok" : "form-error"}>{message}</p>}<h3>Delete accidental bet</h3>{payload.bets.length === 0 ? <p className="muted">No accidental bets to delete.</p> : payload.bets.map((bet) => <button className="delete-row" key={bet.id} onClick={() => removeBet(bet.id)}>Delete #{bet.id} - {bet.bettor} - {money(bet.stake)}</button>)}</section>;
+  async function saveConfig(event: FormEvent) {
+    event.preventDefault(); setMessage("");
+    const response = await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt, officialRule, resultMode, chickens, races }) });
+    const data = await response.json();
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save event settings.")); else { setPayload(data); setMessage("Event settings saved."); }
+  }
+  async function uploadChickenPhoto(chickenId: number, file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setMessage("That file is not a chicken-ready image."); return; }
+    if (file.size > 1_500_000) { setMessage("Keep chicken photos under 1.5 MB for now."); return; }
+    const photoUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Could not read chicken photo."));
+      reader.readAsDataURL(file);
+    });
+    setChickens(chickens.map((chicken) => chicken.id === chickenId ? { ...chicken, photoUrl } : chicken));
+  }
+  return <section className="panel"><h2>Coop Boss</h2><label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>{payload.bets.length < 2 && <p className="muted">Oh cluck, not enough bets yet. You can save winners, but settlement waits until at least two tickets exist.</p>}<form className="grid-form" onSubmit={saveConfig}><h3>Event setup</h3><label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label><label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label><label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label><label className="wide-field">Race rules<textarea value={officialRule} placeholder="first to the marshmallow wins" onChange={(event) => setOfficialRule(event.target.value)} rows={3} /></label><h3>Race card</h3>{races.map((race, idx) => <div className="admin-card" key={race.race}><label>Race name<input value={race.name} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label><label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label></div>)}<h3>Flock notes</h3>{chickens.map((chicken, idx) => <div className="admin-card chicken-admin-card" key={chicken.id}>{chicken.photoUrl && <img src={chicken.photoUrl} alt={`${chicken.name} chicken preview`} />}<label>Chicken name<input value={chicken.name} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label><label>Coop note<textarea value={chicken.bio ?? ""} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, bio: event.target.value } : item))} rows={3} /></label><label>Chicken photo<input type="file" accept="image/*" onChange={(event) => uploadChickenPhoto(chicken.id, event.target.files?.[0] ?? null)} /></label>{chicken.photoUrl && <button type="button" onClick={() => setChickens(chickens.map((item) => item.id === chicken.id ? { ...item, photoUrl: null } : item))}>Remove photo</button>}</div>)}<button type="submit">Save event setup</button></form><form className="grid-form" onSubmit={save}><h3>Result entry</h3>{payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}><h3>{race.name}</h3>{payload.chickens.map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}</div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}<button type="submit">Save results</button></form>{message && <p className={message.includes("saved") || message.includes("deleted") ? "form-ok" : "form-error"}>{message}</p>}<h3>Delete accidental bet</h3>{payload.bets.length === 0 ? <p className="muted">No accidental bets to delete.</p> : payload.bets.map((bet) => <button className="delete-row" key={bet.id} onClick={() => removeBet(bet.id)}>Delete #{bet.id} - {bet.bettor} - {money(bet.stake)}</button>)}</section>;
 }
 
 function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
   const name = (id: number | null | undefined) => chickens.find((chicken) => chicken.id === id)?.name ?? "Unknown bird";
   if (bet.betType === "race_winner") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} winner: ${name(bet.chicken1)}`;
+  if (bet.betType === "race_place") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} top-2 finisher: ${name(bet.chicken1)}`;
+  if (bet.betType === "race_show") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} top-3 finisher: ${name(bet.chicken1)}`;
+  if (bet.betType === "exacta") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} exact 1st/2nd: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
+  if (bet.betType === "trifecta") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} exact 1st/2nd/3rd: ${bet.picks.map((pick) => name(pick)).join(" then ")}`;
   if (bet.betType === "sweep") return `${name(bet.chicken1)} wins every race`;
   if (bet.betType === "exact_ticket") return races.map((race, idx) => `${race.name}: ${name(bet.picks[idx])}`).join(" | ");
   if (bet.betType === "any_win") return `${name(bet.chicken1)} wins at least one race`;

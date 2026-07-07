@@ -133,7 +133,37 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .split { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 14px; }
 .flock-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
 .bird { padding: 14px; min-height: 82px; }
+.bird img,
+.chicken-admin-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 243, 216, 0.18);
+  margin-bottom: 10px;
+  background: rgba(5, 9, 7, 0.45);
+}
 .bird strong { display: block; margin-top: 6px; font-size: 1.05rem; }
+.bird p { margin: 8px 0 0; color: var(--muted); line-height: 1.35; }
+.wide-field,
+.grid-form h3,
+.admin-card {
+  grid-column: 1 / -1;
+}
+.admin-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(7, 11, 8, 0.42);
+}
+.chicken-admin-card {
+  grid-template-columns: minmax(120px, 0.38fr) repeat(2, minmax(0, 1fr));
+}
+.chicken-admin-card button { align-self: end; }
 .race-card { padding: 15px; margin-top: 12px; border-top: 3px solid var(--mustard); }
 .race-card h3 { margin: 6px 0; }
 .race-card p { margin: 0; color: var(--muted); line-height: 1.45; }
@@ -153,6 +183,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .hero-subtitle { margin-top: 12px; }
   .hero-grid, .split, .grid-form, .bet-form, .pick-grid { grid-template-columns: 1fr; }
   .chicken-buttons, .flock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-card,
+  .chicken-admin-card { grid-template-columns: 1fr; }
   .ticket { grid-template-columns: 1fr; }
   .ticket b { text-align: left; }
 }

@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
       code: String(body.code ?? ""),
       name: String(body.name ?? ""),
       adminCode: String(body.adminCode ?? ""),
+      resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
       copyCode: body.copyCode ? String(body.copyCode) : undefined
     });
     return NextResponse.json(payload);

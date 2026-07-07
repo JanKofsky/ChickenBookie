@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteBet } from "../../../lib/chickenBookie";
+import { deleteBet, updateEventConfig } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -25,4 +25,22 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const payload = await updateEventConfig({
+      eventId: Number(body.eventId),
+      adminCode: String(body.adminCode ?? ""),
+      name: String(body.name ?? ""),
+      bettingCloseAt: String(body.bettingCloseAt ?? ""),
+      officialRule: String(body.officialRule ?? ""),
+      resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
+      chickens: Array.isArray(body.chickens) ? body.chickens : [],
+      races: Array.isArray(body.races) ? body.races : []
+    });
+    return NextResponse.json(payload);
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not save event settings.") }, { status: 400 });
+  }
+}
 
