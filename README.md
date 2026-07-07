@@ -1,6 +1,26 @@
 # Chicken Bookie
 
-A local Streamlit app for The Great American Chicken Race: 12-chicken, 3-race party betting.
+A private barnyard betting tool for chicken race forecasts, payout, and race-day settlement.
+
+## Vercel env vars
+
+The Next.js app stores event data in Supabase Postgres and sends contact form messages through Resend.
+
+Required for the database:
+
+```text
+POSTGRES_URL
+```
+
+Required for the contact form:
+
+```text
+RESEND_API_KEY
+CONTACT_TO_EMAIL
+CONTACT_FROM_EMAIL
+```
+
+`CONTACT_TO_EMAIL` is the private inbox that receives messages. `CONTACT_FROM_EMAIL` should be a sender address verified in Resend, usually something like `Chicken Bookie <hello@chickenbookie.com>`.
 
 ## Run it
 
