@@ -1,4 +1,4 @@
-import { sql } from "@vercel/postgres";
+import { sql } from "./db";
 
 export type Chicken = { id: number; slot: number; name: string; photoUrl: string | null };
 export type Race = { race: number; name: string; description: string };

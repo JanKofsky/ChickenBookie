@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .streamlit/secrets.toml
+.env*
+!.env.example
 chicken_race.db
 .agents/
 .codex/

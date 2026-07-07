@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 function errorMessage(error: unknown, fallback: string) {
   const message = error instanceof Error ? error.message : fallback;
   if (message.includes("missing_connection_string") || message.includes("POSTGRES_URL")) {
-    return "The coop database is not connected yet. Add Vercel Postgres/Neon env vars to this preview deployment, then redeploy.";
+    return "The coop database is not connected yet. Add the Supabase Postgres env vars in Vercel, then redeploy.";
   }
   return message;
 }
