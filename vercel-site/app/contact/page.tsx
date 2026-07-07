@@ -20,6 +20,9 @@ export default function ContactPage() {
           Questions, race-day issues, merch ideas, or chicken-related business can go here.
         </p>
         <p className="muted">
+          Got a good idea for Chicken Bookie? Send it along.
+        </p>
+        <p className="muted">
           Messages are relayed privately. The inbox address stays off the page.
         </p>
         <ContactForm />
