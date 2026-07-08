@@ -259,12 +259,19 @@ export async function addBet(input: { eventId: number; bettor: string; betType: 
   const event = await sql`SELECT betting_close_at FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
   if (Date.now() > Date.parse(event.rows[0].betting_close_at)) throw new Error("Betting is closed.");
+  const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
+  const raceNumbers = new Set(races.rows.map((row) => Number(row.race)));
+  if (input.race != null && !raceNumbers.has(Number(input.race))) throw new Error("Pick a real race for this event.");
+  const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
+  const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
   const bettor = await sql`
     INSERT INTO bettors (event_id, name) VALUES (${input.eventId}, ${input.bettor.trim()})
     ON CONFLICT (event_id, lower(name)) DO UPDATE SET name = EXCLUDED.name
     RETURNING id`;
   const picks = input.picks.map(Number).filter(Boolean);
+  if (!picks.length) throw new Error("Pick at least one chicken.");
   if (new Set(picks).size !== picks.length) throw new Error("Pick different chickens for each slot.");
+  if (picks.some((pick) => !chickenIds.has(pick))) throw new Error("Pick chickens from this event.");
   await sql`
     INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, picks)
     VALUES (${input.eventId}, ${Number(bettor.rows[0].id)}, ${input.betType}, ${input.stake}, ${input.race ?? null}, ${picks[0] ?? null}, ${picks[1] ?? null}, ${picks[2] ?? null}, ${JSON.stringify(picks)}::jsonb)`;
@@ -279,11 +286,14 @@ export async function saveResults(input: { eventId: number; adminCode: string; r
   const event = await sql`SELECT result_mode FROM events WHERE id = ${input.eventId}`;
   const fullOrderMode = event.rows[0]?.result_mode === "full_order";
   const chickenCount = (await sql`SELECT COUNT(*) AS count FROM chickens WHERE event_id = ${input.eventId}`).rows[0]?.count;
+  const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
+  const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
   for (const [race, result] of Object.entries(input.results)) {
     const places = Array.isArray(result) ? result.map(Number).filter(Boolean) : [];
     if (!places[0]) throw new Error("Pick a first-place chicken for every race.");
     if (fullOrderMode && places.length !== Number(chickenCount)) throw new Error("Rank every chicken for every race.");
     if (new Set(places).size !== places.length) throw new Error("Do not rank the same chicken twice in one race.");
+    if (places.some((place) => !chickenIds.has(place))) throw new Error("Pick chickens from this event.");
     await sql`
       INSERT INTO results (event_id, race, chicken_id, updated_at)
       VALUES (${input.eventId}, ${Number(race)}, ${Number(places[0])}, NOW())
