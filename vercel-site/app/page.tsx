@@ -319,8 +319,9 @@ function Winners({ payload }: { payload: EventPayload }) {
 function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }> }) {
   const rows = people.map((person) => ({ ...person, earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0 }))
     .sort((a, b) => b.earningsPct - a.earningsPct || b.net - a.net || a.bettor.localeCompare(b.bettor));
-  const maxNet = Math.max(1, ...rows.map((person) => Math.abs(person.net)));
-  const maxStake = Math.max(1, ...rows.map((person) => person.staked));
+  const rawMaxAxis = Math.max(1, ...rows.flatMap((person) => [Math.abs(person.net), person.staked]));
+  const maxAxis = Math.ceil(rawMaxAxis / 25) * 25;
+  const axisTicks = [-maxAxis, -maxAxis / 2, 0, maxAxis / 2, maxAxis];
   const netColor = (pct: number) => {
     if (pct > 175) return "var(--win-strong)";
     if (pct > 50) return "var(--win-mid)";
@@ -329,19 +330,21 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
     if (pct > -50) return "var(--loss-soft)";
     return "var(--loss-mid)";
   };
-  return <div className="ledger-graph">{rows.map((person) => {
-    const netWidth = Math.max(2, (Math.abs(person.net) / maxNet) * 50);
-    const stakeWidth = Math.max(2, (person.staked / maxStake) * 44);
+  return <div className="ledger-graph">
+    <div className="ledger-axis-head"><span /><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span /></div>
+    {rows.map((person) => {
+    const netWidth = Math.max(2, (Math.abs(person.net) / maxAxis) * 50);
+    const stakeWidth = Math.max(2, (person.staked / maxAxis) * 50);
     const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
     const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
     return <div className="ledger-row" key={person.bettor}>
-      <div className="ledger-name"><strong>{person.bettor}</strong><b>{pctLabel}</b></div>
-      <div className="ledger-axis" aria-label={`${person.bettor} bet ${money(person.staked)} and netted ${netLabel}`}>
+      <div className="ledger-name"><strong>{person.bettor}</strong><b>Payout {money(person.payout)} ({pctLabel})</b></div>
+      <div className="ledger-axis" title={`${person.bettor}: bet ${money(person.staked)}, payout ${money(person.payout)}, net ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} bet ${money(person.staked)}, payout ${money(person.payout)}, netted ${netLabel}, earning ${pctLabel}`}>
         <i className="zero-line" />
         <i className="stake-layer" style={{ left: "50%", width: `${stakeWidth}%` }} />
         <i className={person.net >= 0 ? "net-layer positive" : "net-layer"} style={person.net >= 0 ? { left: "50%", width: `${netWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - netWidth}%`, width: `${netWidth}%`, background: netColor(person.earningsPct) }} />
       </div>
-      <div className={person.net >= 0 ? "ledger-net positive" : "ledger-net"}><span>{netLabel}</span><b>{money(person.staked)} bet</b></div>
+      <div className={person.net >= 0 ? "ledger-net positive" : "ledger-net"}>{netLabel}</div>
     </div>;
   })}</div>;
 }

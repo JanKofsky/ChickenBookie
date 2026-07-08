@@ -21,11 +21,6 @@ export default function ContactForm() {
         body: JSON.stringify({ name, email, message, website })
       });
       const data = await response.json();
-      if (!response.ok && data.mailto) {
-        window.location.href = data.mailto;
-        setStatus("Opening your email app...");
-        return;
-      }
       if (!response.ok) throw new Error(data.error ?? "Could not send message.");
       setName("");
       setEmail("");

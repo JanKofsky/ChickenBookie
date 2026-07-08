@@ -296,13 +296,35 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 }
 .payment-list { display: grid; gap: 10px; margin: 16px 0; }
 .payment { padding: 13px 15px; border-left: 5px solid var(--mustard); font-weight: 850; }
-.ledger-graph { display: grid; gap: 10px; margin-top: 14px; }
+.ledger-graph { display: grid; gap: 8px; margin-top: 14px; }
+.ledger-axis-head {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.86fr) minmax(280px, 2.6fr) minmax(90px, 0.38fr);
+  gap: 8px;
+  align-items: end;
+  color: rgba(222, 209, 182, 0.70);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+.ledger-ticks {
+  position: relative;
+  height: 18px;
+}
+.ledger-ticks b {
+  position: absolute;
+  bottom: 0;
+  transform: translateX(-50%);
+  font-weight: 900;
+  white-space: nowrap;
+}
+.ledger-ticks b:first-child { transform: translateX(0); }
+.ledger-ticks b:last-child { transform: translateX(-100%); }
 .ledger-row {
   display: grid;
-  grid-template-columns: minmax(120px, 0.72fr) minmax(240px, 2.2fr) minmax(104px, 0.48fr);
-  gap: 12px;
+  grid-template-columns: minmax(150px, 0.86fr) minmax(280px, 2.6fr) minmax(90px, 0.38fr);
+  gap: 8px;
   align-items: center;
-  padding: 9px 12px;
+  padding: 7px 10px;
   border: 1px solid rgba(217, 240, 194, 0.18);
   border-radius: 8px;
   background:
@@ -313,16 +335,17 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .ledger-name b {
   display: inline-block;
   margin-top: 3px;
-  color: #d9f0c2;
-  font-family: var(--font-puffy), Inter, system-ui, sans-serif;
-  font-size: 0.9rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 .ledger-axis {
   position: relative;
-  height: 22px;
+  height: 24px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 5px;
   background:
+    repeating-linear-gradient(90deg, transparent 0, transparent calc(25% - 1px), rgba(255, 243, 216, 0.11) calc(25% - 1px), rgba(255, 243, 216, 0.11) 25%),
     linear-gradient(90deg, rgba(255, 208, 200, 0.07), transparent 49.7%, rgba(255, 243, 216, 0.62) 49.7%, rgba(255, 243, 216, 0.62) 50.3%, transparent 50.3%, rgba(217, 240, 194, 0.07)),
     rgba(255, 243, 216, 0.08);
 }
@@ -340,12 +363,18 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   background: rgba(255, 243, 216, 0.92);
   z-index: 3;
 }
-.stake-layer { height: 7px; background: rgba(209, 163, 90, 0.58); z-index: 1; }
-.net-layer { height: 16px; z-index: 2; }
+.stake-layer {
+  height: 20px;
+  border: 1px solid rgba(220, 224, 214, 0.42);
+  background:
+    repeating-linear-gradient(45deg, rgba(222, 226, 218, 0.34) 0, rgba(222, 226, 218, 0.34) 4px, rgba(132, 139, 128, 0.22) 4px, rgba(132, 139, 128, 0.22) 8px);
+  opacity: 0.88;
+  z-index: 3;
+}
+.net-layer { height: 14px; z-index: 2; }
 .net-layer.positive { box-shadow: 0 0 10px rgba(217, 240, 194, 0.10); }
-.ledger-net { display: grid; gap: 1px; color: #ffd0c8; font-weight: 950; text-align: right; }
+.ledger-net { color: #ffd0c8; font-weight: 950; text-align: right; }
 .ledger-net.positive { color: #d9f0c2; }
-.ledger-net b { color: var(--muted); font-size: 0.72rem; font-weight: 850; }
 .result-entry {
   padding: 16px;
   border: 2px solid rgba(112, 255, 94, 0.86);
@@ -381,6 +410,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket-row b { text-align: right; }
   .stat-bar { grid-template-columns: 1fr; gap: 5px; }
   .stat-bar b { text-align: left; white-space: normal; }
+  .ledger-axis-head { display: none; }
   .ledger-row { grid-template-columns: 1fr; }
   .ledger-net { text-align: left; }
 }

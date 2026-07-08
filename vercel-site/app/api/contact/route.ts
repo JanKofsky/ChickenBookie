@@ -6,10 +6,6 @@ function clean(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function contactMailto(to: string, name: string, email: string, message: string) {
-  return `mailto:${to}?subject=${encodeURIComponent(`Chicken Bookie message from ${name}`)}&body=${encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`)}`;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -26,9 +22,8 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.RESEND_API_KEY;
     const to = process.env.CONTACT_TO_EMAIL ?? "www.chickenbookie@gmail.com";
     const from = process.env.CONTACT_FROM_EMAIL ?? "Chicken Bookie <onboarding@resend.dev>";
-    const mailto = contactMailto(to, name, email, message);
     if (!apiKey) {
-      return NextResponse.json({ error: "Open your email app to send this to Chicken Bookie.", mailto }, { status: 503 });
+      return NextResponse.json({ error: "Email is not fully wired up yet. Try again later." }, { status: 503 });
     }
 
     const response = await fetch("https://api.resend.com/emails", {
@@ -49,7 +44,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const detail = await response.text();
       console.error("Resend contact send failed", { status: response.status, detail });
-      return NextResponse.json({ error: "Email is not fully wired up yet. Open your email app to send this to Chicken Bookie.", mailto }, { status: 502 });
+      return NextResponse.json({ error: "Email is not fully wired up yet. Try again later." }, { status: 502 });
     }
 
     return NextResponse.json({ ok: true });
