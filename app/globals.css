@@ -443,6 +443,11 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   text-align: right;
 }
 .ledger-net.positive { color: #d9f0c2; }
+.ledger-net span {
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.78;
+}
 .result-entry {
   padding: 16px;
   border: 2px solid rgba(112, 255, 94, 0.86);

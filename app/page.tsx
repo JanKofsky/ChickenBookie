@@ -359,7 +359,7 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
       <div className="ledger-results">{rows.map((person) => {
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
-        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{netLabel} ({pctLabel})</b>;
+        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{netLabel} <span>({pctLabel})</span></b>;
       })}</div>
     </div>
   </div>;
