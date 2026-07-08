@@ -313,12 +313,22 @@ function Winners({ payload }: { payload: EventPayload }) {
   if (payload.bets.length < 2) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">Oh cluck, not enough bets yet. Add at least two tickets before the feed bucket math is worth settling.</p></section>;
   if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">The Coop Boss needs to enter every race winner before settlement is shown.</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
-  return <section className="panel"><h2>Winner's Circle</h2><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}>{payment.from} pays {payment.to} <strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><SettlementLedger people={payload.settlement.people} /></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><WinnerCallout payload={payload} /><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}>{payment.from} pays {payment.to} <strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><SettlementLedger people={payload.settlement.people} /></section>;
+}
+
+function WinnerCallout({ payload }: { payload: EventPayload }) {
+  const chickenNames = new Map(payload.chickens.map((chicken) => [chicken.id, chicken.name]));
+  return <div className="winner-callout"><span>official pecking order</span><div>{payload.races.map((race) => {
+    const places = payload.results[race.race] ?? [];
+    const winner = chickenNames.get(places[0]);
+    const extras = places.slice(1).map((id, idx) => `${idx + 2}. ${chickenNames.get(id) ?? "unknown bird"}`).join(" | ");
+    return <article key={race.race}><b>{race.name}</b><strong>{winner ?? "winner pending"}</strong>{extras && <small>{extras}</small>}</article>;
+  })}</div></div>;
 }
 
 function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }> }) {
   const rows = people.map((person) => ({ ...person, earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0 }))
-    .sort((a, b) => b.earningsPct - a.earningsPct || b.net - a.net || a.bettor.localeCompare(b.bettor));
+    .sort((a, b) => b.net - a.net || b.earningsPct - a.earningsPct || a.bettor.localeCompare(b.bettor));
   const rawMaxAxis = Math.max(1, ...rows.flatMap((person) => [Math.abs(person.net), person.staked]));
   const maxAxis = Math.ceil(rawMaxAxis / 25) * 25;
   const axisTicks = [-maxAxis, -maxAxis / 2, 0, maxAxis / 2, maxAxis];
@@ -332,21 +342,27 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
   };
   return <div className="ledger-graph">
     <div className="ledger-axis-head"><span /><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span /></div>
-    {rows.map((person) => {
-    const netWidth = Math.max(2, (Math.abs(person.net) / maxAxis) * 50);
-    const stakeWidth = Math.max(2, (person.staked / maxAxis) * 50);
-    const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
-    const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
-    return <div className="ledger-row" key={person.bettor}>
-      <div className="ledger-name"><strong>{person.bettor}</strong><b>Payout {money(person.payout)} ({pctLabel})</b></div>
-      <div className="ledger-axis" title={`${person.bettor}: bet ${money(person.staked)}, payout ${money(person.payout)}, net ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} bet ${money(person.staked)}, payout ${money(person.payout)}, netted ${netLabel}, earning ${pctLabel}`}>
-        <i className="zero-line" />
-        <i className="stake-layer" style={{ left: "50%", width: `${stakeWidth}%` }} />
-        <i className={person.net >= 0 ? "net-layer positive" : "net-layer"} style={person.net >= 0 ? { left: "50%", width: `${netWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - netWidth}%`, width: `${netWidth}%`, background: netColor(person.earningsPct) }} />
-      </div>
-      <div className={person.net >= 0 ? "ledger-net positive" : "ledger-net"}>{netLabel}</div>
-    </div>;
-  })}</div>;
+    <div className="ledger-plot">
+      <div className="ledger-labels">{rows.map((person) => <strong key={person.bettor}>{person.bettor}</strong>)}</div>
+      <div className="ledger-chart-area">
+        <i className="ledger-plot-zero" />
+        {rows.map((person) => {
+        const netWidth = Math.max(2, (Math.abs(person.net) / maxAxis) * 50);
+        const stakeWidth = Math.max(2, (person.staked / maxAxis) * 50);
+        const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
+        const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
+        return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: bet ${money(person.staked)}, payout ${money(person.payout)}, net ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} bet ${money(person.staked)}, payout ${money(person.payout)}, netted ${netLabel}, earning ${pctLabel}`}>
+          <i className="stake-layer" style={{ left: "50%", width: `${stakeWidth}%` }} />
+          <i className={person.net >= 0 ? "net-layer positive" : "net-layer"} style={person.net >= 0 ? { left: "50%", width: `${netWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - netWidth}%`, width: `${netWidth}%`, background: netColor(person.earningsPct) }} />
+        </div>;
+      })}</div>
+      <div className="ledger-results">{rows.map((person) => {
+        const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
+        const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
+        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{netLabel} ({pctLabel})</b>;
+      })}</div>
+    </div>
+  </div>;
 }
 
 function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {
