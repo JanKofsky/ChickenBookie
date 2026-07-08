@@ -10,15 +10,13 @@
   },
   "dependencies": {
     "@vercel/analytics": "latest",
-    "next": "latest",
-    "postgres": "latest",
-    "react": "latest",
-    "react-dom": "latest"
-  },
-  "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "next": "latest",
+    "postgres": "latest",
+    "react": "latest",
+    "react-dom": "latest",
     "typescript": "latest"
   }
 }
