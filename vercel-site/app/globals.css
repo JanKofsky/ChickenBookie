@@ -51,7 +51,7 @@ body::before {
 }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
-.shell { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 18px 0 34px; }
+.shell { width: min(1320px, calc(100% - 28px)); margin: 0 auto; padding: 18px 0 34px; }
 .topbar,
 .app-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: clamp(26px, 5vw, 56px); }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); font-family: var(--font-bubbly), Inter, system-ui, sans-serif; font-size: 1.34rem; font-weight: 400; text-decoration: none; }
@@ -140,7 +140,15 @@ h1 {
 .setup-panel { margin-top: clamp(84px, 12vw, 160px); }
 .panel h2, .panel h3 { font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-weight: 700; }
 .lede { max-width: 720px; margin: 22px 0 0; color: var(--muted); font-size: clamp(1.03rem, 1.8vw, 1.24rem); line-height: 1.5; font-weight: 650; }
-.scoreboard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-self: end; }
+.scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  width: clamp(300px, 28vw, 386px);
+  max-width: 100%;
+  justify-self: end;
+  align-self: end;
+}
 .scoreboard div, .panel, .race-card, .bird, .ticket, .ticket-row, .payment {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -160,14 +168,11 @@ h1 {
     0 16px 34px rgba(0, 0, 0, 0.28);
 }
 .scoreboard div.scoreboard-highlight {
-  border-color: rgba(217, 240, 194, 0.48);
-  background:
-    radial-gradient(circle at 12% 10%, rgba(143, 184, 116, 0.22), transparent 36%),
-    radial-gradient(circle at 92% 20%, rgba(240, 217, 121, 0.12), transparent 34%),
-    rgba(7, 11, 8, 0.76);
+  border: 2px dashed rgba(217, 240, 194, 0.72);
+  background: rgba(7, 11, 8, 0.12);
   box-shadow:
-    inset 0 0 24px rgba(143, 184, 116, 0.12),
-    0 16px 34px rgba(0, 0, 0, 0.30);
+    inset 0 0 18px rgba(143, 184, 116, 0.06),
+    0 12px 28px rgba(0, 0, 0, 0.18);
 }
 .scoreboard div.scoreboard-highlight span { color: #d9f0c2; }
 .scoreboard div.scoreboard-highlight strong { font-size: clamp(1.14rem, 2vw, 1.42rem); }
@@ -484,7 +489,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .hero-logo { width: clamp(104px, 28vw, 150px); }
   .hero-subtitle { margin-top: 12px; }
   .hero-grid, .split, .grid-form, .bet-form, .pick-grid, .admin-unlock { grid-template-columns: 1fr; }
-  .scoreboard { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .scoreboard { width: 100%; justify-self: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .chicken-buttons, .flock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-card,
   .chicken-admin-card { grid-template-columns: 1fr; }
