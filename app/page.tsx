@@ -18,14 +18,27 @@ const simpleBetTypes: BetType[] = ["race_winner", "any_win", "any_order_three", 
 const fullOrderBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const raceBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta"];
 const showMerchTab = false;
-const TIME_ZONES = [
+const FALLBACK_TIME_ZONES = [
   { value: "America/New_York", label: "Eastern time" },
   { value: "America/Chicago", label: "Central time" },
   { value: "America/Denver", label: "Mountain time" },
   { value: "America/Los_Angeles", label: "Pacific time" },
-  { value: "America/Anchorage", label: "Alaska time" },
-  { value: "Pacific/Honolulu", label: "Hawaii time" }
+  { value: "Europe/London", label: "Europe/London" },
+  { value: "Europe/Paris", label: "Europe/Paris" },
+  { value: "Europe/Berlin", label: "Europe/Berlin" },
+  { value: "Europe/Madrid", label: "Europe/Madrid" },
+  { value: "Europe/Rome", label: "Europe/Rome" },
+  { value: "Asia/Dubai", label: "Asia/Dubai" },
+  { value: "Asia/Kolkata", label: "Asia/Kolkata" },
+  { value: "Asia/Tokyo", label: "Asia/Tokyo" },
+  { value: "Asia/Shanghai", label: "Asia/Shanghai" },
+  { value: "Australia/Sydney", label: "Australia/Sydney" },
+  { value: "Pacific/Auckland", label: "Pacific/Auckland" }
 ];
+const supportedTimeZones = (Intl as unknown as { supportedValuesOf?: (key: "timeZone") => string[] }).supportedValuesOf;
+const TIME_ZONES = typeof supportedTimeZones === "function"
+  ? supportedTimeZones("timeZone").map((zone) => ({ value: zone, label: zone.replaceAll("_", " ") }))
+  : FALLBACK_TIME_ZONES;
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
 const dateTimeInputValue = (value: string, timeZone = "America/New_York") => {
   const date = new Date(value);
