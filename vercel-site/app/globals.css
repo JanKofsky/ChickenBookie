@@ -144,7 +144,8 @@ h1 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  width: clamp(240px, 22vw, 320px);
+  width: fit-content;
+  min-width: 210px;
   max-width: 100%;
   justify-self: end;
   align-self: end;
