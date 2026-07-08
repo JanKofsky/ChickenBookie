@@ -178,9 +178,9 @@ export default function Home() {
           </div>
           {payload && (
             <div className="scoreboard">
-              <Stat label="Cluck bucket" value={money(totalPool)} />
+              <Stat label="Event code" value={payload.event.code} highlight />
               <Stat label="Bets" value={String(payload.bets.length)} />
-              <Stat label="Event code" value={payload.event.code} />
+              <Stat label="Cluck bucket" value={money(totalPool)} />
             </div>
           )}
         </section>
@@ -215,8 +215,8 @@ export default function Home() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return <div><span>{label}</span><strong>{value}</strong></div>;
+function Stat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  return <div className={highlight ? "scoreboard-highlight" : undefined}><span>{label}</span><strong>{value}</strong></div>;
 }
 
 function Countdown({ parts, closeAt }: { parts: ReturnType<typeof countdownParts>; closeAt: string }) {
@@ -306,7 +306,7 @@ function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[
     return { chicken, tickets: matching.length, cluckBucks: matching.reduce((sum, bet) => sum + Number(bet.stake), 0) };
   }).sort((a, b) => b.tickets - a.tickets || b.cluckBucks - a.cluckBucks || a.chicken.slot - b.chicken.slot);
   const maxTickets = Math.max(1, ...stats.map((stat) => stat.tickets));
-  return <div className="chicken-stats"><div><span>live flock board</span></div>{stats.map((stat) => <div className="stat-bar" key={stat.chicken.id}><span>{stat.chicken.name}</span><div><i style={{ width: `${Math.max(8, (stat.tickets / maxTickets) * 100)}%` }} /></div><b>{stat.tickets} ticket{stat.tickets === 1 ? "" : "s"} | {money(stat.cluckBucks)}</b></div>)}</div>;
+  return <div className="chicken-stats"><div><span>live flock board</span></div>{stats.map((stat) => <div className="stat-bar" key={stat.chicken.id}><span>{stat.chicken.name}</span><div><i style={{ width: stat.tickets === 0 ? "0%" : `${Math.max(8, (stat.tickets / maxTickets) * 100)}%` }} /></div><b>{stat.tickets} ticket{stat.tickets === 1 ? "" : "s"} | {money(stat.cluckBucks)}</b></div>)}</div>;
 }
 
 function Winners({ payload }: { payload: EventPayload }) {

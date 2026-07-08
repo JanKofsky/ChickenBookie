@@ -140,7 +140,7 @@ h1 {
 .setup-panel { margin-top: clamp(84px, 12vw, 160px); }
 .panel h2, .panel h3 { font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-weight: 700; }
 .lede { max-width: 720px; margin: 22px 0 0; color: var(--muted); font-size: clamp(1.03rem, 1.8vw, 1.24rem); line-height: 1.5; font-weight: 650; }
-.scoreboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-self: end; }
+.scoreboard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-self: end; }
 .scoreboard div, .panel, .race-card, .bird, .ticket, .ticket-row, .payment {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -159,6 +159,18 @@ h1 {
     inset 0 0 18px rgba(209, 163, 90, 0.08),
     0 16px 34px rgba(0, 0, 0, 0.28);
 }
+.scoreboard div.scoreboard-highlight {
+  border-color: rgba(217, 240, 194, 0.48);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(143, 184, 116, 0.22), transparent 36%),
+    radial-gradient(circle at 92% 20%, rgba(240, 217, 121, 0.12), transparent 34%),
+    rgba(7, 11, 8, 0.76);
+  box-shadow:
+    inset 0 0 24px rgba(143, 184, 116, 0.12),
+    0 16px 34px rgba(0, 0, 0, 0.30);
+}
+.scoreboard div.scoreboard-highlight span { color: #d9f0c2; }
+.scoreboard div.scoreboard-highlight strong { font-size: clamp(1.14rem, 2vw, 1.42rem); }
 .scoreboard span, .bird span, .race-card span, .ticket span { display: block; color: var(--title-accent); font-size: 0.77rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .scoreboard strong { display: block; margin-top: 4px; font-size: clamp(0.98rem, 1.5vw, 1.12rem); line-height: 1.12; overflow-wrap: anywhere; }
 .notice { margin: 18px 0; border-left: 5px solid var(--mustard); border-radius: 8px; background: var(--panel-strong); padding: 12px 14px; color: var(--muted); font-weight: 800; }
