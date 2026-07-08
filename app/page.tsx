@@ -218,7 +218,7 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage("Bet added."); }
   }
-  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><ChickenStatsPanel bets={payload.bets} chickens={payload.chickens} /><form className="bet-form" onSubmit={submit}>
+  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><form className="bet-form" onSubmit={submit}>
     <label>Gambler name<input value={bettor} onChange={(event) => setBettor(event.target.value)} /></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
@@ -251,9 +251,9 @@ function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[
   const stats = chickens.map((chicken) => {
     const matching = bets.filter((bet) => pickedChickenIds(bet).includes(chicken.id));
     return { chicken, tickets: matching.length, cluckBucks: matching.reduce((sum, bet) => sum + Number(bet.stake), 0) };
-  }).sort((a, b) => b.tickets - a.tickets || b.cluckBucks - a.cluckBucks || a.chicken.slot - b.chicken.slot).slice(0, 3);
+  }).sort((a, b) => b.tickets - a.tickets || b.cluckBucks - a.cluckBucks || a.chicken.slot - b.chicken.slot);
   const maxTickets = Math.max(1, ...stats.map((stat) => stat.tickets));
-  return <div className="chicken-stats"><div><span>live flock board</span><strong>top chickens by tickets</strong></div>{stats.map((stat, idx) => <div className="stat-bar" key={stat.chicken.id}><span>#{idx + 1} {stat.chicken.name}</span><div><i style={{ width: `${Math.max(8, (stat.tickets / maxTickets) * 100)}%` }} /></div><b>{stat.tickets} ticket{stat.tickets === 1 ? "" : "s"} | {money(stat.cluckBucks)}</b></div>)}</div>;
+  return <div className="chicken-stats"><div><span>live flock board</span></div>{stats.map((stat) => <div className="stat-bar" key={stat.chicken.id}><span>{stat.chicken.name}</span><div><i style={{ width: `${Math.max(8, (stat.tickets / maxTickets) * 100)}%` }} /></div><b>{stat.tickets} ticket{stat.tickets === 1 ? "" : "s"} | {money(stat.cluckBucks)}</b></div>)}</div>;
 }
 
 function Winners({ payload }: { payload: EventPayload }) {
@@ -293,9 +293,31 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   }
   async function saveConfig(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    const response = await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt, officialRule, resultMode, chickens, races }) });
-    const data = await response.json();
-    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save event settings.")); else { setPayload(data); setMessage("Event settings saved."); }
+    setMessage("Squishing chicken photos...");
+    let compactChickens = chickens;
+    try {
+      compactChickens = await Promise.all(chickens.map(async (chicken) => {
+        if (!chicken.photoUrl?.startsWith("data:image/") || chicken.photoUrl.length < 180_000) return chicken;
+        return { ...chicken, photoUrl: await compressImageSource(chicken.photoUrl) };
+      }));
+    } catch {
+      setMessage("Could not resize one chicken photo. Remove that photo or upload a different image.");
+      return;
+    }
+    setChickens(compactChickens);
+    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt, officialRule, resultMode, chickens: compactChickens, races });
+    if (body.length > 4_000_000) {
+      setMessage("Chicken photos are still too large to save together. Remove one photo or upload smaller images.");
+      return;
+    }
+    setMessage("Saving event setup...");
+    try {
+      const response = await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+      const data = await response.json().catch(() => ({ error: "Chicken photos are too large for this save. Try fewer or smaller photos." }));
+      if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save event settings.")); else { setPayload(data); setMessage("Event settings saved."); }
+    } catch {
+      setMessage("Could not save event settings. If you added several photos, try saving fewer photos at a time.");
+    }
   }
   async function uploadChickenPhoto(chickenId: number, file: File | null) {
     if (!file) return;
@@ -333,25 +355,33 @@ function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
 async function compressImage(file: File) {
   const imageUrl = URL.createObjectURL(file);
   try {
-    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Could not read chicken photo."));
-      img.src = imageUrl;
-    });
-    const maxSide = 1100;
-    const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    const height = Math.max(1, Math.round(image.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Could not resize chicken photo.");
-    context.drawImage(image, 0, 0, width, height);
-    return canvas.toDataURL("image/jpeg", 0.78);
+    return await compressImageSource(imageUrl);
   } finally {
     URL.revokeObjectURL(imageUrl);
   }
+}
+
+async function compressImageSource(source: string) {
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not read chicken photo."));
+    img.src = source;
+  });
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not resize chicken photo.");
+  for (const attempt of [{ maxSide: 520, quality: 0.68 }, { maxSide: 420, quality: 0.58 }, { maxSide: 320, quality: 0.52 }]) {
+    const scale = Math.min(1, attempt.maxSide / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    canvas.width = width;
+    canvas.height = height;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/jpeg", attempt.quality);
+    if (dataUrl.length < 180_000 || attempt.maxSide === 320) return dataUrl;
+  }
+  throw new Error("Could not resize chicken photo.");
 }
 
