@@ -432,8 +432,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   opacity: 0.88;
   z-index: 3;
 }
-.net-layer { height: 14px; z-index: 2; }
-.net-layer.positive { box-shadow: 0 0 10px rgba(217, 240, 194, 0.10); }
+.return-layer { height: 14px; z-index: 2; }
+.return-layer.positive { box-shadow: 0 0 10px rgba(217, 240, 194, 0.10); }
 .ledger-net { color: #ffd0c8; font-weight: 950; text-align: right; }
 .ledger-net.positive { color: #d9f0c2; }
 .result-entry {
