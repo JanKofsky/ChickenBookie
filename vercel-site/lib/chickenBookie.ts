@@ -8,6 +8,7 @@ export type EventRecord = {
   name: string;
   adminCode?: string;
   bettingCloseAt: string;
+  bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
 };
@@ -62,6 +63,7 @@ const DEFAULT_RACES: Race[] = [
   { race: 3, name: "Race 3 - The Coop Gauntlet", description: "The big finale, with the most distractions." }
 ];
 const DEFAULT_CLOSE = "2026-07-18T17:30:00-04:00";
+const DEFAULT_TIMEZONE = "America/New_York";
 
 export function normalizeCode(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -103,11 +105,13 @@ export async function ensureSchema() {
       name TEXT NOT NULL,
       admin_code TEXT NOT NULL,
       betting_close_at TEXT NOT NULL,
+      betting_timezone TEXT NOT NULL DEFAULT 'America/New_York',
       official_rule TEXT NOT NULL,
       result_mode TEXT NOT NULL DEFAULT 'winner',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS result_mode TEXT NOT NULL DEFAULT 'winner'`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS betting_timezone TEXT NOT NULL DEFAULT 'America/New_York'`;
   await sql`
     CREATE TABLE IF NOT EXISTS chickens (
       id SERIAL PRIMARY KEY,
@@ -173,8 +177,8 @@ async function ensureDefaultEvent() {
   const existing = await sql`SELECT id FROM events WHERE code = 'corn hub' LIMIT 1`;
   if (existing.rowCount) return;
   const event = await sql`
-    INSERT INTO events (code, name, admin_code, betting_close_at, official_rule, result_mode)
-    VALUES ('corn hub', 'The Great American Chicken Race', 'NekoFatty123!', ${DEFAULT_CLOSE}, 'first to the marshmallow wins', 'winner')
+    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode)
+    VALUES ('corn hub', 'The Great American Chicken Race', 'NekoFatty123!', ${DEFAULT_CLOSE}, ${DEFAULT_TIMEZONE}, 'first to the marshmallow wins', 'winner')
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (let i = 0; i < DEFAULT_CHICKENS.length; i += 1) {
@@ -208,6 +212,7 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     code: rawEvent.code,
     name: rawEvent.name,
     bettingCloseAt: rawEvent.betting_close_at,
+    bettingTimezone: String(rawEvent.betting_timezone ?? DEFAULT_TIMEZONE),
     officialRule: rawEvent.official_rule,
     resultMode: rawEvent.result_mode === "full_order" ? "full_order" : "winner"
   };
@@ -236,9 +241,10 @@ export async function createEvent(input: { code: string; name: string; adminCode
   const sourceRaces = copied?.races ?? DEFAULT_RACES;
   const close = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const resultMode = copied?.event.resultMode ?? (input.resultMode === "full_order" ? "full_order" : "winner");
+  const bettingTimezone = copied?.event.bettingTimezone ?? DEFAULT_TIMEZONE;
   const event = await sql`
-    INSERT INTO events (code, name, admin_code, betting_close_at, official_rule, result_mode)
-    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${copied?.event.officialRule ?? "first beak across the line wins"}, ${resultMode})
+    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode)
+    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? "first beak across the line wins"}, ${resultMode})
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (const chicken of sourceChickens) await sql`INSERT INTO chickens (event_id, slot, name, photo_url, bio) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl}, ${chicken.bio ?? ""})`;
@@ -305,6 +311,7 @@ export async function updateEventConfig(input: {
   adminCode: string;
   name: string;
   bettingCloseAt: string;
+  bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
   chickens: Array<{ id: number; name: string; photoUrl?: string | null; bio?: string }>;
@@ -315,6 +322,7 @@ export async function updateEventConfig(input: {
   if (!input.name.trim()) throw new Error("Event name is required.");
   if (!input.officialRule.trim()) throw new Error("Race rules are required.");
   const resultMode = input.resultMode === "full_order" ? "full_order" : "winner";
+  const bettingTimezone = input.bettingTimezone.trim() || DEFAULT_TIMEZONE;
   if (!input.bettingCloseAt.trim() || Number.isNaN(Date.parse(input.bettingCloseAt))) throw new Error("Bets open until needs a real date and time.");
   if (!input.chickens.length || input.chickens.some((chicken) => !chicken.name.trim())) throw new Error("Every chicken needs a name.");
   if (!input.races.length || input.races.some((race) => !race.name.trim() || !race.description.trim())) throw new Error("Every race needs a name and details.");
@@ -323,6 +331,7 @@ export async function updateEventConfig(input: {
     UPDATE events
     SET name = ${input.name.trim()},
         betting_close_at = ${input.bettingCloseAt.trim()},
+        betting_timezone = ${bettingTimezone},
         official_rule = ${input.officialRule.trim()},
         result_mode = ${resultMode}
     WHERE id = ${input.eventId}`;

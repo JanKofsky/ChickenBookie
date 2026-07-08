@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest) {
       adminCode: String(body.adminCode ?? ""),
       name: String(body.name ?? ""),
       bettingCloseAt: String(body.bettingCloseAt ?? ""),
+      bettingTimezone: String(body.bettingTimezone ?? ""),
       officialRule: String(body.officialRule ?? ""),
       resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
       chickens: Array.isArray(body.chickens) ? body.chickens : [],
