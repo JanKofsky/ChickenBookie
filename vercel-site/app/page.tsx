@@ -352,7 +352,7 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
         return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}, payout ${money(person.payout)}, P/L ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}, payout ${money(person.payout)}, profit loss ${netLabel}, earning ${pctLabel}`}>
-          <i className="stake-layer" style={{ left: `${50 - stakeWidth}%`, width: `${stakeWidth}%` }} />
+          <i className="stake-layer" style={{ left: "50%", width: `${stakeWidth}%` }} />
           <i className={person.net >= 0 ? "profit-loss-layer positive" : "profit-loss-layer"} style={person.net >= 0 ? { left: "50%", width: `${profitLossWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - profitLossWidth}%`, width: `${profitLossWidth}%`, background: netColor(person.earningsPct) }} />
         </div>;
       })}</div>

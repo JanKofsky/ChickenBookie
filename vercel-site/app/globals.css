@@ -434,7 +434,14 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 }
 .profit-loss-layer { height: 14px; z-index: 2; }
 .profit-loss-layer.positive { box-shadow: 0 0 10px rgba(217, 240, 194, 0.10); }
-.ledger-net { color: #ffd0c8; font-size: 0.86rem; font-weight: 750; text-align: right; }
+.ledger-net {
+  color: #ffd0c8;
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: right;
+}
 .ledger-net.positive { color: #d9f0c2; }
 .result-entry {
   padding: 16px;
