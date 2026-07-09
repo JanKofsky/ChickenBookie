@@ -254,7 +254,8 @@ export async function createEvent(input: { code: string; name: string; adminCode
 
 export async function addBet(input: { eventId: number; bettor: string; betType: BetType; stake: number; race?: number | null; picks: number[] }) {
   await ensureSchema();
-  if (!input.bettor.trim()) throw new Error("Gambler name is required.");
+  const bettorName = input.bettor.trim().replace(/\s+/g, " ");
+  if (!bettorName) throw new Error("Gambler name is required.");
   if (input.stake <= 0) throw new Error("Stake must be more than zero.");
   const event = await sql`SELECT betting_close_at FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
@@ -265,8 +266,8 @@ export async function addBet(input: { eventId: number; bettor: string; betType: 
   const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
   const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
   const bettor = await sql`
-    INSERT INTO bettors (event_id, name) VALUES (${input.eventId}, ${input.bettor.trim()})
-    ON CONFLICT (event_id, lower(name)) DO UPDATE SET name = EXCLUDED.name
+    INSERT INTO bettors (event_id, name) VALUES (${input.eventId}, ${bettorName})
+    ON CONFLICT (event_id, lower(name)) DO UPDATE SET name = bettors.name
     RETURNING id`;
   const picks = input.picks.map(Number).filter(Boolean);
   if (!picks.length) throw new Error("Pick at least one chicken.");
