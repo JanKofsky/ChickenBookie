@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { saveResults } from "../../../lib/chickenBookie";
+import { clearResults, saveResults } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not save winners.") }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const payload = await clearResults({
+      eventId: Number(body.eventId),
+      adminCode: String(body.adminCode ?? "")
+    });
+    return NextResponse.json(payload);
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not clear winners.") }, { status: 400 });
   }
 }
 

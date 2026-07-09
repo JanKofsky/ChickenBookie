@@ -260,6 +260,8 @@ export async function addBet(input: { eventId: number; bettor: string; betType: 
   const event = await sql`SELECT betting_close_at FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
   if (Date.now() > Date.parse(event.rows[0].betting_close_at)) throw new Error("Betting is closed.");
+  const existingResults = await sql`SELECT 1 FROM results WHERE event_id = ${input.eventId} LIMIT 1`;
+  if (existingResults.rowCount) throw new Error("Results are already official. Betting is closed.");
   const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
   const raceNumbers = new Set(races.rows.map((row) => Number(row.race)));
   if (input.race != null && !raceNumbers.has(Number(input.race))) throw new Error("Pick a real race for this event.");
@@ -307,6 +309,14 @@ export async function saveResults(input: { eventId: number; adminCode: string; r
         ON CONFLICT (event_id, race, place) DO UPDATE SET chicken_id = EXCLUDED.chicken_id, updated_at = NOW()`;
     }
   }
+  return getEventPayload(input.eventId);
+}
+
+export async function clearResults(input: { eventId: number; adminCode: string }) {
+  await ensureSchema();
+  await assertAdmin(input.eventId, input.adminCode);
+  await sql`DELETE FROM result_places WHERE event_id = ${input.eventId}`;
+  await sql`DELETE FROM results WHERE event_id = ${input.eventId}`;
   return getEventPayload(input.eventId);
 }
 
