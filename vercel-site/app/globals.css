@@ -198,6 +198,7 @@ h1 {
 .contact-form { display: grid; gap: 14px; margin: 20px 0; }
 .hidden-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
+.field-note { color: rgba(217, 240, 194, 0.78); font-size: 0.78rem; font-weight: 700; line-height: 1.25; }
 .check-row { display: inline-flex; width: fit-content; grid-template-columns: none; align-items: center; gap: 8px; color: var(--muted); font-size: 0.92rem; }
 .check-row input { width: auto; min-height: auto; }
 .form-ok { color: #d9f0c2; font-weight: 850; }
