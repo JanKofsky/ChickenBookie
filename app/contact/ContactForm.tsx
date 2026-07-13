@@ -25,7 +25,7 @@ export default function ContactForm() {
       setName("");
       setEmail("");
       setMessage("");
-      setStatus("Message sent. The coop office got it.");
+      setStatus("Message sent. Henquarters got it.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not send message.");
     } finally {
