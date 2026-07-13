@@ -17,7 +17,8 @@ const BET_TYPES: Record<BetType, string> = {
 const simpleBetTypes: BetType[] = ["race_winner", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const fullOrderBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const raceBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta"];
-const showMerchTab = false;
+const MERCH_URL = "https://shop.chickenbookie.com";
+const showMerchTab = true;
 const FALLBACK_TIME_ZONES = [
   { value: "America/New_York", label: "Eastern time" },
   { value: "America/Chicago", label: "Central time" },
@@ -201,7 +202,7 @@ export default function Home() {
               ["boss", "Coop Boss"],
               ...(showMerchTab ? [["merch", "Merch"]] : [])
             ].map(([id, label]) => (
-              <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
+              <button key={id} className={tab === id ? "active" : ""} onClick={() => id === "merch" ? window.location.assign(MERCH_URL) : setTab(id)}>{label}</button>
             ))}
           </div>
           {tab === "bet" && <Betting payload={payload} setPayload={setPayload} />}
@@ -209,7 +210,7 @@ export default function Home() {
           {tab === "tickets" && <Tickets bets={payload.bets} chickens={payload.chickens} races={payload.races} />}
           {tab === "winners" && <Winners payload={payload} />}
           {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} />}
-          {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
+          {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Opening the Chicken Bookie shop...</p></section>}
         </>
       )}
       <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy &amp; Terms</a></footer>
