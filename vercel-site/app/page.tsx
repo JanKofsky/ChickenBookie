@@ -213,7 +213,7 @@ export default function Home() {
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Opening the Chicken Bookie shop...</p></section>}
         </>
       )}
-      <footer className="site-footer"><a href="/about">About</a><a href="/contact">Contact</a><a href="/privacy">Privacy &amp; Terms</a></footer>
+      <footer className="site-footer"><a href="/about">About</a><a href="/merch">Merch</a><a href="/contact">Contact</a><a href="/privacy">Privacy &amp; Terms</a></footer>
     </main>
   );
 }

@@ -7,6 +7,7 @@ export default function SiteHeader() {
       </a>
       <div className="nav-links" aria-label="Site pages">
         <a href="/about">About</a>
+        <a href="/merch">Merch</a>
         <a href="/contact">Contact</a>
         <a href="/privacy">Privacy &amp; Terms</a>
       </div>
