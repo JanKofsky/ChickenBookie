@@ -17,10 +17,7 @@ export default function ContactPage() {
         <p className="eyebrow">Contact</p>
         <h1>hit us up</h1>
         <p className="muted">
-          Questions, race-day issues, merch ideas, or chicken-related business can go here.
-        </p>
-        <p className="muted">
-          Got a good idea for Chicken Bookie? Send it along.
+          Questions, race-day issues, good ideas, or chicken-related business? Send it along.
         </p>
         <ContactForm />
         <Link className="text-link" href="/">Back to the coop</Link>

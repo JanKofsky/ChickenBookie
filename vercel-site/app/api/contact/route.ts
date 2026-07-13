@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const to = process.env.CONTACT_TO_EMAIL ?? "www.chickenbookie@gmail.com";
     const from = process.env.CONTACT_FROM_EMAIL ?? "Chicken Bookie <onboarding@resend.dev>";
     if (!apiKey) {
-      return NextResponse.json({ error: "Email is not fully wired up yet. Try again later." }, { status: 503 });
+      return NextResponse.json({ error: "Email is not configured: RESEND_API_KEY is missing." }, { status: 503 });
     }
 
     const response = await fetch("https://api.resend.com/emails", {
@@ -44,7 +44,14 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const detail = await response.text();
       console.error("Resend contact send failed", { status: response.status, detail });
-      return NextResponse.json({ error: "Email is not fully wired up yet. Try again later." }, { status: 502 });
+      let message = detail;
+      try {
+        const parsed = JSON.parse(detail);
+        message = parsed.message ?? detail;
+      } catch {
+        // keep raw detail
+      }
+      return NextResponse.json({ error: `Email send failed: ${message}` }, { status: 502 });
     }
 
     return NextResponse.json({ ok: true });
