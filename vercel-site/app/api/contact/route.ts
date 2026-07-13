@@ -6,6 +6,14 @@ function clean(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function contactError(status = 502) {
+  return NextResponse.json({ error: "Could not send message. Please try again later." }, { status });
+}
+
+function redactEmailAddresses(value: string) {
+  return value.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted email]");
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -19,11 +27,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name, email, and message are required." }, { status: 400 });
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    const to = process.env.CONTACT_TO_EMAIL ?? "www.chickenbookie@gmail.com";
+    const apiKey = clean(process.env.RESEND_API_KEY);
+    const to = clean(process.env.CONTACT_TO_EMAIL);
     const from = process.env.CONTACT_FROM_EMAIL ?? "Chicken Bookie <onboarding@resend.dev>";
-    if (!apiKey) {
-      return NextResponse.json({ error: "Email is not configured: RESEND_API_KEY is missing." }, { status: 503 });
+    if (!apiKey || !to) {
+      console.error("Contact email is not configured", {
+        hasApiKey: Boolean(apiKey),
+        hasRecipient: Boolean(to)
+      });
+      return contactError(503);
     }
 
     const response = await fetch("https://api.resend.com/emails", {
@@ -43,19 +55,15 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const detail = await response.text();
-      console.error("Resend contact send failed", { status: response.status, detail });
-      let message = detail;
-      try {
-        const parsed = JSON.parse(detail);
-        message = parsed.message ?? detail;
-      } catch {
-        // keep raw detail
-      }
-      return NextResponse.json({ error: `Email send failed: ${message}` }, { status: 502 });
+      console.error("Resend contact send failed", {
+        status: response.status,
+        detail: redactEmailAddresses(detail)
+      });
+      return contactError();
     }
 
     return NextResponse.json({ ok: true });
   } catch {
-    return NextResponse.json({ error: "Could not send message." }, { status: 500 });
+    return contactError(500);
   }
 }
