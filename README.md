@@ -76,7 +76,7 @@ Every square shows live public totals:
 - The number of tickets on that square.
 - The total Cluck Bucks on that square.
 
-The board is a heatmap. Empty squares are darkest; squares become progressively brighter green at one, two, three, and four-or-more tickets. Text, selection outlines, and labels ensure the state is not communicated by color alone.
+The board is a heatmap. Empty squares are darkest; squares become progressively brighter coral at one, two, three, and four-or-more tickets. Text, selection outlines, and labels ensure the state is not communicated by color alone. Green remains reserved for the official winning square and positive settlement states.
 
 Repeat tickets are allowed. Multiple people may choose the same number, and one person may buy more than one ticket on the same number. Each submission creates one ticket at the event’s fixed price.
 

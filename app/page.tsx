@@ -324,7 +324,7 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
 }
 
 function DropNumberBoard({ payload }: { payload: EventPayload }) {
-  return <section className="panel"><h2>Live Betting Board</h2><p className="muted">Brighter green means more tickets have been placed on that number.</p><DropBoardInsights payload={payload} /><DropNumberGrid payload={payload} /></section>;
+  return <section className="panel"><h2>Live Betting Board</h2><p className="muted">Brighter coral means more tickets have been placed on that number.</p><DropBoardInsights payload={payload} /><DropNumberGrid payload={payload} /></section>;
 }
 
 function DropBoardInsights({ payload }: { payload: EventPayload }) {

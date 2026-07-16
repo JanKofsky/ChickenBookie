@@ -36,7 +36,7 @@ Chicken Drop is a separate event format rather than one more race wager. The hos
 
 Participants place the bet directly on the board. They click a numbered square, see a visible “your pick” state, and submit one fixed-price ticket. More than one person can choose the same square, and one person can hold multiple tickets on the same square.
 
-Every square shows its live ticket count and total Cluck Bucks. The board is also a heatmap: empty squares stay dark and increasingly popular numbers become brighter green. The **Live Betting Board** adds the assumed per-section chance and identifies the least-crowded numbers with the best projected total return for the next ticket, while warning that later bets and real chicken behavior can change those assumptions.
+Every square shows its live ticket count and total Cluck Bucks. The board is also a heatmap: empty squares stay dark and increasingly popular numbers become brighter coral. The **Live Betting Board** adds the assumed per-section chance and identifies the least-crowded numbers with the best projected total return for the next ticket, while warning that later bets and real chicken behavior can change those assumptions.
 
 The default rules cover a few physical-game details that otherwise become arguments later:
 
@@ -101,7 +101,7 @@ Try the fictional demos:
 3. `03-contenders-and-races.png` — The 15 fictional contenders, properly framed artwork, highlighted race rules, and four-race card.
 4. `04-race-ticket-board.png` — Live fictional flock totals and race ticket details.
 5. `05-race-winners.png` — Completed race results, ledger, payment plan, and copyable payee Venmo handles.
-6. `06-drop-betting-grid.png` — Open `test-drop` board showing 30 sections, fixed `$5` cost, varied ticket counts, dollar totals, green heat levels, and click-to-pick controls.
+6. `06-drop-betting-grid.png` — Open `test-drop` board showing 30 sections, fixed `$5` cost, varied ticket counts, dollar totals, coral heat levels, and click-to-pick controls.
 7. `07-drop-live-betting-board.png` — Live heatmap plus assumed per-section chance and best projected next-ticket returns.
 8. `08-drop-pending-result.png` — Winner’s Circle before the Coop Boss chooses the official square.
 9. `09-drop-admin.png` — Auto-unlocked demo admin showing the Chicken Drop label, blank-code notice, locked board/price terms, official-number control, bettor handles, and ticket deletion controls.

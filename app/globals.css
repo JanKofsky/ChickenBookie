@@ -311,13 +311,13 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .drop-square.heat-0,
 .drop-heat-legend .heat-0 { background: rgba(12, 25, 18, 0.76); }
 .drop-square.heat-1,
-.drop-heat-legend .heat-1 { background: rgba(42, 82, 50, 0.72); }
+.drop-heat-legend .heat-1 { background: rgba(101, 55, 48, 0.68); }
 .drop-square.heat-2,
-.drop-heat-legend .heat-2 { background: rgba(51, 110, 60, 0.78); }
+.drop-heat-legend .heat-2 { background: rgba(143, 67, 57, 0.76); }
 .drop-square.heat-3,
-.drop-heat-legend .heat-3 { background: rgba(57, 137, 68, 0.84); }
+.drop-heat-legend .heat-3 { background: rgba(184, 82, 67, 0.86); }
 .drop-square.heat-4,
-.drop-heat-legend .heat-4 { background: rgba(65, 166, 78, 0.92); }
+.drop-heat-legend .heat-4 { background: rgba(214, 103, 82, 0.94); }
 .drop-square:not(:disabled):hover { border-color: rgba(240, 217, 121, 0.78); filter: brightness(1.12); }
 .drop-square.selected { z-index: 1; border: 3px solid var(--mustard-light); outline: 2px solid rgba(240, 217, 121, 0.32); outline-offset: 1px; box-shadow: 0 0 18px rgba(240, 217, 121, 0.20); }
 .drop-square.winning { border: 3px solid #70ff5e; box-shadow: inset 0 0 20px rgba(112, 255, 94, 0.18), 0 0 13px rgba(112, 255, 94, 0.18); }
