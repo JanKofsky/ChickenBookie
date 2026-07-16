@@ -337,7 +337,7 @@ function Winners({ payload }: { payload: EventPayload }) {
   if (payload.bets.length < 2) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">Oh cluck, not enough bets yet. Add at least two tickets before the feed bucket math is worth settling.</p></section>;
   if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">The Coop Boss needs to enter every race winner before settlement is shown.</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
-  return <section className="panel"><h2>Winner's Circle</h2><WinnerCallout payload={payload} /><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b>{payment.fromVenmo && <VenmoHandle handle={payment.fromVenmo} />} pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><SettlementLedger people={payload.settlement.people} /></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><WinnerCallout payload={payload} /><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><SettlementLedger people={payload.settlement.people} /></section>;
 }
 
 function VenmoHandle({ handle }: { handle: string }) {
