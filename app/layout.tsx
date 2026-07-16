@@ -15,11 +15,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.png", type: "image/png" },
-      { url: "/icon.png", type: "image/png" }
+      { url: "/search-icon-dark-green.png", type: "image/png" }
     ],
-    shortcut: ["/favicon.png"],
-    apple: [{ url: "/apple-icon.png", type: "image/png" }]
+    shortcut: ["/search-icon-dark-green.png"],
+    apple: [{ url: "/search-icon-dark-green.png", type: "image/png" }]
   },
   openGraph: {
     title: "Chicken Bookie",

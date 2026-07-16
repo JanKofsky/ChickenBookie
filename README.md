@@ -1,16 +1,191 @@
 # Chicken Bookie
 
-A private barnyard betting tool for chicken race forecasts, payout, and race-day settlement.
+Chicken Bookie is a private, event-code-based scorekeeping app for two gloriously unserious games:
 
-## Vercel env vars
+- Chicken Race pools, with single-race and multi-race wagers.
+- Chicken Drop, also known as Chicken Shit Bingo, with bets placed directly on a numbered board.
 
-The Next.js app stores event data in Supabase Postgres and sends contact form messages through Resend.
+The app records picks in Cluck Bucks, calculates a shared-pool settlement, and produces a simplified “who pays whom” plan. It does not create player accounts and does not collect, hold, process, or transfer money.
 
-Required for the database:
+## Current production architecture
+
+The active product is the Next.js App Router application deployed through Vercel. The older Streamlit/SQLite prototype remains in the repository only as legacy code and is not part of the production or preview deployment.
+
+The repository intentionally contains two synchronized copies of the Next.js app:
+
+- `app/`, `lib/`, and `public/` are the root application.
+- `vercel-site/app/`, `vercel-site/lib/`, and `vercel-site/public/` are the copy used by the Vercel project whose Root Directory is `vercel-site`.
+
+Any production feature must be mirrored in both trees. Event data lives in Supabase Postgres through the `postgres` package. The contact form sends through Resend.
+
+## Event access
+
+An administrator creates an event with:
+
+- An event name.
+- A shareable event code.
+- A game format.
+- An optional admin code.
+- Format-specific settings.
+
+Players open the event with its code. They do not need an account. A player enters a display name and may add a Venmo handle; Chicken Bookie automatically normalizes the handle to include one leading `@`.
+
+Using the same display name groups that person’s tickets in settlement. The Coop Boss can correct or add bettor Venmo handles later.
+
+## Game format 1: Chicken Race
+
+Race events contain a configurable flock, race card, event rules, betting close time, timezone, and result style.
+
+### Result styles
+
+- Winner only: the admin records the winner of each race.
+- Full order: the admin ranks the whole flock for every race, enabling place, show, exacta, and trifecta markets.
+
+### Supported race bets
+
+- Race winner: pick first place in one race.
+- Race place: pick a top-two finisher.
+- Race show: pick a top-three finisher.
+- Exacta: pick exact first and second place.
+- Trifecta: pick exact first, second, and third place.
+- Sweep: one chicken wins every race.
+- Exact ticket: pick the exact winner of every race.
+- Any win: one chicken wins at least one race.
+- Any-order group: the selected chickens win the races in any order.
+
+The participant flow is split into Betting Coop, Contenders & Races, Ticket Board, Winner’s Circle, and Coop Boss. The Ticket Board includes a live popularity summary for the flock and the submitted ticket list.
+
+## Game format 2: Chicken Drop (aka Chicken Shit Bingo)
+
+Chicken Drop is a first-class event format, not a special race bet. The admin chooses:
+
+- The highest board number, producing a board from `1` through that number.
+- One fixed cost for every ticket.
+- The event close time and timezone.
+- The written rules used to identify the official square.
+
+The default rules say that the first confirmed chicken dropping decides the winning square. If a dropping touches a line, the square containing most of it wins; if that cannot be determined, the drop is reset. An admin can rewrite those rules for the physical board being used.
+
+### Player flow
+
+Players place a ticket by entering their name, optionally entering a Venmo handle, and clicking a numbered square on the grid. The selected square receives a visible gold outline and a “your pick” label before submission.
+
+Every square shows live public totals:
+
+- The square number.
+- The number of tickets on that square.
+- The total Cluck Bucks on that square.
+
+The board is a heatmap. Empty squares are darkest; squares become progressively brighter green at one, two, three, and four-or-more tickets. Text, selection outlines, and labels ensure the state is not communicated by color alone.
+
+Repeat tickets are allowed. Multiple people may choose the same number, and one person may buy more than one ticket on the same number. Each submission creates one ticket at the event’s fixed price.
+
+Chicken Drop events use Betting Coop, Number Board, Winner’s Circle, and Coop Boss. They do not show the race-only Contenders & Races or Ticket Board tabs.
+
+### Official result
+
+The Coop Boss records one winning number. Saving it immediately closes betting and highlights that square as the official drop. Clearing the result reopens betting only if the configured close time is still in the future.
+
+If several tickets picked the winning square, each winning ticket receives one equal share. A person holding two winning tickets receives two shares. If nobody picked the official square, every ticket is refunded.
+
+The board size and ticket price are locked in the UI after the first ticket so all bettors keep the same terms. The server also rejects ticket-price changes after betting begins and prevents a board from being reduced below an existing pick or official result.
+
+## Shared-pool settlement
+
+All event tickets feed one shared pool with no house takeout.
+
+For a winning ticket:
+
+1. Its original stake is returned.
+2. The money staked on losing tickets becomes the bonus pool.
+3. The bonus pool is divided among winning tickets.
+
+Chicken Drop tickets all have weight `1`, so shares are equal per winning ticket.
+
+Race tickets use probability-derived difficulty weights. A single-race winner is the baseline. Harder correct predictions receive more payout weight than easier predictions. The calculation adapts to the event’s actual chicken and race counts rather than assuming one fixed flock size.
+
+If an official result produces no winning ticket, the settlement marks every ticket as refunded. Settlement waits until at least two tickets exist.
+
+### Payment plan and Venmo handles
+
+Ticket payouts are aggregated by normalized bettor name. Chicken Bookie calculates each person’s total stake, payout, and net result, then reduces the ledger to a short set of payments from net losers to net winners.
+
+In each “X pays Y” row, only the payee’s Venmo handle is shown. The handle appears as small, muted, copyable text with an explicit Copy control. The payer’s handle is intentionally omitted because the person viewing the row only needs the destination handle.
+
+## Coop Boss controls
+
+The administrator can:
+
+- Unlock an event with its admin code.
+- Edit the event name, close time, timezone, and rules.
+- Edit race metadata, chicken names, chicken bios, and chicken photos for race events.
+- Set the numbered board and fixed ticket cost before Chicken Drop betting begins.
+- Record, replace, or clear official results.
+- Add or correct bettor Venmo handles.
+- Delete accidental tickets.
+
+Admin codes are not displayed after creation and there is no recovery flow. Blank admin codes are supported for intentionally open demos.
+
+## Database model
+
+`lib/chickenBookie.ts` owns schema creation, compatibility migrations, fixtures, validation, and settlement.
+
+Core tables:
+
+- `events`: shared event settings plus `game_type`, `drop_max_number`, `drop_ticket_price`, and `drop_winning_number`.
+- `chickens`: race-event flock entries and image/bio metadata.
+- `races`: race-event race card entries.
+- `bettors`: event-scoped display names and normalized Venmo handles.
+- `bets`: common stake/type fields, race picks, and optional `drop_number`.
+- `results`: first-place race results.
+- `result_places`: full-order race results.
+- `app_migrations`: one-time fixture migration markers.
+
+`ensureSchema()` uses `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` so an existing production database can adopt new fields without resetting event data.
+
+## API surface
+
+- `GET /api/event?code=...`: loads one complete event payload.
+- `POST /api/events`: creates a Race or Chicken Drop event.
+- `POST /api/bets`: validates and records one race or drop ticket.
+- `POST /api/results`: records race results or one Chicken Drop winning number.
+- `DELETE /api/results`: clears official results.
+- `POST /api/admin`: verifies an admin code.
+- `PATCH /api/admin`: updates event configuration.
+- `PUT /api/admin`: updates bettor Venmo handles.
+- `DELETE /api/admin`: deletes one accidental ticket.
+- `POST /api/contact`: sends the public contact form without exposing private provider details to the browser.
+
+The API is the authority for close times, result locks, valid event picks, Chicken Drop ranges, and fixed drop pricing. The client cannot change the price of a Chicken Drop ticket by modifying the request.
+
+## Demo events and data isolation
+
+Three event codes have distinct purposes:
+
+- `corn hub` is the real event. The default-event helper creates it only if it does not exist; feature migrations do not reset or reseed it.
+- `test` is the fictional race demo. It contains 15 made-up contenders, four races, fake bettors, fake Venmo handles, fake tickets, and completed results. Its admin area is intentionally unlocked.
+- `test-drop` is the Chicken Drop demo. It uses numbers `1-30`, a fixed `$5` ticket, fake bettors and Venmo handles, deliberately uneven ticket counts for the heatmap, and official square `#17` so the split payout and payment plan are visible immediately. Its admin area is intentionally unlocked; clear the result there to try placing a new grid ticket.
+
+The two test events contain no real flock names or contact information.
+
+## Visual assets and metadata
+
+- `public/assets/chicken_bookie_logo.png`: transparent in-page logo.
+- `public/assets/barn_panel_background.jpg`: main site background.
+- `public/assets/test-flock-contenders.png`: fictional test-event chicken artwork.
+- `public/search-icon-dark-green.png`: search/favicon version of the cream chicken on a dark green square, used so the logo does not disappear on a white search-results background.
+
+The corresponding assets are mirrored under `vercel-site/public/`.
+
+## Environment variables
+
+Required for Postgres:
 
 ```text
 POSTGRES_URL
 ```
+
+The database helper also recognizes `DATABASE_URL`, `POSTGRES_PRISMA_URL`, and `SUPABASE_DB_URL` as fallbacks.
 
 Required for the contact form:
 
@@ -20,58 +195,49 @@ CONTACT_TO_EMAIL
 CONTACT_FROM_EMAIL
 ```
 
-`CONTACT_TO_EMAIL` is the private inbox that receives messages. `CONTACT_FROM_EMAIL` should be a sender address verified in Resend, usually something like `Chicken Bookie <hello@chickenbookie.com>`.
+`CONTACT_TO_EMAIL` is private server-side configuration. Browser-visible contact errors remain generic and do not expose the inbox or email provider response.
 
-## Run it
+## Local Next.js commands
+
+With Node.js installed:
 
 ```powershell
-pip install -r requirements.txt
-streamlit run app.py
+npm install
+npm run dev
+npm run build
 ```
 
-The app stores data in `chicken_race.db` next to `app.py`.
+The legacy Streamlit command is not part of the current Vercel workflow.
 
-Chicken placeholder pictures live in `assets/chickens`. Replace `chicken_01.png` through `chicken_12.png` with real photos when you have them.
+## Deployment
 
-Betting closes at `July 18, 2026, 5:30 PM Eastern`. The app shows a live countdown and disables new bets after that time.
+The Vercel project deploys the mirrored `vercel-site` app. Production is triggered by pushing `main`:
 
-## Betting markets
+```powershell
+git push origin main
+```
 
-- Race winner: pick the winner of race 1, 2, or 3.
-- Same chicken wins all 3: one chicken must sweep every race.
-- Exact winners for races 1-3: all three race winners must match exactly.
-- Chicken wins at least one race: one chicken must win any race.
-- Three picked chickens win the 3 races, any order: the set of winners must match the three selected chickens.
+Preview deployments are produced by the Vercel-connected preview branch/workflow. Root and `vercel-site` copies should be byte-for-byte synchronized before pushing.
 
-## Settlement
+## Validation checklist
 
-All bets go into one shared pot, with no house takeout. Winning tickets always get their stake back first. The remaining losing money is split by bet difficulty, so harder winning bets get more upside. A big pot does not guarantee a huge payout if a lot of that pot was also bet on winning tickets.
+Before deployment:
 
-Difficulty weights are based on exact odds, assuming 12 equally good chickens and 3 independent, equally difficult races:
+- Confirm `app/` and `vercel-site/app/` match.
+- Confirm `lib/` and `vercel-site/lib/` match.
+- Confirm shared public assets exist in both public directories.
+- Run `git diff --check`.
+- Run `npm run build` when Node.js is available.
+- Load `test` and verify the fictional 15-chicken, four-race fixture.
+- Load `test-drop` and verify all 30 squares, heat levels, fixed price, winning square, settlement, and copyable payee handles.
+- Confirm `corn hub` data was not changed by the feature diff.
 
-- Chicken wins at least one race: about `0.36x`
-- Race winner: `1x`
-- Three picked chickens win the 3 races, any order: `24x`
-- Exact winners for races 1-3: `144x`
-- Same chicken wins all 3: `144x`
+## Key source map
 
-Example: a winning `$10` race-winner ticket has `10` payout weight. A winning `$10` exact ticket has `1,440` payout weight. Both get their `$10` stake back first, then the losing-money bonus is split by those payout weights. If there are no winning tickets, everyone is refunded.
-
-The app nets everyone out before showing Venmo payments, so people do not pay for each individual bet. It shows a simplified "who pays who" plan from net losers to net winners.
-
-The default admin code is `NekoFatty123!`; change `ADMIN_CODE` in `app.py` if needed.
-
-## Chickens
-
-1. Tilly
-2. Pepperoni
-3. Peanut
-4. Joan Rivers
-5. Jetcar Junior
-6. Maple Creamie
-7. Squish
-8. Booger
-9. Dirty Boi
-10. Guppy Troupe
-11. Sheryl Crow
-12. Jiminy Giant
+- `app/page.tsx`: participant UI, admin UI, grids, tickets, results, settlement presentation, and Venmo copy controls.
+- `app/globals.css`: all shared styling, including Chicken Drop heat levels.
+- `app/api/`: event, bet, result, admin, and contact routes.
+- `lib/chickenBookie.ts`: schema, fixtures, validation, event operations, race settlement, drop settlement, and payment netting.
+- `lib/db.ts`: Postgres connection selection and query wrapper.
+- `app/layout.tsx`: metadata and search-facing icons.
+- `vercel-site/`: Vercel-root mirror of the deployed Next.js application.

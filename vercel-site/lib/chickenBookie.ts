@@ -11,6 +11,10 @@ export type EventRecord = {
   bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
+  gameType: GameType;
+  dropMaxNumber: number;
+  dropTicketPrice: number;
+  dropWinningNumber: number | null;
 };
 export type Bet = {
   id: number;
@@ -22,9 +26,11 @@ export type Bet = {
   chicken1: number | null;
   chicken2: number | null;
   chicken3: number | null;
+  dropNumber: number | null;
   picks: number[];
   createdAt: string;
 };
+export type GameType = "race" | "chicken_drop";
 export type ResultMode = "winner" | "full_order";
 export type Results = Record<number, number[]>;
 export type EventPayload = {
@@ -35,7 +41,7 @@ export type EventPayload = {
   results: Results;
   settlement: Settlement | null;
 };
-export type BetType = "race_winner" | "race_place" | "race_show" | "exacta" | "trifecta" | "sweep" | "exact_ticket" | "any_win" | "any_order_three";
+export type BetType = "race_winner" | "race_place" | "race_show" | "exacta" | "trifecta" | "sweep" | "exact_ticket" | "any_win" | "any_order_three" | "drop_number";
 export type Settlement = {
   tickets: Array<Bet & { won: boolean; weight: number; payoutWeight: number; payout: number; net: number; result: string; label: string }>;
   people: Array<{ bettor: string; venmo: string; staked: number; payout: number; net: number }>;
@@ -51,7 +57,8 @@ export const BET_TYPES: Record<BetType, string> = {
   sweep: "Same chicken wins every race",
   exact_ticket: "Exact winners for every race",
   any_win: "Chicken wins at least one race",
-  any_order_three: "Picked chickens win in any order"
+  any_order_three: "Picked chickens win in any order",
+  drop_number: "Chicken Drop number"
 };
 
 const DEFAULT_CHICKENS = [
@@ -85,7 +92,7 @@ export function probabilityContext(chickenCount: number, raceCount: number) {
   const show = Math.min(3, birds) / birds;
   const exacta = birds > 1 ? 1 / (birds * (birds - 1)) : 0;
   const trifecta = birds > 2 ? 1 / (birds * (birds - 1) * (birds - 2)) : 0;
-  return { race_winner: single, race_place: place, race_show: show, exacta, trifecta, any_win: anyWin, exact_ticket: exact, sweep: exact, any_order_three: anyOrder } as Record<BetType, number>;
+  return { race_winner: single, race_place: place, race_show: show, exacta, trifecta, any_win: anyWin, exact_ticket: exact, sweep: exact, any_order_three: anyOrder, drop_number: 1 } as Record<BetType, number>;
 }
 
 export function betWeights(chickenCount: number, raceCount: number) {
@@ -109,10 +116,18 @@ export async function ensureSchema() {
       betting_timezone TEXT NOT NULL DEFAULT 'America/New_York',
       official_rule TEXT NOT NULL,
       result_mode TEXT NOT NULL DEFAULT 'winner',
+      game_type TEXT NOT NULL DEFAULT 'race',
+      drop_max_number INTEGER NOT NULL DEFAULT 25,
+      drop_ticket_price NUMERIC(10, 2) NOT NULL DEFAULT 5,
+      drop_winning_number INTEGER,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS result_mode TEXT NOT NULL DEFAULT 'winner'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS betting_timezone TEXT NOT NULL DEFAULT 'America/New_York'`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS game_type TEXT NOT NULL DEFAULT 'race'`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_max_number INTEGER NOT NULL DEFAULT 25`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_ticket_price NUMERIC(10, 2) NOT NULL DEFAULT 5`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_winning_number INTEGER`;
   await sql`
     CREATE TABLE IF NOT EXISTS chickens (
       id SERIAL PRIMARY KEY,
@@ -153,9 +168,11 @@ export async function ensureSchema() {
       chicken_1 INTEGER,
       chicken_2 INTEGER,
       chicken_3 INTEGER,
+      drop_number INTEGER,
       picks JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
+  await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS drop_number INTEGER`;
   await sql`
     CREATE TABLE IF NOT EXISTS results (
       event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -175,6 +192,7 @@ export async function ensureSchema() {
     )`;
   await ensureDefaultEvent();
   await ensureTestEventFixture();
+  await ensureTestDropEventFixture();
 }
 
 async function ensureTestEventFixture() {
@@ -275,6 +293,79 @@ async function ensureTestEventFixture() {
   }
 }
 
+async function ensureTestDropEventFixture() {
+  const defaultDropRule = "The first confirmed chicken dropping decides the winning square. If it touches a line, use the square containing most of the dropping; if that is unclear, reset for another drop. If nobody picked the winning square, every ticket is refunded.";
+  const migration = await sql`
+    INSERT INTO app_migrations (key)
+    VALUES ('seed-test-drop-event-20260716-v1')
+    ON CONFLICT (key) DO NOTHING
+    RETURNING key`;
+  if (!migration.rowCount) return;
+
+  const existing = await sql`SELECT id FROM events WHERE code = 'test-drop' LIMIT 1`;
+  let eventId: number;
+  if (existing.rowCount) {
+    eventId = Number(existing.rows[0].id);
+    await sql`
+      UPDATE events
+      SET name = 'Chicken Drop Test Event',
+          admin_code = '',
+          betting_close_at = '2027-12-31T23:59:00-05:00',
+          betting_timezone = 'America/New_York',
+          official_rule = ${defaultDropRule},
+          result_mode = 'winner',
+          game_type = 'chicken_drop',
+          drop_max_number = 30,
+          drop_ticket_price = 5,
+          drop_winning_number = 17
+      WHERE id = ${eventId}`;
+    await sql`DELETE FROM result_places WHERE event_id = ${eventId}`;
+    await sql`DELETE FROM results WHERE event_id = ${eventId}`;
+    await sql`DELETE FROM bets WHERE event_id = ${eventId}`;
+    await sql`DELETE FROM bettors WHERE event_id = ${eventId}`;
+    await sql`DELETE FROM races WHERE event_id = ${eventId}`;
+    await sql`DELETE FROM chickens WHERE event_id = ${eventId}`;
+  } else {
+    const created = await sql`
+      INSERT INTO events (
+        code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode,
+        game_type, drop_max_number, drop_ticket_price, drop_winning_number
+      )
+      VALUES (
+        'test-drop', 'Chicken Drop Test Event', '', '2027-12-31T23:59:00-05:00',
+        'America/New_York', ${defaultDropRule}, 'winner', 'chicken_drop', 30, 5, 17
+      )
+      RETURNING id`;
+    eventId = Number(created.rows[0].id);
+  }
+  const testBettors = [
+    ['Avery', '@cb-drop-avery'],
+    ['Casey', '@cb-drop-casey'],
+    ['Jordan', '@cb-drop-jordan'],
+    ['Riley', '@cb-drop-riley'],
+    ['Morgan', '@cb-drop-morgan'],
+    ['Sam', '@cb-drop-sam'],
+    ['Taylor', '@cb-drop-taylor']
+  ] as const;
+  for (const [name, venmo] of testBettors) {
+    await sql`INSERT INTO bettors (event_id, name, venmo) VALUES (${eventId}, ${name}, ${venmo})`;
+  }
+
+  const bettorRows = await sql`SELECT id, name FROM bettors WHERE event_id = ${eventId}`;
+  const bettorId = (name: string) => Number(bettorRows.rows.find((row) => row.name === name)?.id);
+  const testTickets = [
+    ['Avery', 17], ['Avery', 17], ['Casey', 17],
+    ['Jordan', 4], ['Jordan', 4], ['Jordan', 4], ['Riley', 4],
+    ['Morgan', 8], ['Morgan', 8],
+    ['Sam', 23], ['Taylor', 29]
+  ] as const;
+  for (const [name, dropNumber] of testTickets) {
+    await sql`
+      INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, drop_number, picks)
+      VALUES (${eventId}, ${bettorId(name)}, 'drop_number', 5, null, null, null, null, ${dropNumber}, '[]'::jsonb)`;
+  }
+}
+
 async function ensureDefaultEvent() {
   const existing = await sql`SELECT id FROM events WHERE code = 'corn hub' LIMIT 1`;
   if (existing.rowCount) return;
@@ -316,7 +407,11 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     bettingCloseAt: rawEvent.betting_close_at,
     bettingTimezone: String(rawEvent.betting_timezone ?? DEFAULT_TIMEZONE),
     officialRule: rawEvent.official_rule,
-    resultMode: rawEvent.result_mode === "full_order" ? "full_order" : "winner"
+    resultMode: rawEvent.result_mode === "full_order" ? "full_order" : "winner",
+    gameType: rawEvent.game_type === "chicken_drop" ? "chicken_drop" : "race",
+    dropMaxNumber: Number(rawEvent.drop_max_number ?? 25),
+    dropTicketPrice: Number(rawEvent.drop_ticket_price ?? 5),
+    dropWinningNumber: rawEvent.drop_winning_number == null ? null : Number(rawEvent.drop_winning_number)
   };
   const chickens = chickensResult.rows.map((row) => ({ id: Number(row.id), slot: Number(row.slot), name: row.name, photoUrl: row.photo_url, bio: row.bio ?? "" })) as Chicken[];
   const races = racesResult.rows.map((row) => ({ race: Number(row.race), name: row.name, description: row.description })) as Race[];
@@ -329,24 +424,45 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     results[race] = results[race] ?? [];
     results[race][place - 1] = Number(row.chicken_id);
   }
-  return { event, chickens, races, bets, results, settlement: makeSettlement(bets, results, chickens, races) };
+  const settlement = event.gameType === "chicken_drop"
+    ? makeDropSettlement(bets, event.dropWinningNumber)
+    : makeSettlement(bets, results, chickens, races);
+  return { event, chickens, races, bets, results, settlement };
 }
 
-export async function createEvent(input: { code: string; name: string; adminCode: string; copyCode?: string; resultMode?: ResultMode }) {
+export async function createEvent(input: {
+  code: string;
+  name: string;
+  adminCode: string;
+  copyCode?: string;
+  resultMode?: ResultMode;
+  gameType?: GameType;
+  dropMaxNumber?: number;
+  dropTicketPrice?: number;
+}) {
   await ensureSchema();
   const code = normalizeCode(input.code);
   if (!code || !input.name.trim()) throw new Error("Event name and event code are required.");
   const existing = await sql`SELECT id FROM events WHERE code = ${code} LIMIT 1`;
   if (existing.rowCount) throw new Error("That event code is already taken. Try another one.");
+  const gameType: GameType = input.gameType === "chicken_drop" ? "chicken_drop" : "race";
   const copied = input.copyCode ? await getEventByCode(input.copyCode) : null;
-  const sourceChickens = copied?.chickens ?? DEFAULT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" }));
-  const sourceRaces = copied?.races ?? DEFAULT_RACES;
+  if (copied && copied.event.gameType !== gameType) throw new Error("Copy an event with the same game format.");
+  const sourceChickens = gameType === "race" ? copied?.chickens ?? DEFAULT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" })) : [];
+  const sourceRaces = gameType === "race" ? copied?.races ?? DEFAULT_RACES : [];
   const close = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  const resultMode = copied?.event.resultMode ?? (input.resultMode === "full_order" ? "full_order" : "winner");
+  const resultMode = gameType === "race" ? copied?.event.resultMode ?? (input.resultMode === "full_order" ? "full_order" : "winner") : "winner";
   const bettingTimezone = copied?.event.bettingTimezone ?? DEFAULT_TIMEZONE;
+  const dropMaxNumber = gameType === "chicken_drop" ? Number(copied?.event.dropMaxNumber ?? input.dropMaxNumber ?? 25) : 25;
+  const dropTicketPrice = gameType === "chicken_drop" ? Number(copied?.event.dropTicketPrice ?? input.dropTicketPrice ?? 5) : 5;
+  if (!Number.isInteger(dropMaxNumber) || dropMaxNumber < 2 || dropMaxNumber > 500) throw new Error("Chicken Drop boards need between 2 and 500 numbered squares.");
+  if (!Number.isFinite(dropTicketPrice) || dropTicketPrice < 0.01 || dropTicketPrice > 10_000) throw new Error("Chicken Drop ticket price must be between $0.01 and $10,000.");
+  const defaultRule = gameType === "chicken_drop"
+    ? "The first confirmed chicken dropping decides the winning square. If it touches a line, use the square containing most of the dropping; if that is unclear, reset for another drop. If nobody picked the winning square, every ticket is refunded."
+    : "first beak across the line wins";
   const event = await sql`
-    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode)
-    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? "first beak across the line wins"}, ${resultMode})
+    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode, game_type, drop_max_number, drop_ticket_price)
+    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? defaultRule}, ${resultMode}, ${gameType}, ${dropMaxNumber}, ${dropTicketPrice})
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (const chicken of sourceChickens) await sql`INSERT INTO chickens (event_id, slot, name, photo_url, bio) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl}, ${chicken.bio ?? ""})`;
@@ -354,42 +470,73 @@ export async function createEvent(input: { code: string; name: string; adminCode
   return getEventPayload(eventId);
 }
 
-export async function addBet(input: { eventId: number; bettor: string; venmo?: string; betType: BetType; stake: number; race?: number | null; picks: number[] }) {
+export async function addBet(input: { eventId: number; bettor: string; venmo?: string; betType: BetType; stake: number; race?: number | null; picks: number[]; dropNumber?: number | null }) {
   await ensureSchema();
   const bettorName = input.bettor.trim().replace(/\s+/g, " ");
   const venmo = normalizeVenmo(input.venmo ?? "");
   if (!bettorName) throw new Error("Gambler name is required.");
-  if (input.stake <= 0) throw new Error("Stake must be more than zero.");
-  const event = await sql`SELECT betting_close_at FROM events WHERE id = ${input.eventId}`;
+  const event = await sql`
+    SELECT betting_close_at, game_type, drop_max_number, drop_ticket_price, drop_winning_number
+    FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
   if (Date.now() > Date.parse(event.rows[0].betting_close_at)) throw new Error("Betting is closed.");
-  const existingResults = await sql`SELECT 1 FROM results WHERE event_id = ${input.eventId} LIMIT 1`;
-  if (existingResults.rowCount) throw new Error("Results are already official. Betting is closed.");
-  const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
-  const raceNumbers = new Set(races.rows.map((row) => Number(row.race)));
-  if (input.race != null && !raceNumbers.has(Number(input.race))) throw new Error("Pick a real race for this event.");
-  const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
-  const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
+
+  const isDrop = event.rows[0].game_type === "chicken_drop";
+  let betType: BetType;
+  let stake: number;
+  let race: number | null = null;
+  let picks: number[] = [];
+  let dropNumber: number | null = null;
+  if (isDrop) {
+    if (event.rows[0].drop_winning_number != null) throw new Error("The drop result is already official. Betting is closed.");
+    dropNumber = Number(input.dropNumber);
+    const maxNumber = Number(event.rows[0].drop_max_number);
+    if (!Number.isInteger(dropNumber) || dropNumber < 1 || dropNumber > maxNumber) throw new Error(`Pick a number from 1 to ${maxNumber}.`);
+    betType = "drop_number";
+    stake = Number(event.rows[0].drop_ticket_price);
+  } else {
+    stake = Number(input.stake);
+    if (!Number.isFinite(stake) || stake <= 0) throw new Error("Stake must be more than zero.");
+    if (!BET_TYPES[input.betType] || input.betType === "drop_number") throw new Error("Pick a real bet type for this race event.");
+    const existingResults = await sql`SELECT 1 FROM results WHERE event_id = ${input.eventId} LIMIT 1`;
+    if (existingResults.rowCount) throw new Error("Results are already official. Betting is closed.");
+    const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
+    const raceNumbers = new Set(races.rows.map((row) => Number(row.race)));
+    race = input.race == null ? null : Number(input.race);
+    if (race != null && !raceNumbers.has(race)) throw new Error("Pick a real race for this event.");
+    const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
+    const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
+    picks = input.picks.map(Number).filter(Boolean);
+    if (!picks.length) throw new Error("Pick at least one chicken.");
+    if (new Set(picks).size !== picks.length) throw new Error("Pick different chickens for each slot.");
+    if (picks.some((pick) => !chickenIds.has(pick))) throw new Error("Pick chickens from this event.");
+    betType = input.betType;
+  }
+
   const bettor = await sql`
     INSERT INTO bettors (event_id, name, venmo) VALUES (${input.eventId}, ${bettorName}, ${venmo})
     ON CONFLICT (event_id, lower(name)) DO UPDATE SET venmo = CASE WHEN EXCLUDED.venmo = '' THEN bettors.venmo ELSE EXCLUDED.venmo END
     RETURNING id`;
-  const picks = input.picks.map(Number).filter(Boolean);
-  if (!picks.length) throw new Error("Pick at least one chicken.");
-  if (new Set(picks).size !== picks.length) throw new Error("Pick different chickens for each slot.");
-  if (picks.some((pick) => !chickenIds.has(pick))) throw new Error("Pick chickens from this event.");
   await sql`
-    INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, picks)
-    VALUES (${input.eventId}, ${Number(bettor.rows[0].id)}, ${input.betType}, ${input.stake}, ${input.race ?? null}, ${picks[0] ?? null}, ${picks[1] ?? null}, ${picks[2] ?? null}, ${JSON.stringify(picks)}::jsonb)`;
+    INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, drop_number, picks)
+    VALUES (${input.eventId}, ${Number(bettor.rows[0].id)}, ${betType}, ${stake}, ${race}, ${picks[0] ?? null}, ${picks[1] ?? null}, ${picks[2] ?? null}, ${dropNumber}, ${JSON.stringify(picks)}::jsonb)`;
   return getEventPayload(input.eventId);
 }
 
-export async function saveResults(input: { eventId: number; adminCode: string; results: Results }) {
+export async function saveResults(input: { eventId: number; adminCode: string; results: Results; winningNumber?: number | null }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
+  const event = await sql`SELECT game_type, result_mode, drop_max_number FROM events WHERE id = ${input.eventId}`;
+  if (!event.rowCount) throw new Error("Event not found.");
+  if (event.rows[0].game_type === "chicken_drop") {
+    const winningNumber = Number(input.winningNumber);
+    const maxNumber = Number(event.rows[0].drop_max_number);
+    if (!Number.isInteger(winningNumber) || winningNumber < 1 || winningNumber > maxNumber) throw new Error(`Pick a winning number from 1 to ${maxNumber}.`);
+    await sql`UPDATE events SET drop_winning_number = ${winningNumber} WHERE id = ${input.eventId}`;
+    return getEventPayload(input.eventId);
+  }
   const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
   if (Object.keys(input.results).length !== races.rowCount) throw new Error("Pick a result for every race.");
-  const event = await sql`SELECT result_mode FROM events WHERE id = ${input.eventId}`;
   const fullOrderMode = event.rows[0]?.result_mode === "full_order";
   const chickenCount = (await sql`SELECT COUNT(*) AS count FROM chickens WHERE event_id = ${input.eventId}`).rows[0]?.count;
   const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
@@ -420,6 +567,7 @@ export async function clearResults(input: { eventId: number; adminCode: string }
   await assertAdmin(input.eventId, input.adminCode);
   await sql`DELETE FROM result_places WHERE event_id = ${input.eventId}`;
   await sql`DELETE FROM results WHERE event_id = ${input.eventId}`;
+  await sql`UPDATE events SET drop_winning_number = NULL WHERE id = ${input.eventId}`;
   return getEventPayload(input.eventId);
 }
 
@@ -452,16 +600,46 @@ export async function updateEventConfig(input: {
   bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
+  dropMaxNumber?: number;
+  dropTicketPrice?: number;
   chickens: Array<{ id: number; name: string; photoUrl?: string | null; bio?: string }>;
   races: Array<{ race: number; name: string; description: string }>;
 }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
   if (!input.name.trim()) throw new Error("Event name is required.");
-  if (!input.officialRule.trim()) throw new Error("Race rules are required.");
+  if (!input.officialRule.trim()) throw new Error("Rules are required.");
   const resultMode = input.resultMode === "full_order" ? "full_order" : "winner";
   const bettingTimezone = input.bettingTimezone.trim() || DEFAULT_TIMEZONE;
   if (!input.bettingCloseAt.trim() || Number.isNaN(Date.parse(input.bettingCloseAt))) throw new Error("Bets open until needs a real date and time.");
+  const event = await sql`SELECT game_type, drop_max_number, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
+  if (!event.rowCount) throw new Error("Event not found.");
+
+  if (event.rows[0].game_type === "chicken_drop") {
+    const dropMaxNumber = Number(input.dropMaxNumber ?? event.rows[0].drop_max_number);
+    const dropTicketPrice = Math.round(Number(input.dropTicketPrice ?? event.rows[0].drop_ticket_price) * 100) / 100;
+    if (!Number.isInteger(dropMaxNumber) || dropMaxNumber < 2 || dropMaxNumber > 500) throw new Error("Chicken Drop boards need between 2 and 500 numbered squares.");
+    if (!Number.isFinite(dropTicketPrice) || dropTicketPrice < 0.01 || dropTicketPrice > 10_000) throw new Error("Chicken Drop ticket price must be between $0.01 and $10,000.");
+    const betStats = await sql`SELECT COUNT(*) AS count, MAX(drop_number) AS max_number FROM bets WHERE event_id = ${input.eventId}`;
+    const betCount = Number(betStats.rows[0]?.count ?? 0);
+    const highestPick = betStats.rows[0]?.max_number == null ? 0 : Number(betStats.rows[0].max_number);
+    const winningNumber = event.rows[0].drop_winning_number == null ? 0 : Number(event.rows[0].drop_winning_number);
+    if (dropMaxNumber < Math.max(highestPick, winningNumber)) throw new Error("The board cannot end below an existing pick or official winning number.");
+    if (betCount > 0 && dropMaxNumber !== Number(event.rows[0].drop_max_number)) throw new Error("Board size is locked after the first Chicken Drop bet.");
+    if (betCount > 0 && Math.abs(dropTicketPrice - Number(event.rows[0].drop_ticket_price)) > 0.004) throw new Error("Ticket price is locked after the first Chicken Drop bet.");
+    await sql`
+      UPDATE events
+      SET name = ${input.name.trim()},
+          betting_close_at = ${input.bettingCloseAt.trim()},
+          betting_timezone = ${bettingTimezone},
+          official_rule = ${input.officialRule.trim()},
+          result_mode = 'winner',
+          drop_max_number = ${dropMaxNumber},
+          drop_ticket_price = ${dropTicketPrice}
+      WHERE id = ${input.eventId}`;
+    return getEventPayload(input.eventId);
+  }
+
   if (!input.chickens.length || input.chickens.some((chicken) => !chicken.name.trim())) throw new Error("Every chicken needs a name.");
   if (!input.races.length || input.races.some((race) => !race.name.trim() || !race.description.trim())) throw new Error("Every race needs a name and details.");
 
@@ -516,6 +694,7 @@ function rowToBet(row: Record<string, unknown>): Bet {
     chicken1: row.chicken_1 == null ? null : Number(row.chicken_1),
     chicken2: row.chicken_2 == null ? null : Number(row.chicken_2),
     chicken3: row.chicken_3 == null ? null : Number(row.chicken_3),
+    dropNumber: row.drop_number == null ? null : Number(row.drop_number),
     picks,
     createdAt: String(row.created_at)
   };
@@ -529,7 +708,29 @@ export function makeSettlement(bets: Bet[], results: Results, chickens: Chicken[
     const won = isWinningBet(bet, results, winners);
     const weight = weights[bet.betType] ?? 1;
     return { ...bet, won, weight, payoutWeight: won ? bet.stake * weight : 0, payout: 0, net: -bet.stake, result: won ? "Won" : "Lost", label: describeBet(bet, chickens, races) };
-  });
+  }) as Settlement["tickets"];
+  return finalizeSettlement(tickets);
+}
+
+export function makeDropSettlement(bets: Bet[], winningNumber: number | null): Settlement | null {
+  if (winningNumber == null || bets.length < 2) return null;
+  const tickets = bets.map((bet) => {
+    const won = bet.dropNumber === winningNumber;
+    return {
+      ...bet,
+      won,
+      weight: 1,
+      payoutWeight: won ? bet.stake : 0,
+      payout: 0,
+      net: -bet.stake,
+      result: won ? "Won" : "Lost",
+      label: `Number #${bet.dropNumber ?? "?"}`
+    };
+  }) as Settlement["tickets"];
+  return finalizeSettlement(tickets);
+}
+
+function finalizeSettlement(tickets: Settlement["tickets"]): Settlement {
   const totalPool = tickets.reduce((sum, bet) => sum + bet.stake, 0);
   const winningStake = tickets.filter((bet) => bet.won).reduce((sum, bet) => sum + bet.stake, 0);
   const totalWeight = tickets.reduce((sum, bet) => sum + bet.payoutWeight, 0);
@@ -568,6 +769,7 @@ function isWinningBet(bet: Bet, results: Results, winners: Array<number | undefi
 
 function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
   const name = (id: number | null | undefined) => chickens.find((chicken) => chicken.id === id)?.name ?? "Unknown bird";
+  if (bet.betType === "drop_number") return `Number #${bet.dropNumber ?? "?"}`;
   if (bet.betType === "race_winner") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} winner: ${name(bet.chicken1)}`;
   if (bet.betType === "race_place") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} top-2 finisher: ${name(bet.chicken1)}`;
   if (bet.betType === "race_show") return `${races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`} top-3 finisher: ${name(bet.chicken1)}`;

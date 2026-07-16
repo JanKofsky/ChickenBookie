@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const payload = await saveResults({
       eventId: Number(body.eventId),
       adminCode: String(body.adminCode ?? ""),
+      winningNumber: body.winningNumber == null ? null : Number(body.winningNumber),
       results: body.results ?? {}
     });
     return NextResponse.json(payload);

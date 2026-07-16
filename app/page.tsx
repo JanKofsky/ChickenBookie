@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Bet, BetType, Chicken, EventPayload, Race, Results } from "../lib/chickenBookie";
+import type { Bet, BetType, Chicken, EventPayload, GameType, Race, Results } from "../lib/chickenBookie";
 
 const BET_TYPES: Record<BetType, string> = {
   race_winner: "Pick 1st place in one race",
@@ -13,7 +13,8 @@ const BET_TYPES: Record<BetType, string> = {
   sweep: "Same chicken wins every race",
   exact_ticket: "Exact winners for every race",
   any_win: "Chicken wins at least one race",
-  any_order_three: "Picked chickens win in any order"
+  any_order_three: "Picked chickens win in any order",
+  drop_number: "Chicken Drop number"
 };
 const simpleBetTypes: BetType[] = ["race_winner", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const fullOrderBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta", "any_win", "any_order_three", "exact_ticket", "sweep"];
@@ -92,6 +93,9 @@ const pickedChickenIds = (bet: Bet) => {
   return ids.map(Number).filter(Boolean);
 };
 const normalizeName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+const isResultsOfficial = (payload: EventPayload) => payload.event.gameType === "chicken_drop"
+  ? payload.event.dropWinningNumber != null
+  : Object.keys(payload.results).length > 0;
 
 function friendlyError(message: string) {
   if (message.includes("missing_connection_string") || message.includes("POSTGRES_URL")) {
@@ -118,6 +122,7 @@ export default function Home() {
       const data = await response.json();
       if (!response.ok) throw new Error(friendlyError(data.error ?? "Could not load event."));
       setPayload(data); setEventCode(data.event.code);
+      setTab("bet");
       window.history.replaceState(null, "", `?event=${encodeURIComponent(data.event.code)}`);
     } catch (err) {
       setError(err instanceof Error ? friendlyError(err.message) : "Could not load event.");
@@ -135,12 +140,13 @@ export default function Home() {
   function openCreated(data: EventPayload) {
     setPayload(data);
     setEventCode(data.event.code);
+    setTab("bet");
     window.history.replaceState(null, "", `?event=${encodeURIComponent(data.event.code)}`);
   }
 
   const totalPool = useMemo(() => payload?.bets.reduce((sum, bet) => sum + Number(bet.stake), 0) ?? 0, [payload]);
   const countdown = payload ? countdownParts(payload.event.bettingCloseAt, now) : null;
-  const resultsOfficial = payload ? Object.keys(payload.results).length > 0 : false;
+  const resultsOfficial = payload ? isResultsOfficial(payload) : false;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -170,7 +176,7 @@ export default function Home() {
               <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
               {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie logo" />}
             </div>
-            <p className="hero-subtitle">{payload ? `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
+            <p className="hero-subtitle">{payload ? payload.event.gameType === "chicken_drop" ? `Chicken Drop (aka Chicken Shit Bingo) | 1-${payload.event.dropMaxNumber} | ${money(payload.event.dropTicketPrice)} per ticket` : `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
             {payload ? <p className="lede">{payload.event.officialRule}</p> : (
               <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
                 <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Event code here" />
@@ -194,18 +200,24 @@ export default function Home() {
       {!payload ? <div className="setup-panel"><CreateEvent onCreated={openCreated} /></div> : (
         <>
           <div className="tabs" role="tablist">
-            {[
+            {(payload.event.gameType === "chicken_drop" ? [
+              ["bet", "Betting Coop"],
+              ["numbers", "Number Board"],
+              ["winners", "Winner's Circle"],
+              ["boss", "Coop Boss"]
+            ] : [
               ["bet", "Betting Coop"],
               ["flock", "Contenders & Races"],
               ["tickets", "Ticket Board"],
               ["winners", "Winner's Circle"],
               ["boss", "Coop Boss"],
               ...(showMerchTab ? [["merch", "Merch"]] : [])
-            ].map(([id, label]) => (
+            ]).map(([id, label]) => (
               <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>
             ))}
           </div>
-          {tab === "bet" && <Betting payload={payload} setPayload={setPayload} />}
+          {tab === "bet" && (payload.event.gameType === "chicken_drop" ? <DropBetting payload={payload} setPayload={setPayload} /> : <Betting payload={payload} setPayload={setPayload} />)}
+          {tab === "numbers" && <DropNumberBoard payload={payload} />}
           {tab === "flock" && <Flock chickens={payload.chickens} races={payload.races} officialRule={payload.event.officialRule} />}
           {tab === "tickets" && <Tickets bets={payload.bets} chickens={payload.chickens} races={payload.races} />}
           {tab === "winners" && <Winners payload={payload} />}
@@ -235,25 +247,110 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
   const [code, setCode] = useState("");
   const [adminCode, setAdminCode] = useState("");
   const [showAdminCode, setShowAdminCode] = useState(false);
+  const [gameType, setGameType] = useState<GameType>("race");
   const [resultMode, setResultMode] = useState<"winner" | "full_order">("winner");
+  const [dropMaxNumber, setDropMaxNumber] = useState("30");
+  const [dropTicketPrice, setDropTicketPrice] = useState("5");
   const [copyCode, setCopyCode] = useState("");
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, resultMode, copyCode }) });
+    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, gameType, resultMode, dropMaxNumber: Number(dropMaxNumber), dropTicketPrice: Number(dropTicketPrice), copyCode: gameType === "race" ? copyCode : "" }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not create event.")); else onCreated(data);
   }
   return <section className="panel"><h2>Make an event</h2><form className="grid-form" onSubmit={submit}>
     <label>Event name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
     <label>Event code<input value={code} onChange={(event) => setCode(event.target.value.toLowerCase())} /></label>
-    <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
+    <label className="wide-field">Event format<select value={gameType} onChange={(event) => setGameType(event.target.value as GameType)}><option value="race">Chicken Race</option><option value="chicken_drop">Chicken Drop (aka Chicken Shit Bingo)</option></select></label>
+    {gameType === "race" ? <>
+      <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
+      <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
+    </> : <>
+      <label>Highest board number<input type="number" min="2" max="500" step="1" value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
+      <label>Cost per ticket<input type="number" min="0.01" max="10000" step="0.01" value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
+      <p className="fine-print wide-field">Players pick directly from the numbered grid. More than one ticket can land on the same number, and every ticket costs the same amount.</p>
+    </>}
     <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
     <p className="fine-print wide-field">write this down now; Chicken Bookie will not show it again</p>
     <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
-    <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
     <button type="submit">Create</button>{message && <p className="form-error">{message}</p>}
   </form></section>;
+}
+
+function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {
+  const [bettor, setBettor] = useState("");
+  const [venmo, setVenmo] = useState("");
+  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
+  const [message, setMessage] = useState("");
+  const resultsOfficial = isResultsOfficial(payload);
+  const existingName = useMemo(() => {
+    const normalized = normalizeName(bettor);
+    if (!normalized) return "";
+    return payload.bets.find((bet) => normalizeName(bet.bettor) === normalized)?.bettor ?? "";
+  }, [bettor, payload.bets]);
+  const existingVenmo = useMemo(() => payload.bets.find((bet) => normalizeName(bet.bettor) === normalizeName(bettor))?.venmo ?? "", [bettor, payload.bets]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault(); setMessage("");
+    if (resultsOfficial) { setMessage("The drop result is official. Betting is closed."); return; }
+    if (selectedNumber == null) { setMessage("Pick a number from the grid."); return; }
+    const response = await fetch("/api/bets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventId: payload.event.id, bettor, venmo, dropNumber: selectedNumber })
+    });
+    const data = await response.json();
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add Chicken Drop bet."));
+    else { setPayload(data); setSelectedNumber(null); setMessage("Bet added."); }
+  }
+
+  return <section className="panel drop-betting-panel">
+    <h2>Chicken Drop betting grid</h2>
+    <p className="muted"><b>Chicken Drop (aka Chicken Shit Bingo)</b>: pick the numbered square where the chicken will make its first confirmed drop.</p>
+    <div className="drop-price-card"><span>Fixed cost per ticket</span><strong>{money(payload.event.dropTicketPrice)}</strong><small>Repeat picks on the same number are allowed.</small></div>
+    {resultsOfficial && <div className="notice">The official drop is #{payload.event.dropWinningNumber}. The board stays visible, but new bets are closed. Coop Boss can clear the result to reopen betting before the close time.</div>}
+    <form className="drop-bet-form" onSubmit={submit}>
+      {!resultsOfficial && <div className="drop-player-fields">
+        <label>Name<input value={bettor} onChange={(event) => setBettor(event.target.value)} />{existingName && <small className="field-note">this ticket will be grouped with the previous bettor using this name</small>}</label>
+        <label>Venmo (optional)<div className="venmo-input"><span>@</span><input value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
+      </div>}
+      <DropNumberGrid payload={payload} selectedNumber={selectedNumber} onSelect={resultsOfficial ? undefined : setSelectedNumber} />
+      {!resultsOfficial && <button type="submit" className="drop-submit" disabled={selectedNumber == null}>{selectedNumber == null ? "Pick a number to place your bet" : `Place ${money(payload.event.dropTicketPrice)} bet on #${selectedNumber}`}</button>}
+      <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>
+      {message && <p className={message.includes("added") ? "form-ok" : "form-error"}>{message}</p>}
+    </form>
+  </section>;
+}
+
+function DropNumberBoard({ payload }: { payload: EventPayload }) {
+  return <section className="panel"><h2>Number Board</h2><p className="muted">Live Chicken Drop board. Brighter green means more tickets have been placed on that number.</p><DropNumberGrid payload={payload} /></section>;
+}
+
+function DropNumberGrid({ payload, selectedNumber = null, onSelect }: { payload: EventPayload; selectedNumber?: number | null; onSelect?: (value: number | null) => void }) {
+  const numbers = Array.from({ length: payload.event.dropMaxNumber }, (_, index) => index + 1);
+  const stats = new Map<number, { count: number; amount: number }>();
+  for (const bet of payload.bets) {
+    if (bet.dropNumber == null) continue;
+    const current = stats.get(bet.dropNumber) ?? { count: 0, amount: 0 };
+    current.count += 1;
+    current.amount += Number(bet.stake);
+    stats.set(bet.dropNumber, current);
+  }
+  return <div className="drop-board-wrap">
+    <div className="drop-heat-legend" aria-label="Bet heat legend"><span>bet heat</span>{[0, 1, 2, 3, 4].map((level) => <i className={`heat-${level}`} key={level} title={level === 4 ? "4 or more bets" : `${level} bet${level === 1 ? "" : "s"}`} />)}<small>0 to 4+ bets</small></div>
+    <div className="drop-grid" aria-label={`Chicken Drop numbers 1 through ${payload.event.dropMaxNumber}`}>
+      {numbers.map((number) => {
+        const stat = stats.get(number) ?? { count: 0, amount: 0 };
+        const selected = selectedNumber === number;
+        const winning = payload.event.dropWinningNumber === number;
+        const heatLevel = Math.min(4, stat.count);
+        return <button type="button" key={number} disabled={!onSelect} aria-pressed={selected} aria-label={`Number ${number}, ${stat.count} bets, ${money(stat.amount)}${winning ? ", official winner" : ""}`} className={`drop-square heat-${heatLevel}${selected ? " selected" : ""}${winning ? " winning" : ""}`} onClick={() => onSelect?.(selected ? null : number)}>
+          <span>#{number}</span><small>{stat.count} bet{stat.count === 1 ? "" : "s"}</small><strong>{money(stat.amount)}</strong>{selected && <em>your pick</em>}{winning && <em>official drop</em>}
+        </button>;
+      })}
+    </div>
+  </div>;
 }
 
 function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {
@@ -335,7 +432,7 @@ function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[
 
 function Winners({ payload }: { payload: EventPayload }) {
   if (payload.bets.length < 2) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">Oh cluck, not enough bets yet. Add at least two tickets before the feed bucket math is worth settling.</p></section>;
-  if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">The Coop Boss needs to enter every race winner before settlement is shown.</p></section>;
+  if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
   return <section className="panel"><h2>Winner's Circle</h2><WinnerCallout payload={payload} /><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><SettlementLedger people={payload.settlement.people} /></section>;
 }
@@ -362,6 +459,11 @@ function VenmoHandle({ handle }: { handle: string }) {
 }
 
 function WinnerCallout({ payload }: { payload: EventPayload }) {
+  if (payload.event.gameType === "chicken_drop") {
+    const winningNumber = payload.event.dropWinningNumber;
+    const winningTickets = payload.bets.filter((bet) => bet.dropNumber === winningNumber).length;
+    return <div className="winner-callout drop-winner-callout"><span>official Chicken Drop result</span><div><article><b>Winning square</b><strong>#{winningNumber ?? "pending"}</strong><small>{winningTickets === 0 ? "No ticket picked this square, so every ticket is refunded." : `${winningTickets} winning ticket${winningTickets === 1 ? "" : "s"} split the losing pool.`}</small></article></div></div>;
+  }
   const chickenNames = new Map(payload.chickens.map((chicken) => [chicken.id, chicken.name]));
   return <div className="winner-callout"><span>official pecking order</span><div>{payload.races.map((race) => {
     const places = payload.results[race.race] ?? [];
@@ -411,7 +513,8 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
 }
 
 function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {
-  const isTestEvent = payload.event.code === "test";
+  const isDropEvent = payload.event.gameType === "chicken_drop";
+  const isTestEvent = payload.event.code === "test" || payload.event.code === "test-drop";
   const [adminCode, setAdminCode] = useState("");
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [unlocked, setUnlocked] = useState(isTestEvent);
@@ -421,6 +524,9 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   const [bettingCloseAt, setBettingCloseAt] = useState(dateTimeInputValue(payload.event.bettingCloseAt, payload.event.bettingTimezone));
   const [officialRule, setOfficialRule] = useState(payload.event.officialRule);
   const [resultMode, setResultMode] = useState(payload.event.resultMode);
+  const [dropMaxNumber, setDropMaxNumber] = useState(String(payload.event.dropMaxNumber));
+  const [dropTicketPrice, setDropTicketPrice] = useState(String(payload.event.dropTicketPrice));
+  const [dropWinningNumber, setDropWinningNumber] = useState(payload.event.dropWinningNumber == null ? "" : String(payload.event.dropWinningNumber));
   const [chickens, setChickens] = useState(payload.chickens);
   const [races, setRaces] = useState(payload.races);
   const [bettors, setBettors] = useState(() => Array.from(new Map(payload.bets.map((bet) => [normalizeName(bet.bettor), { name: bet.bettor, venmo: bet.venmo }])).values()));
@@ -433,9 +539,9 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   }
   async function save(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    const response = await fetch("/api/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, results }) });
+    const response = await fetch("/api/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, results, winningNumber: isDropEvent ? Number(dropWinningNumber) : null }) });
     const data = await response.json();
-    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save winners.")); else { setPayload(data); setMessage("Winners saved."); }
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save results.")); else { setPayload(data); setMessage(isDropEvent ? "Official drop saved." : "Winners saved."); }
   }
   async function removeBet(betId: number) {
     const response = await fetch("/api/admin", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, betId }) });
@@ -445,7 +551,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   async function clearWinners() {
     const response = await fetch("/api/results", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode }) });
     const data = await response.json();
-    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not clear winners.")); else { setResults({}); setPayload(data); setMessage("Winners cleared."); }
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not clear results.")); else { setResults({}); setDropWinningNumber(""); setPayload(data); setMessage("Results cleared."); }
   }
   async function saveBettors(event: FormEvent) {
     event.preventDefault(); setMessage("");
@@ -455,7 +561,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   }
   async function saveConfig(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    setMessage("Squishing chicken photos...");
+    setMessage(isDropEvent ? "Saving event setup..." : "Squishing chicken photos...");
     let compactChickens = chickens;
     try {
       compactChickens = await Promise.all(chickens.map(async (chicken) => {
@@ -467,7 +573,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
       return;
     }
     setChickens(compactChickens);
-    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, chickens: compactChickens, races });
+    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, dropMaxNumber: Number(dropMaxNumber), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
     if (body.length > 4_000_000) {
       setMessage("Chicken photos are still too large to save together. Remove one photo or upload smaller images.");
       return;
@@ -496,13 +602,79 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   if (!unlocked) {
     return <section className="panel admin-gate"><h2>Coop Boss</h2><form className="admin-unlock" onSubmit={unlock}><label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label><button type="submit">Unlock admin</button>{message && <p className="form-error">{message}</p>}</form></section>;
   }
-  return <section className="panel"><h2>Coop Boss</h2>{!isTestEvent && <form className="admin-unlock" onSubmit={unlock}><label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label><button type="submit">Admin unlocked</button></form>}{payload.bets.length < 2 && <p className="muted">Oh cluck, not enough bets yet. You can save winners, but settlement waits until at least two tickets exist.</p>}<form className="grid-form" onSubmit={saveConfig}><h3>Event setup</h3><label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label><label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label><label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label><label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label><label className="wide-field">Race rules<textarea value={officialRule} placeholder="first to the marshmallow wins" onChange={(event) => setOfficialRule(event.target.value)} rows={3} /></label><h3>Race card</h3>{races.map((race, idx) => <div className="admin-card" key={race.race}><label>Race name<input value={race.name} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label><label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label></div>)}<h3>Flock notes</h3>{chickens.map((chicken, idx) => <div className="admin-card chicken-admin-card" key={chicken.id}><ChickenPhoto chicken={chicken} preview /><label>Chicken name<input value={chicken.name} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label><label>Coop note<textarea value={chicken.bio ?? ""} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, bio: event.target.value } : item))} rows={3} /></label><label>Chicken photo<input type="file" accept="image/*" onChange={(event) => uploadChickenPhoto(chicken.id, event.target.files?.[0] ?? null)} /></label>{chicken.photoUrl && <button type="button" onClick={() => setChickens(chickens.map((item) => item.id === chicken.id ? { ...item, photoUrl: null } : item))}>Remove photo</button>}</div>)}<button type="submit">Save event setup</button></form><form className="grid-form result-entry" onSubmit={save}><h3>Result entry</h3>{payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}><h3>{race.name}</h3>{payload.chickens.map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}</div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}<button type="submit">Save results</button>{Object.keys(payload.results).length > 0 && <button type="button" onClick={clearWinners}>Clear winners</button>}</form>{bettors.length > 0 && <form className="grid-form" onSubmit={saveBettors}><h3>Bettor Venmo handles</h3>{bettors.map((bettor, idx) => <div className="admin-card bettor-admin-card" key={normalizeName(bettor.name)}><strong>{bettor.name}</strong><label>Venmo (optional)<div className="venmo-input"><span>@</span><input value={bettor.venmo.replace(/^@/, "")} placeholder="username" onChange={(event) => setBettors(bettors.map((item, itemIdx) => itemIdx === idx ? { ...item, venmo: event.target.value.replace(/^@+/, "") } : item))} /></div></label></div>)}<button type="submit">Save Venmo handles</button></form>}{message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") ? "form-ok" : "form-error"}>{message}</p>}<h3>Delete accidental bet</h3>{payload.bets.length === 0 ? <p className="muted">No accidental bets to delete.</p> : payload.bets.map((bet) => <button className="delete-row" key={bet.id} onClick={() => removeBet(bet.id)}>Delete #{bet.id} - {bet.bettor} - {money(bet.stake)}</button>)}</section>;
+  return (
+    <section className="panel">
+      <h2>Coop Boss</h2>
+      {!isTestEvent && <form className="admin-unlock" onSubmit={unlock}>
+        <label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
+        <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
+        <button type="submit">Admin unlocked</button>
+      </form>}
+      {payload.bets.length < 2 && <p className="muted">Oh cluck, not enough bets yet. You can save results, but settlement waits until at least two tickets exist.</p>}
+
+      <form className="grid-form" onSubmit={saveConfig}>
+        <h3>Event setup</h3>
+        <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop (aka Chicken Shit Bingo)" : "Chicken Race"}</strong></div>
+        <label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label>
+        <label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label>
+        <label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
+
+        {isDropEvent ? <>
+          <label>Highest board number<input type="number" min="2" max="500" step="1" disabled={payload.bets.length > 0} value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
+          <label>Fixed cost per ticket<input type="number" min="0.01" max="10000" step="0.01" disabled={payload.bets.length > 0} value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
+          {payload.bets.length > 0 && <p className="fine-print wide-field">Board size and ticket price are locked after betting begins so every ticket keeps the same terms.</p>}
+          <label className="wide-field">Chicken Drop rules<textarea value={officialRule} placeholder="describe what counts as the official square and how line hits are decided" onChange={(event) => setOfficialRule(event.target.value)} rows={5} /></label>
+        </> : <>
+          <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
+          <label className="wide-field">Race rules<textarea value={officialRule} placeholder="first to the marshmallow wins" onChange={(event) => setOfficialRule(event.target.value)} rows={3} /></label>
+          <h3>Race card</h3>
+          {races.map((race, idx) => <div className="admin-card" key={race.race}>
+            <label>Race name<input value={race.name} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label>
+            <label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label>
+          </div>)}
+          <h3>Flock notes</h3>
+          {chickens.map((chicken, idx) => <div className="admin-card chicken-admin-card" key={chicken.id}>
+            <ChickenPhoto chicken={chicken} preview />
+            <label>Chicken name<input value={chicken.name} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label>
+            <label>Coop note<textarea value={chicken.bio ?? ""} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, bio: event.target.value } : item))} rows={3} /></label>
+            <label>Chicken photo<input type="file" accept="image/*" onChange={(event) => uploadChickenPhoto(chicken.id, event.target.files?.[0] ?? null)} /></label>
+            {chicken.photoUrl && <button type="button" onClick={() => setChickens(chickens.map((item) => item.id === chicken.id ? { ...item, photoUrl: null } : item))}>Remove photo</button>}
+          </div>)}
+        </>}
+        <button type="submit">Save event setup</button>
+      </form>
+
+      <form className="grid-form result-entry" onSubmit={save}>
+        <h3>{isDropEvent ? "Official Chicken Drop result" : "Result entry"}</h3>
+        {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
+          <h3>{race.name}</h3>
+          {payload.chickens.map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
+        </div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
+        <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
+        {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
+      </form>
+
+      {bettors.length > 0 && <form className="grid-form" onSubmit={saveBettors}>
+        <h3>Bettor Venmo handles</h3>
+        {bettors.map((bettor, idx) => <div className="admin-card bettor-admin-card" key={normalizeName(bettor.name)}>
+          <strong>{bettor.name}</strong>
+          <label>Venmo (optional)<div className="venmo-input"><span>@</span><input value={bettor.venmo.replace(/^@/, "")} placeholder="username" onChange={(event) => setBettors(bettors.map((item, itemIdx) => itemIdx === idx ? { ...item, venmo: event.target.value.replace(/^@+/, "") } : item))} /></div></label>
+        </div>)}
+        <button type="submit">Save Venmo handles</button>
+      </form>}
+
+      {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") ? "form-ok" : "form-error"}>{message}</p>}
+      <h3>Delete accidental bet</h3>
+      {payload.bets.length === 0 ? <p className="muted">No accidental bets to delete.</p> : payload.bets.map((bet) => <button className="delete-row" type="button" key={bet.id} onClick={() => removeBet(bet.id)}>Delete #{bet.id} - {bet.bettor}{isDropEvent && bet.dropNumber != null ? <> - square #{bet.dropNumber}</> : null} - {money(bet.stake)}</button>)}
+    </section>
+  );
 }
 
 function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
   const name = (id: number | null | undefined) => chickens.find((chicken) => chicken.id === id)?.name ?? "Unknown bird";
   const raceName = races.find((race) => race.race === bet.race)?.name ?? `Race ${bet.race}`;
   const pickNames = pickedChickenIds(bet).map((pick) => name(pick)).join(", ");
+  if (bet.betType === "drop_number") return `Number #${bet.dropNumber ?? "?"}`;
   if (bet.betType === "race_winner") return `${raceName}: ${name(bet.chicken1)}`;
   if (bet.betType === "race_place") return `${raceName}: ${name(bet.chicken1)}`;
   if (bet.betType === "race_show") return `${raceName}: ${name(bet.chicken1)}`;

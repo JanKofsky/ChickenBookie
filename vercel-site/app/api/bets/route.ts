@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       betType: body.betType,
       stake: Number(body.stake),
       race: body.race == null ? null : Number(body.race),
+      dropNumber: body.dropNumber == null ? null : Number(body.dropNumber),
       picks: Array.isArray(body.picks) ? body.picks.map(Number) : []
     });
     return NextResponse.json(payload);
