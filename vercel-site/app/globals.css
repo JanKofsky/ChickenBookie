@@ -277,6 +277,14 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .drop-bet-form { display: grid; gap: 16px; margin-top: 16px; }
 .drop-player-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .drop-board-wrap { display: grid; gap: 11px; margin-top: 18px; }
+.drop-insights { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 16px 0 2px; }
+.drop-insights > div { padding: 12px; border: 1px solid rgba(217, 240, 194, 0.20); border-radius: 8px; background: rgba(12, 25, 18, 0.66); }
+.drop-insights span { display: block; color: var(--leaf); font-size: 0.7rem; font-weight: 950; letter-spacing: 0.06em; text-transform: uppercase; }
+.drop-insights strong { display: block; margin-top: 4px; color: var(--ink); line-height: 1.25; }
+.drop-insights strong small,
+.drop-insights > div > small { color: var(--muted); font-size: 0.76rem; font-weight: 750; }
+.drop-insights > div > small { display: block; margin-top: 3px; }
+.drop-insights p { grid-column: 1 / -1; margin: 0; color: rgba(222, 209, 182, 0.72); font-size: 0.78rem; line-height: 1.4; }
 .drop-heat-legend { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 0.76rem; font-weight: 850; }
 .drop-heat-legend span { margin-right: 3px; color: var(--leaf); letter-spacing: 0.07em; text-transform: uppercase; }
 .drop-heat-legend i { display: block; width: 17px; height: 17px; border: 1px solid rgba(255, 243, 216, 0.24); border-radius: 4px; }
@@ -332,7 +340,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   margin-bottom: 10px;
   background: rgba(5, 9, 7, 0.45);
 }
-.test-flock-photo { background-repeat: no-repeat; background-size: 500% 300%; }
+.chicken-photo.test-flock-photo { background-repeat: no-repeat; background-size: 500% 300%; }
 .bird strong { display: block; margin-top: 6px; font-size: 1.05rem; }
 .bird p { margin: 8px 0 0; color: var(--muted); line-height: 1.35; }
 .wide-field,
@@ -560,7 +568,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .hero-title { align-items: center; gap: 10px; }
   .hero-logo { width: clamp(104px, 28vw, 150px); }
   .hero-subtitle { margin-top: 12px; }
-  .hero-grid, .split, .grid-form, .bet-form, .pick-grid, .admin-unlock, .drop-player-fields { grid-template-columns: 1fr; }
+  .hero-grid, .split, .grid-form, .bet-form, .pick-grid, .admin-unlock, .drop-player-fields, .drop-insights { grid-template-columns: 1fr; }
+  .drop-insights p { grid-column: auto; }
   .scoreboard { width: 100%; justify-self: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .chicken-buttons, .flock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .drop-grid { grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 6px; }

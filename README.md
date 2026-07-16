@@ -59,7 +59,7 @@ The participant flow is split into Betting Coop, Contenders & Races, Ticket Boar
 
 Chicken Drop is a first-class event format, not a special race bet. The admin chooses:
 
-- The highest board number, producing a board from `1` through that number.
+- The number of grid sections, producing a board numbered from `1` through that count.
 - One fixed cost for every ticket.
 - The event close time and timezone.
 - The written rules used to identify the official square.
@@ -80,7 +80,7 @@ The board is a heatmap. Empty squares are darkest; squares become progressively 
 
 Repeat tickets are allowed. Multiple people may choose the same number, and one person may buy more than one ticket on the same number. Each submission creates one ticket at the event’s fixed price.
 
-Chicken Drop events use Betting Coop, Number Board, Winner’s Circle, and Coop Boss. They do not show the race-only Contenders & Races or Ticket Board tabs.
+Chicken Drop events use Betting Coop, Live Betting Board, Winner’s Circle, and Coop Boss. They do not show the race-only Contenders & Races or Ticket Board tabs. The Live Betting Board also shows the assumed per-section chance and the least-crowded sections with the best projected total return for the next ticket. That projection assumes no later bets and clearly warns that a physical chicken may not use every grid section equally.
 
 ### Official result
 
@@ -164,7 +164,7 @@ Three event codes have distinct purposes:
 
 - `corn hub` is the real event. The default-event helper creates it only if it does not exist; feature migrations do not reset or reseed it.
 - `test` is the fictional race demo. It contains 15 made-up contenders, four races, fake bettors, fake Venmo handles, fake tickets, and completed results. Its admin area is intentionally unlocked.
-- `test-drop` is the Chicken Drop demo. It uses numbers `1-30`, a fixed `$5` ticket, fake bettors and Venmo handles, deliberately uneven ticket counts for the heatmap, and official square `#17` so the split payout and payment plan are visible immediately. Its admin area is intentionally unlocked; clear the result there to try placing a new grid ticket.
+- `test-drop` is the Chicken Drop demo. It uses 30 numbered grid sections, a fixed `$5` ticket, fake bettors and Venmo handles, and deliberately uneven ticket counts for the heatmap. It starts with no official result so the grid is open for new bets. Its admin area is intentionally unlocked with a blank admin code; use Coop Boss to choose the winning number and reveal settlement.
 
 The two test events contain no real flock names or contact information.
 

@@ -176,7 +176,7 @@ export default function Home() {
               <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
               {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie logo" />}
             </div>
-            <p className="hero-subtitle">{payload ? payload.event.gameType === "chicken_drop" ? `Chicken Drop (aka Chicken Shit Bingo) | 1-${payload.event.dropMaxNumber} | ${money(payload.event.dropTicketPrice)} per ticket` : `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
+            <p className="hero-subtitle">{payload ? payload.event.gameType === "chicken_drop" ? `Chicken Drop | 1-${payload.event.dropMaxNumber} | ${money(payload.event.dropTicketPrice)} per ticket` : `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
             {payload ? <p className="lede">{payload.event.officialRule}</p> : (
               <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
                 <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Event code here" />
@@ -202,7 +202,7 @@ export default function Home() {
           <div className="tabs" role="tablist">
             {(payload.event.gameType === "chicken_drop" ? [
               ["bet", "Betting Coop"],
-              ["numbers", "Number Board"],
+              ["numbers", "Live Betting Board"],
               ["winners", "Winner's Circle"],
               ["boss", "Coop Boss"]
             ] : [
@@ -267,7 +267,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
       <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
       <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
     </> : <>
-      <label>Highest board number<input type="number" min="2" max="500" step="1" value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
+      <label>Number of grid sections<input type="number" min="2" max="500" step="1" value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
       <label>Cost per ticket<input type="number" min="0.01" max="10000" step="0.01" value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
       <p className="fine-print wide-field">Players pick directly from the numbered grid. More than one ticket can land on the same number, and every ticket costs the same amount.</p>
     </>}
@@ -307,7 +307,7 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
 
   return <section className="panel drop-betting-panel">
     <h2>Chicken Drop betting grid</h2>
-    <p className="muted"><b>Chicken Drop (aka Chicken Shit Bingo)</b>: pick the numbered square where the chicken will make its first confirmed drop.</p>
+    <p className="muted"><b>Chicken Drop:</b> pick the numbered square where the chicken will make its first confirmed drop.</p>
     <div className="drop-price-card"><span>Fixed cost per ticket</span><strong>{money(payload.event.dropTicketPrice)}</strong><small>Repeat picks on the same number are allowed.</small></div>
     {resultsOfficial && <div className="notice">The official drop is #{payload.event.dropWinningNumber}. The board stays visible, but new bets are closed. Coop Boss can clear the result to reopen betting before the close time.</div>}
     <form className="drop-bet-form" onSubmit={submit}>
@@ -324,7 +324,29 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
 }
 
 function DropNumberBoard({ payload }: { payload: EventPayload }) {
-  return <section className="panel"><h2>Number Board</h2><p className="muted">Live Chicken Drop board. Brighter green means more tickets have been placed on that number.</p><DropNumberGrid payload={payload} /></section>;
+  return <section className="panel"><h2>Live Betting Board</h2><p className="muted">Brighter green means more tickets have been placed on that number.</p><DropBoardInsights payload={payload} /><DropNumberGrid payload={payload} /></section>;
+}
+
+function DropBoardInsights({ payload }: { payload: EventPayload }) {
+  const counts = new Map<number, number>();
+  for (const bet of payload.bets) {
+    if (bet.dropNumber != null) counts.set(bet.dropNumber, (counts.get(bet.dropNumber) ?? 0) + 1);
+  }
+  const numbers = Array.from({ length: payload.event.dropMaxNumber }, (_, index) => index + 1);
+  const fewestTickets = Math.min(...numbers.map((number) => counts.get(number) ?? 0));
+  const bestNumbers = numbers.filter((number) => (counts.get(number) ?? 0) === fewestTickets);
+  const currentPool = payload.bets.reduce((sum, bet) => sum + Number(bet.stake), 0);
+  const projectedReturn = (currentPool + payload.event.dropTicketPrice) / (fewestTickets + 1);
+  const chance = 100 / payload.event.dropMaxNumber;
+  const sectionLabel = bestNumbers.slice(0, 8).map((number) => `#${number}`).join(", ");
+  const extra = bestNumbers.length > 8 ? ` + ${bestNumbers.length - 8} more` : "";
+  const closed = isResultsOfficial(payload);
+  return <div className="drop-insights">
+    <div><span>Assumed chance per section</span><strong>1 in {payload.event.dropMaxNumber} <small>({chance.toFixed(chance < 1 ? 2 : 1)}%)</small></strong></div>
+    <div><span>{closed ? "Board status" : "Best projected return for next ticket"}</span><strong>{closed ? "Betting closed" : money(projectedReturn)}</strong></div>
+    <div><span>Least crowded sections</span><strong>{sectionLabel}{extra}</strong><small>{fewestTickets} current ticket{fewestTickets === 1 ? "" : "s"} each</small></div>
+    <p>Projection is total return, including the ticket stake, if no more bets arrive and one of those sections wins. Physical chicken behavior may not make every grid section equally likely.</p>
+  </div>;
 }
 
 function DropNumberGrid({ payload, selectedNumber = null, onSelect }: { payload: EventPayload; selectedNumber?: number | null; onSelect?: (value: number | null) => void }) {
@@ -605,6 +627,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   return (
     <section className="panel">
       <h2>Coop Boss</h2>
+      {isTestEvent && <div className="notice">Demo admin is already unlocked. The admin code is blank.</div>}
       {!isTestEvent && <form className="admin-unlock" onSubmit={unlock}>
         <label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
         <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
@@ -614,13 +637,13 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
 
       <form className="grid-form" onSubmit={saveConfig}>
         <h3>Event setup</h3>
-        <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop (aka Chicken Shit Bingo)" : "Chicken Race"}</strong></div>
+        <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
         <label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label>
         <label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label>
         <label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
 
         {isDropEvent ? <>
-          <label>Highest board number<input type="number" min="2" max="500" step="1" disabled={payload.bets.length > 0} value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
+          <label>Number of grid sections<input type="number" min="2" max="500" step="1" disabled={payload.bets.length > 0} value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
           <label>Fixed cost per ticket<input type="number" min="0.01" max="10000" step="0.01" disabled={payload.bets.length > 0} value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
           {payload.bets.length > 0 && <p className="fine-print wide-field">Board size and ticket price are locked after betting begins so every ticket keeps the same terms.</p>}
           <label className="wide-field">Chicken Drop rules<textarea value={officialRule} placeholder="describe what counts as the official square and how line hits are decided" onChange={(event) => setOfficialRule(event.target.value)} rows={5} /></label>

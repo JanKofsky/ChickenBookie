@@ -32,11 +32,11 @@ The **Contenders & Races** tab introduces the flock and keeps the event rules vi
 
 ### Chicken Drop / Chicken Shit Bingo mode
 
-Chicken Drop is a separate event format rather than one more race wager. The host chooses the board size — `1` through whatever highest number the event needs — and sets one fixed cost for every ticket.
+Chicken Drop is a separate event format rather than one more race wager. The host chooses the number of grid sections — numbered `1` through that count — and sets one fixed cost for every ticket.
 
 Participants place the bet directly on the board. They click a numbered square, see a visible “your pick” state, and submit one fixed-price ticket. More than one person can choose the same square, and one person can hold multiple tickets on the same square.
 
-Every square shows its live ticket count and total Cluck Bucks. The board is also a heatmap: empty squares stay dark and increasingly popular numbers become brighter green. This makes the crowd’s favorite landing zones obvious without hiding the exact numbers.
+Every square shows its live ticket count and total Cluck Bucks. The board is also a heatmap: empty squares stay dark and increasingly popular numbers become brighter green. The **Live Betting Board** adds the assumed per-section chance and identifies the least-crowded numbers with the best projected total return for the next ticket, while warning that later bets and real chicken behavior can change those assumptions.
 
 The default rules cover a few physical-game details that otherwise become arguments later:
 
@@ -75,9 +75,9 @@ I leaned hard into a dark old-barn / cheerful bookmaker look because none of thi
 The public demos use only fictional data:
 
 - Open **https://chickenbookie.com/?event=test** for a completed four-race event with 15 made-up chickens, fake tickets, fake Venmo handles, and a visible settlement.
-- Open **https://chickenbookie.com/?event=test-drop** for a completed `1-30` Chicken Drop board with a `$5` fixed ticket, varied heat levels, fake participants, official square `#17`, and split-winner settlement.
+- Open **https://chickenbookie.com/?event=test-drop** for an open 30-section Chicken Drop board with a `$5` fixed ticket, varied heat levels, and fake participants. Place a grid ticket, then use the unlocked Coop Boss to choose the official square and reveal settlement.
 
-The test admin areas are intentionally unlocked. In `test-drop`, clear the official result if you want to try placing a new ticket directly on the grid, then save a winning number again to see settlement recalculate.
+The test admin areas are intentionally unlocked and use blank admin codes. In `test-drop`, place a ticket directly on the grid and then save a winning number to see settlement calculate.
 
 I would love feedback on whether either flow makes sense, which labels are confusing, and what real-world rule or edge case I have missed.
 
@@ -101,9 +101,10 @@ Try the fictional demos:
 3. `03-contenders-and-races.png` — The 15 fictional contenders, properly framed artwork, highlighted race rules, and four-race card.
 4. `04-race-ticket-board.png` — Live fictional flock totals and race ticket details.
 5. `05-race-winners.png` — Completed race results, ledger, payment plan, and copyable payee Venmo handles.
-6. `06-drop-betting-grid.png` — `test-drop` board showing `1-30`, fixed `$5` cost, varied ticket counts, dollar totals, and green heat levels.
-7. `07-drop-winners.png` — Official square `#17`, split winning tickets, payout ledger, and copyable payee Venmo handles.
-8. `08-drop-admin.png` — Auto-unlocked demo admin showing the Chicken Drop label, locked board/price terms, official-number control, bettor handles, and ticket deletion controls.
+6. `06-drop-betting-grid.png` — Open `test-drop` board showing 30 sections, fixed `$5` cost, varied ticket counts, dollar totals, green heat levels, and click-to-pick controls.
+7. `07-drop-live-betting-board.png` — Live heatmap plus assumed per-section chance and best projected next-ticket returns.
+8. `08-drop-pending-result.png` — Winner’s Circle before the Coop Boss chooses the official square.
+9. `09-drop-admin.png` — Auto-unlocked demo admin showing the Chicken Drop label, blank-code notice, locked board/price terms, official-number control, bettor handles, and ticket deletion controls.
 
 ## Posting notes
 

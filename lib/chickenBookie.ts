@@ -297,7 +297,7 @@ async function ensureTestDropEventFixture() {
   const defaultDropRule = "The first confirmed chicken dropping decides the winning square. If it touches a line, use the square containing most of the dropping; if that is unclear, reset for another drop. If nobody picked the winning square, every ticket is refunded.";
   const migration = await sql`
     INSERT INTO app_migrations (key)
-    VALUES ('seed-test-drop-event-20260716-v1')
+    VALUES ('seed-test-drop-event-20260716-v2')
     ON CONFLICT (key) DO NOTHING
     RETURNING key`;
   if (!migration.rowCount) return;
@@ -317,7 +317,7 @@ async function ensureTestDropEventFixture() {
           game_type = 'chicken_drop',
           drop_max_number = 30,
           drop_ticket_price = 5,
-          drop_winning_number = 17
+          drop_winning_number = NULL
       WHERE id = ${eventId}`;
     await sql`DELETE FROM result_places WHERE event_id = ${eventId}`;
     await sql`DELETE FROM results WHERE event_id = ${eventId}`;
@@ -333,7 +333,7 @@ async function ensureTestDropEventFixture() {
       )
       VALUES (
         'test-drop', 'Chicken Drop Test Event', '', '2027-12-31T23:59:00-05:00',
-        'America/New_York', ${defaultDropRule}, 'winner', 'chicken_drop', 30, 5, 17
+        'America/New_York', ${defaultDropRule}, 'winner', 'chicken_drop', 30, 5, null
       )
       RETURNING id`;
     eventId = Number(created.rows[0].id);
