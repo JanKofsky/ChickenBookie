@@ -33,6 +33,9 @@ with sync_playwright() as playwright:
 
     page.get_by_role("button", name="Contenders & Races").click()
     page.get_by_role("heading", name="Starting Flock").wait_for()
+    flock_image = page.locator(".test-flock-photo img").first
+    flock_image.wait_for()
+    page.wait_for_function("image => image.complete && image.naturalWidth > 0", arg=flock_image.element_handle())
     capture(page, "03-contenders-and-races.png")
 
     page.get_by_role("button", name="Ticket Board").click()
