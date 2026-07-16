@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: "Chicken Bookie",
     template: "%s | Chicken Bookie"
   },
-  description: "A private barnyard betting tool for forecasts, payout, and race-day settlement.",
+  description: "A private pool tracker for chicken races, Chicken Drop, and event-day settlement.",
   alternates: {
     canonical: "/"
   },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Chicken Bookie",
-    description: "A private barnyard betting tool for forecasts, payout, and race-day settlement.",
+    description: "A private pool tracker for chicken races, Chicken Drop, and event-day settlement.",
     url: "https://chickenbookie.com",
     siteName: "Chicken Bookie",
     type: "website",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Chicken Bookie",
-    description: "A private barnyard betting tool for forecasts, payout, and race-day settlement.",
+    description: "A private pool tracker for chicken races, Chicken Drop, and event-day settlement.",
     images: ["/assets/chicken_bookie_logo.png"]
   },
   robots: {

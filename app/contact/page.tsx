@@ -5,7 +5,7 @@ import SiteHeader from "../components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contact Chicken Bookie about the private barnyard race-day pool tracker.",
+  description: "Contact Chicken Bookie about the private chicken race and Chicken Drop pool tracker.",
   alternates: { canonical: "/contact" }
 };
 
@@ -17,7 +17,7 @@ export default function ContactPage() {
         <p className="eyebrow">Contact</p>
         <h1>hit us up</h1>
         <p className="muted">
-          Questions, race-day issues, good ideas, or chicken-related business? Send it along.
+          Questions, event-day issues, good ideas, or chicken-related business? Send it along.
         </p>
         <ContactForm />
         <Link className="text-link" href="/">Back to the coop</Link>

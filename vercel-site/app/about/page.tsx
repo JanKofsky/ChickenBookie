@@ -4,7 +4,7 @@ import SiteHeader from "../components/SiteHeader";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "About Chicken Bookie, a private race-day pool tracker for chicken races, shared pots, and simple settlement.",
+  description: "About Chicken Bookie, a private pool tracker for chicken races, Chicken Drop, shared pots, and simple settlement.",
   alternates: { canonical: "/about" }
 };
 
@@ -16,7 +16,7 @@ export default function AboutPage() {
         <p className="eyebrow">About</p>
         <h1>Chicken Bookie</h1>
         <p className="muted">
-          Chicken Bookie is a small private race-day tool for chicken races, backyard party pools, and bawk-worthy coop chaos.
+          Chicken Bookie is a small private event tool for chicken races, Chicken Drop (also known as Chicken Shit Bingo), backyard party pools, and bawk-worthy coop chaos.
         </p>
         <p className="muted">
           It lets hosts create an event, track pool entries in one shared feed bucket, enter official winners, and produce a short settlement list so people know who pays who.
