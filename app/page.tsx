@@ -441,8 +441,8 @@ function ChickenPhoto({ chicken, preview = false }: { chicken: Chicken; preview?
   if (chicken.photoUrl !== "/assets/test-flock-contenders.png") return <img src={chicken.photoUrl} alt={`${chicken.name} chicken${preview ? " preview" : ""}`} />;
   const column = (chicken.slot - 1) % 5;
   const row = Math.floor((chicken.slot - 1) / 5);
-  const style = { backgroundImage: `url(${chicken.photoUrl})`, backgroundPosition: `${column * 25}% ${row * 50}%` } satisfies CSSProperties;
-  return <div className="chicken-photo test-flock-photo" style={style} role="img" aria-label={`${chicken.name} fictional chicken${preview ? " preview" : ""}`} />;
+  const style = { left: `-${column * 100}%`, top: `-${row * 100}%` } satisfies CSSProperties;
+  return <div className="chicken-photo test-flock-photo"><img src={chicken.photoUrl} alt={`${chicken.name} fictional chicken${preview ? " preview" : ""}`} style={style} /></div>;
 }
 
 function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: Race[]; officialRule: string }) {

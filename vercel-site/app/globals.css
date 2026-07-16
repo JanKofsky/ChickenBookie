@@ -363,7 +363,20 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   margin-bottom: 10px;
   background: rgba(5, 9, 7, 0.45);
 }
-.chicken-photo.test-flock-photo { background-repeat: no-repeat; background-size: 500% 300%; }
+.chicken-photo.test-flock-photo { position: relative; overflow: hidden; }
+.test-flock-photo img {
+  position: absolute;
+  display: block;
+  width: 500%;
+  max-width: none;
+  height: 300%;
+  aspect-ratio: auto;
+  object-fit: fill;
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  background: none;
+}
 .bird strong { display: block; margin-top: 6px; font-size: 1.05rem; }
 .bird p { margin: 8px 0 0; color: var(--muted); line-height: 1.35; }
 .wide-field,
