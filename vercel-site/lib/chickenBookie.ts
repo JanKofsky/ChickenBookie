@@ -185,7 +185,7 @@ async function ensureTestEventFixture() {
     )`;
   const migration = await sql`
     INSERT INTO app_migrations (key)
-    SELECT 'seed-test-event-20260716-v1'
+    SELECT 'seed-test-event-20260716-v2'
     WHERE EXISTS (SELECT 1 FROM events WHERE code = 'test')
     ON CONFLICT (key) DO NOTHING
     RETURNING key`;
@@ -209,25 +209,26 @@ async function ensureTestEventFixture() {
   await sql`DELETE FROM races WHERE event_id = ${eventId}`;
   await sql`DELETE FROM chickens WHERE event_id = ${eventId}`;
 
+  const testFlockSprite = '/assets/test-flock-contenders.png';
   const testChickens = [
-    ['Tilly', 'Quick off the line and deeply suspicious of marshmallows.'],
-    ['Pepperoni', 'A fearless snack hunter with championship footwork.'],
-    ['Peanut', 'Small bird, enormous race-day confidence.'],
-    ['Joan Rivers', 'Never quiet, always ready for the spotlight.'],
-    ['Jetcar Junior', 'Built for speed and questionable decisions.'],
-    ['Maple Creamie', 'Sweet disposition until the starting bell rings.'],
-    ['Squish', 'Low center of gravity, surprisingly aerodynamic.'],
-    ['Booger', 'Unpredictable, unbothered, and hard to catch.'],
-    ['Dirty Boi', 'Treats every race like a mud-running event.'],
-    ['Guppy Troupe', 'One chicken with the energy of an entire ensemble.'],
-    ['Sheryl Crow', 'Soaks up the sun, then sprints for glory.'],
-    ['Jiminy Giant', 'A gentle giant with a very long stride.'],
-    ['Cluck Norris', 'Legendary roundhouse peck, excellent closing speed.'],
-    ['Hen Solo', 'A rogue racer who always shoots first.'],
-    ['Princess Layer', 'Royal plumage and championship ambition.']
+    ['Disco Biscuit', 'Dances through the warm-up and saves the best strut for the finish.'],
+    ['Waffles McGraw', 'A golden-feathered outlaw with a syrup-smooth racing line.'],
+    ['Turbo Nugget', 'Tiny goggles, enormous acceleration, absolutely no brakes.'],
+    ['Pickle Boots', 'Speckled, stubborn, and famous for unusual green race-day footwear.'],
+    ['Moon Pie', 'A round little dreamer who becomes surprisingly fast after sunset.'],
+    ['Colonel Crumbs', 'Runs a disciplined race but cannot resist snacks on the course.'],
+    ['Banjo Beans', 'Keeps a steady rhythm and pecks out a furious final sprint.'],
+    ['Glitter Beak', 'Leaves a little sparkle and a lot of confused competitors behind.'],
+    ['Toast Malone', 'Crispy confidence, buttery footwork, and a very mellow game face.'],
+    ['Sir Pecksalot', 'A gallant contender sworn to defend the honor of the snack bucket.'],
+    ['Noodle Legs', 'All knees at the starting line, pure lightning once the bell rings.'],
+    ['Biscuit Bandit', 'Steals treats, hearts, and occasionally the inside lane.'],
+    ['Dolly Carton', 'Big feathers, bigger personality, and a chorus-ready victory cluck.'],
+    ['Eggward', 'A dramatic crest and a mysterious talent for photo finishes.'],
+    ['Captain Flapjack', 'Commands the final stretch like a syrup-powered ship at sea.']
   ] as const;
   for (let index = 0; index < testChickens.length; index += 1) {
-    await sql`INSERT INTO chickens (event_id, slot, name, bio) VALUES (${eventId}, ${index + 1}, ${testChickens[index][0]}, ${testChickens[index][1]})`;
+    await sql`INSERT INTO chickens (event_id, slot, name, bio, photo_url) VALUES (${eventId}, ${index + 1}, ${testChickens[index][0]}, ${testChickens[index][1]}, ${testFlockSprite})`;
   }
 
   const testRaces = [
