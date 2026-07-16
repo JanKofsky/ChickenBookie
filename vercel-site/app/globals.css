@@ -194,7 +194,8 @@ h1 {
 .venmo-input { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(7, 11, 8, 0.52); }
 .venmo-input > span { padding-left: 11px; color: rgba(222, 209, 182, 0.7); font-weight: 900; }
 .venmo-input input { border: 0; background: transparent; }
-.venmo-handle { display: inline-block; margin: 0 5px; padding: 2px 6px; border: 1px solid rgba(222, 209, 182, 0.18); border-radius: 5px; background: rgba(222, 209, 182, 0.08); color: rgba(222, 209, 182, 0.68); font-family: inherit; font-size: 0.78em; user-select: text; }
+.venmo-handle { display: inline-block; min-height: 0; margin: 0 5px; padding: 2px 6px; border: 1px solid rgba(222, 209, 182, 0.18); border-radius: 5px; background: rgba(222, 209, 182, 0.08); box-shadow: none; color: rgba(222, 209, 182, 0.68); font-family: inherit; font-size: 0.78em; font-weight: 700; line-height: 1.25; user-select: text; cursor: copy; }
+.venmo-handle:hover { background: rgba(222, 209, 182, 0.14); border-color: rgba(222, 209, 182, 0.28); }
 .bettor-admin-card { align-items: center; }
 .admin-unlock { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-top: 16px; }
 .admin-unlock .check-row,

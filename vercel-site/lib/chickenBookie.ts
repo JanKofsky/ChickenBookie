@@ -174,6 +174,104 @@ export async function ensureSchema() {
       PRIMARY KEY(event_id, race, place)
     )`;
   await ensureDefaultEvent();
+  await ensureTestEventFixture();
+}
+
+async function ensureTestEventFixture() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS app_migrations (
+      key TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`;
+  const migration = await sql`
+    INSERT INTO app_migrations (key)
+    SELECT 'seed-test-event-20260716-v1'
+    WHERE EXISTS (SELECT 1 FROM events WHERE code = 'test')
+    ON CONFLICT (key) DO NOTHING
+    RETURNING key`;
+  if (!migration.rowCount) return;
+
+  const event = await sql`SELECT id FROM events WHERE code = 'test' LIMIT 1`;
+  const eventId = Number(event.rows[0].id);
+  await sql`
+    UPDATE events
+    SET name = 'Chicken Bookie Test Event',
+        admin_code = '',
+        betting_close_at = '2027-12-31T23:59:00-05:00',
+        betting_timezone = 'America/New_York',
+        official_rule = 'First beak across the snack line wins.',
+        result_mode = 'winner'
+    WHERE id = ${eventId}`;
+  await sql`DELETE FROM result_places WHERE event_id = ${eventId}`;
+  await sql`DELETE FROM results WHERE event_id = ${eventId}`;
+  await sql`DELETE FROM bets WHERE event_id = ${eventId}`;
+  await sql`DELETE FROM bettors WHERE event_id = ${eventId}`;
+  await sql`DELETE FROM races WHERE event_id = ${eventId}`;
+  await sql`DELETE FROM chickens WHERE event_id = ${eventId}`;
+
+  const testChickens = [
+    ['Tilly', 'Quick off the line and deeply suspicious of marshmallows.'],
+    ['Pepperoni', 'A fearless snack hunter with championship footwork.'],
+    ['Peanut', 'Small bird, enormous race-day confidence.'],
+    ['Joan Rivers', 'Never quiet, always ready for the spotlight.'],
+    ['Jetcar Junior', 'Built for speed and questionable decisions.'],
+    ['Maple Creamie', 'Sweet disposition until the starting bell rings.'],
+    ['Squish', 'Low center of gravity, surprisingly aerodynamic.'],
+    ['Booger', 'Unpredictable, unbothered, and hard to catch.'],
+    ['Dirty Boi', 'Treats every race like a mud-running event.'],
+    ['Guppy Troupe', 'One chicken with the energy of an entire ensemble.'],
+    ['Sheryl Crow', 'Soaks up the sun, then sprints for glory.'],
+    ['Jiminy Giant', 'A gentle giant with a very long stride.'],
+    ['Cluck Norris', 'Legendary roundhouse peck, excellent closing speed.'],
+    ['Hen Solo', 'A rogue racer who always shoots first.'],
+    ['Princess Layer', 'Royal plumage and championship ambition.']
+  ] as const;
+  for (let index = 0; index < testChickens.length; index += 1) {
+    await sql`INSERT INTO chickens (event_id, slot, name, bio) VALUES (${eventId}, ${index + 1}, ${testChickens[index][0]}, ${testChickens[index][1]})`;
+  }
+
+  const testRaces = [
+    ['Race 1 - Barnyard Dash', 'A clean sprint across the coop.'],
+    ['Race 2 - The Hay Bale Hustle', 'A longer scoot with a little barnyard nonsense.'],
+    ['Race 3 - The Coop Gauntlet', 'Maximum distractions before the snack line.'],
+    ['Race 4 - The Feathered Finale', 'One last dash for test-event glory.']
+  ] as const;
+  for (let index = 0; index < testRaces.length; index += 1) {
+    await sql`INSERT INTO races (event_id, race, name, description) VALUES (${eventId}, ${index + 1}, ${testRaces[index][0]}, ${testRaces[index][1]})`;
+  }
+
+  const testBettors = [
+    ['Avery', '@cb-test-avery'],
+    ['Casey', '@cb-test-casey'],
+    ['Jordan', '@cb-test-jordan'],
+    ['Riley', '@cb-test-riley'],
+    ['Morgan', '@cb-test-morgan']
+  ] as const;
+  for (const [name, venmo] of testBettors) {
+    await sql`INSERT INTO bettors (event_id, name, venmo) VALUES (${eventId}, ${name}, ${venmo})`;
+  }
+
+  const chickenRows = await sql`SELECT id, slot FROM chickens WHERE event_id = ${eventId}`;
+  const bettorRows = await sql`SELECT id, name FROM bettors WHERE event_id = ${eventId}`;
+  const chickenId = (slot: number) => Number(chickenRows.rows.find((row) => Number(row.slot) === slot)?.id);
+  const bettorId = (name: string) => Number(bettorRows.rows.find((row) => row.name === name)?.id);
+  const addTestBet = async (name: string, betType: BetType, stake: number, race: number | null, slots: number[]) => {
+    const picks = slots.map(chickenId);
+    await sql`
+      INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, picks)
+      VALUES (${eventId}, ${bettorId(name)}, ${betType}, ${stake}, ${race}, ${picks[0] ?? null}, ${picks[1] ?? null}, ${picks[2] ?? null}, ${JSON.stringify(picks)}::jsonb)`;
+  };
+  await addTestBet('Avery', 'race_winner', 20, 1, [1]);
+  await addTestBet('Casey', 'any_win', 10, null, [2]);
+  await addTestBet('Jordan', 'race_winner', 15, 2, [7]);
+  await addTestBet('Riley', 'exact_ticket', 10, null, [4, 3, 2, 1]);
+  await addTestBet('Morgan', 'sweep', 5, null, [5]);
+
+  for (let race = 1; race <= 4; race += 1) {
+    const winnerId = chickenId(race);
+    await sql`INSERT INTO results (event_id, race, chicken_id) VALUES (${eventId}, ${race}, ${winnerId})`;
+    await sql`INSERT INTO result_places (event_id, race, place, chicken_id) VALUES (${eventId}, ${race}, 1, ${winnerId})`;
+  }
 }
 
 async function ensureDefaultEvent() {
