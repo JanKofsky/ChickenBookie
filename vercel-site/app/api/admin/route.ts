@@ -64,6 +64,8 @@ export async function PATCH(request: NextRequest) {
       officialRule: String(body.officialRule ?? ""),
       resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
       dropMaxNumber: body.dropMaxNumber == null ? undefined : Number(body.dropMaxNumber),
+      dropGridColumns: body.dropGridColumns == null ? undefined : Number(body.dropGridColumns),
+      dropGridRows: body.dropGridRows == null ? undefined : Number(body.dropGridRows),
       dropTicketPrice: body.dropTicketPrice == null ? undefined : Number(body.dropTicketPrice),
       chickens: Array.isArray(body.chickens) ? body.chickens : [],
       races: Array.isArray(body.races) ? body.races : []

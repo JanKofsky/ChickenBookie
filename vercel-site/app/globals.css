@@ -289,14 +289,37 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .drop-heat-legend span { margin-right: 3px; color: var(--leaf); letter-spacing: 0.07em; text-transform: uppercase; }
 .drop-heat-legend i { display: block; width: 17px; height: 17px; border: 1px solid rgba(255, 243, 216, 0.24); border-radius: 4px; }
 .drop-heat-legend small { margin-left: 3px; }
-.drop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.drop-grid-hint { margin: 0; color: rgba(222, 209, 182, 0.78); font-size: 0.78rem; line-height: 1.4; }
+.drop-grid-hint b { color: var(--ink); }
+.drop-grid-scroll {
+  width: 100%;
+  max-width: 100%;
+  padding: 3px 3px 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border-radius: 8px;
+  scrollbar-color: rgba(214, 103, 82, 0.78) rgba(12, 25, 18, 0.66);
+  touch-action: pan-x pan-y;
+}
+.drop-grid-scroll:focus-visible { outline: 2px solid var(--mustard-light); outline-offset: 2px; }
+.drop-grid {
+  --drop-cell-size: clamp(96px, 9vw, 116px);
+  display: grid;
+  grid-auto-flow: row;
+  width: max-content;
+  margin-inline: auto;
+  gap: 8px;
+}
 .drop-square {
   position: relative;
   display: grid;
   align-content: center;
   justify-items: center;
   gap: 3px;
-  min-height: 98px;
+  width: var(--drop-cell-size);
+  min-width: var(--drop-cell-size);
+  height: var(--drop-cell-size);
+  min-height: 0;
   padding: 10px 6px;
   overflow: hidden;
   border-color: rgba(217, 240, 194, 0.26);
@@ -304,8 +327,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   text-align: center;
 }
 .drop-square span { color: var(--ink); font-family: var(--font-puffy), Inter, system-ui, sans-serif; font-size: 1.28rem; line-height: 1; }
-.drop-square small { color: rgba(255, 243, 216, 0.76); font-family: var(--font-friendly), Inter, system-ui, sans-serif; font-size: 0.76rem; font-weight: 850; }
-.drop-square strong { color: var(--mustard-light); font-family: var(--font-friendly), Inter, system-ui, sans-serif; font-size: 0.82rem; }
+.drop-square small { color: rgba(255, 243, 216, 0.76); font-family: var(--font-friendly), Inter, system-ui, sans-serif; font-size: 0.76rem; font-weight: 850; white-space: nowrap; }
+.drop-square strong { color: var(--mustard-light); font-family: var(--font-friendly), Inter, system-ui, sans-serif; font-size: 0.82rem; white-space: nowrap; }
 .drop-square em { padding: 2px 5px; border-radius: 999px; background: rgba(240, 217, 121, 0.18); color: var(--mustard-light); font-family: var(--font-friendly), Inter, system-ui, sans-serif; font-size: 0.62rem; font-style: normal; font-weight: 950; letter-spacing: 0.05em; text-transform: uppercase; }
 .drop-square:disabled { cursor: default; opacity: 1; }
 .drop-square.heat-0,
@@ -572,8 +595,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .drop-insights p { grid-column: auto; }
   .scoreboard { width: 100%; justify-self: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .chicken-buttons, .flock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .drop-grid { grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); gap: 6px; }
-  .drop-square { min-height: 88px; }
+  .drop-grid { --drop-cell-size: 92px; gap: 6px; }
   .admin-card,
   .chicken-admin-card { grid-template-columns: 1fr; }
   .ticket { grid-template-columns: 1fr; }

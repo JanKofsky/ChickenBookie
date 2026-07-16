@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Bet, BetType, Chicken, EventPayload, GameType, Race, Results } from "../lib/chickenBookie";
 
@@ -176,7 +176,7 @@ export default function Home() {
               <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
               {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie logo" />}
             </div>
-            <p className="hero-subtitle">{payload ? payload.event.gameType === "chicken_drop" ? `Chicken Drop | 1-${payload.event.dropMaxNumber} | ${money(payload.event.dropTicketPrice)} per ticket` : `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
+            <p className="hero-subtitle">{payload ? payload.event.gameType === "chicken_drop" ? `Chicken Drop | ${payload.event.dropGridColumns} × ${payload.event.dropGridRows} grid | ${payload.event.dropMaxNumber} sections | ${money(payload.event.dropTicketPrice)} per ticket` : `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
             {payload ? <p className="lede">{payload.event.officialRule}</p> : (
               <form className="event-switch hero-switch" onSubmit={(event) => { event.preventDefault(); loadEvent(); }}>
                 <input value={eventCode} onChange={(event) => setEventCode(event.target.value)} aria-label="Event code" placeholder="Event code here" />
@@ -249,13 +249,14 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [gameType, setGameType] = useState<GameType>("race");
   const [resultMode, setResultMode] = useState<"winner" | "full_order">("winner");
-  const [dropMaxNumber, setDropMaxNumber] = useState("30");
+  const [dropGridColumns, setDropGridColumns] = useState("6");
+  const [dropGridRows, setDropGridRows] = useState("5");
   const [dropTicketPrice, setDropTicketPrice] = useState("5");
   const [copyCode, setCopyCode] = useState("");
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, gameType, resultMode, dropMaxNumber: Number(dropMaxNumber), dropTicketPrice: Number(dropTicketPrice), copyCode: gameType === "race" ? copyCode : "" }) });
+    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, gameType, resultMode, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), copyCode: gameType === "race" ? copyCode : "" }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not create event.")); else onCreated(data);
   }
@@ -267,9 +268,10 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
       <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
       <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
     </> : <>
-      <label>Number of grid sections<input type="number" min="2" max="500" step="1" value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
+      <label>Grid columns (across)<input type="number" min="1" max="500" step="1" value={dropGridColumns} onChange={(event) => setDropGridColumns(event.target.value)} /></label>
+      <label>Grid rows (down)<input type="number" min="1" max="500" step="1" value={dropGridRows} onChange={(event) => setDropGridRows(event.target.value)} /></label>
       <label>Cost per ticket<input type="number" min="0.01" max="10000" step="0.01" value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
-      <p className="fine-print wide-field">Players pick directly from the numbered grid. More than one ticket can land on the same number, and every ticket costs the same amount.</p>
+      <p className="fine-print wide-field"><b>{Number(dropGridColumns) || 0} columns × {Number(dropGridRows) || 0} rows = {(Number(dropGridColumns) || 0) * (Number(dropGridRows) || 0)} numbered sections.</b> Players pick directly from this exact grid shape. More than one ticket can land on the same number, and every ticket costs the same amount.</p>
     </>}
     <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
     <p className="fine-print wide-field">write this down now; Chicken Bookie will not show it again</p>
@@ -350,6 +352,9 @@ function DropBoardInsights({ payload }: { payload: EventPayload }) {
 }
 
 function DropNumberGrid({ payload, selectedNumber = null, onSelect }: { payload: EventPayload; selectedNumber?: number | null; onSelect?: (value: number | null) => void }) {
+  const hintId = useId();
+  const columns = payload.event.dropGridColumns;
+  const rows = payload.event.dropGridRows;
   const numbers = Array.from({ length: payload.event.dropMaxNumber }, (_, index) => index + 1);
   const stats = new Map<number, { count: number; amount: number }>();
   for (const bet of payload.bets) {
@@ -361,16 +366,21 @@ function DropNumberGrid({ payload, selectedNumber = null, onSelect }: { payload:
   }
   return <div className="drop-board-wrap">
     <div className="drop-heat-legend" aria-label="Bet heat legend"><span>bet heat</span>{[0, 1, 2, 3, 4].map((level) => <i className={`heat-${level}`} key={level} title={level === 4 ? "4 or more bets" : `${level} bet${level === 1 ? "" : "s"}`} />)}<small>0 to 4+ bets</small></div>
-    <div className="drop-grid" aria-label={`Chicken Drop numbers 1 through ${payload.event.dropMaxNumber}`}>
-      {numbers.map((number) => {
-        const stat = stats.get(number) ?? { count: 0, amount: 0 };
-        const selected = selectedNumber === number;
-        const winning = payload.event.dropWinningNumber === number;
-        const heatLevel = Math.min(4, stat.count);
-        return <button type="button" key={number} disabled={!onSelect} aria-pressed={selected} aria-label={`Number ${number}, ${stat.count} bets, ${money(stat.amount)}${winning ? ", official winner" : ""}`} className={`drop-square heat-${heatLevel}${selected ? " selected" : ""}${winning ? " winning" : ""}`} onClick={() => onSelect?.(selected ? null : number)}>
-          <span>#{number}</span><small>{stat.count} bet{stat.count === 1 ? "" : "s"}</small><strong>{money(stat.amount)}</strong>{selected && <em>your pick</em>}{winning && <em>official drop</em>}
-        </button>;
-      })}
+    <p className="drop-grid-hint" id={hintId}><b>{columns} columns × {rows} rows.</b> Numbers run left to right, then top to bottom. Swipe or scroll sideways if the full board does not fit.</p>
+    <div className="drop-grid-scroll" role="region" tabIndex={0} aria-label={`${columns}-column by ${rows}-row Chicken Drop board`} aria-describedby={hintId}>
+      <div className="drop-grid" style={{ gridTemplateColumns: `repeat(${columns}, var(--drop-cell-size))`, gridTemplateRows: `repeat(${rows}, var(--drop-cell-size))` }}>
+        {numbers.map((number) => {
+          const stat = stats.get(number) ?? { count: 0, amount: 0 };
+          const selected = selectedNumber === number;
+          const winning = payload.event.dropWinningNumber === number;
+          const heatLevel = Math.min(4, stat.count);
+          const row = Math.floor((number - 1) / columns) + 1;
+          const column = ((number - 1) % columns) + 1;
+          return <button type="button" key={number} disabled={!onSelect} aria-pressed={onSelect ? selected : undefined} aria-label={`Number ${number}, row ${row}, column ${column}, ${stat.count} bets, ${money(stat.amount)}${winning ? ", official winner" : ""}`} className={`drop-square heat-${heatLevel}${selected ? " selected" : ""}${winning ? " winning" : ""}`} onClick={() => onSelect?.(selected ? null : number)}>
+            <span>#{number}</span><small>{stat.count} bet{stat.count === 1 ? "" : "s"}</small><strong>{money(stat.amount)}</strong>{selected && <em>your pick</em>}{winning && <em>official drop</em>}
+          </button>;
+        })}
+      </div>
     </div>
   </div>;
 }
@@ -546,7 +556,8 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   const [bettingCloseAt, setBettingCloseAt] = useState(dateTimeInputValue(payload.event.bettingCloseAt, payload.event.bettingTimezone));
   const [officialRule, setOfficialRule] = useState(payload.event.officialRule);
   const [resultMode, setResultMode] = useState(payload.event.resultMode);
-  const [dropMaxNumber, setDropMaxNumber] = useState(String(payload.event.dropMaxNumber));
+  const [dropGridColumns, setDropGridColumns] = useState(String(payload.event.dropGridColumns));
+  const [dropGridRows, setDropGridRows] = useState(String(payload.event.dropGridRows));
   const [dropTicketPrice, setDropTicketPrice] = useState(String(payload.event.dropTicketPrice));
   const [dropWinningNumber, setDropWinningNumber] = useState(payload.event.dropWinningNumber == null ? "" : String(payload.event.dropWinningNumber));
   const [chickens, setChickens] = useState(payload.chickens);
@@ -595,7 +606,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
       return;
     }
     setChickens(compactChickens);
-    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, dropMaxNumber: Number(dropMaxNumber), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
+    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
     if (body.length > 4_000_000) {
       setMessage("Chicken photos are still too large to save together. Remove one photo or upload smaller images.");
       return;
@@ -624,6 +635,9 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   if (!unlocked) {
     return <section className="panel admin-gate"><h2>Coop Boss</h2><form className="admin-unlock" onSubmit={unlock}><label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label><label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label><button type="submit">Unlock admin</button>{message && <p className="form-error">{message}</p>}</form></section>;
   }
+  const dropGridShapeLocked = payload.bets.length > 0 || payload.event.dropWinningNumber != null;
+  const dropTicketPriceLocked = payload.bets.length > 0;
+  const configuredDropSections = (Number(dropGridColumns) || 0) * (Number(dropGridRows) || 0);
   return (
     <section className="panel">
       <h2>Coop Boss</h2>
@@ -643,9 +657,11 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         <label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
 
         {isDropEvent ? <>
-          <label>Number of grid sections<input type="number" min="2" max="500" step="1" disabled={payload.bets.length > 0} value={dropMaxNumber} onChange={(event) => setDropMaxNumber(event.target.value)} /></label>
-          <label>Fixed cost per ticket<input type="number" min="0.01" max="10000" step="0.01" disabled={payload.bets.length > 0} value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
-          {payload.bets.length > 0 && <p className="fine-print wide-field">Board size and ticket price are locked after betting begins so every ticket keeps the same terms.</p>}
+          <label>Grid columns (across)<input type="number" min="1" max="500" step="1" disabled={dropGridShapeLocked} value={dropGridColumns} onChange={(event) => setDropGridColumns(event.target.value)} /></label>
+          <label>Grid rows (down)<input type="number" min="1" max="500" step="1" disabled={dropGridShapeLocked} value={dropGridRows} onChange={(event) => setDropGridRows(event.target.value)} /></label>
+          <label>Fixed cost per ticket<input type="number" min="0.01" max="10000" step="0.01" disabled={dropTicketPriceLocked} value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
+          <p className="fine-print wide-field"><b>{Number(dropGridColumns) || 0} columns × {Number(dropGridRows) || 0} rows = {configuredDropSections} numbered sections.</b> Numbers run left to right, then top to bottom.</p>
+          {(dropGridShapeLocked || dropTicketPriceLocked) && <p className="fine-print wide-field">The grid shape is locked after the first bet or official result. Ticket price is locked after betting begins so every ticket keeps the same terms.</p>}
           <label className="wide-field">Chicken Drop rules<textarea value={officialRule} placeholder="describe what counts as the official square and how line hits are decided" onChange={(event) => setOfficialRule(event.target.value)} rows={5} /></label>
         </> : <>
           <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>

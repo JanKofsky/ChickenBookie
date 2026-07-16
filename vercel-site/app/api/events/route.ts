@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
       resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
       gameType: body.gameType === "chicken_drop" ? "chicken_drop" : "race",
       dropMaxNumber: body.dropMaxNumber == null ? undefined : Number(body.dropMaxNumber),
+      dropGridColumns: body.dropGridColumns == null ? undefined : Number(body.dropGridColumns),
+      dropGridRows: body.dropGridRows == null ? undefined : Number(body.dropGridRows),
       dropTicketPrice: body.dropTicketPrice == null ? undefined : Number(body.dropTicketPrice),
       copyCode: body.copyCode ? String(body.copyCode) : undefined
     });

@@ -32,9 +32,9 @@ The **Contenders & Races** tab introduces the flock and keeps the event rules vi
 
 ### Chicken Drop / Chicken Shit Bingo mode
 
-Chicken Drop is a separate event format rather than one more race wager. The host chooses the number of grid sections — numbered `1` through that count — and sets one fixed cost for every ticket.
+Chicken Drop is a separate event format rather than one more race wager. The host chooses the actual grid dimensions — columns across × rows down — and sets one fixed cost for every ticket. A `2 × 2`, `4 × 2`, and `3 × 8` board therefore look physically different, just as they should.
 
-Participants place the bet directly on the board. They click a numbered square, see a visible “your pick” state, and submit one fixed-price ticket. More than one person can choose the same square, and one person can hold multiple tickets on the same square.
+Participants place the bet directly on the board. Numbers run left to right and then top to bottom. They click a numbered square, see a visible “your pick” state, and submit one fixed-price ticket. More than one person can choose the same square, and one person can hold multiple tickets on the same square. The exact shape is preserved on phones with sideways scrolling instead of silently reflowing the board.
 
 Every square shows its live ticket count and total Cluck Bucks. The board is also a heatmap: empty squares stay dark and increasingly popular numbers become brighter coral. The **Live Betting Board** adds the assumed per-section chance and identifies the least-crowded numbers with the best projected total return for the next ticket, while warning that later bets and real chicken behavior can change those assumptions.
 
@@ -61,12 +61,12 @@ The **Coop Boss** can:
 
 - Edit event name, close time, timezone, and rules.
 - Manage flock details and race cards for Race events.
-- Set the numbered board and fixed ticket cost for Chicken Drop events before betting begins.
+- Set the board’s columns, rows, and fixed ticket cost for Chicken Drop events before betting begins.
 - Record or clear official results.
 - Add or correct bettor Venmo handles.
 - Delete accidental tickets.
 
-Chicken Drop’s board size and ticket price lock after the first ticket so everybody keeps the same terms.
+Chicken Drop’s exact grid shape and ticket price lock after the first ticket so everybody keeps the same terms and numbered locations do not move.
 
 I leaned hard into a dark old-barn / cheerful bookmaker look because none of this needed to be remotely serious.
 
@@ -75,7 +75,7 @@ I leaned hard into a dark old-barn / cheerful bookmaker look because none of thi
 The public demos use only fictional data:
 
 - Open **https://chickenbookie.com/?event=test** for a completed four-race event with 15 made-up chickens, fake tickets, fake Venmo handles, and a visible settlement.
-- Open **https://chickenbookie.com/?event=test-drop** for an open 30-section Chicken Drop board with a `$5` fixed ticket, varied heat levels, and fake participants. Place a grid ticket, then use the unlocked Coop Boss to choose the official square and reveal settlement.
+- Open **https://chickenbookie.com/?event=test-drop** for an open `6 × 5` Chicken Drop board with 30 sections, a `$5` fixed ticket, varied heat levels, and fake participants. Place a grid ticket, then use the unlocked Coop Boss to choose the official square and reveal settlement.
 
 The test admin areas are intentionally unlocked and use blank admin codes. In `test-drop`, place a ticket directly on the grid and then save a winning number to see settlement calculate.
 
@@ -85,7 +85,7 @@ I would love feedback on whether either flow makes sense, which labels are confu
 
 I built **Chicken Bookie**, a private event-code app for chicken-race pools and **Chicken Drop / Chicken Shit Bingo**.
 
-Race events support single-race and multi-race picks, a customizable flock and race card, live ticket stats, official results, and weighted shared-pool settlement. Chicken Drop events use a clickable numbered heatmap: each square shows its ticket count and dollars wagered, every ticket has one host-set price, and the official square splits the losing pool between the winning tickets.
+Race events support single-race and multi-race picks, a customizable flock and race card, live ticket stats, official results, and weighted shared-pool settlement. Chicken Drop events use a clickable, exact-shaped numbered heatmap: the host chooses columns × rows, each square shows its ticket count and dollars wagered, every ticket has one host-set price, and the official square splits the losing pool between the winning tickets.
 
 Players do not need accounts. They can optionally add a Venmo handle, and the final “X pays Y” plan gives the payer a one-click copy control for only the payee’s handle. The site does not collect or transfer money.
 
@@ -101,10 +101,10 @@ Try the fictional demos:
 3. `03-contenders-and-races.png` — The 15 fictional contenders, properly framed artwork, highlighted race rules, and four-race card.
 4. `04-race-ticket-board.png` — Live fictional flock totals and race ticket details.
 5. `05-race-winners.png` — Completed race results, ledger, payment plan, and copyable payee Venmo handles.
-6. `06-drop-betting-grid.png` — Open `test-drop` board showing 30 sections, fixed `$5` cost, varied ticket counts, dollar totals, coral heat levels, and click-to-pick controls.
+6. `06-drop-betting-grid.png` — Open `test-drop` board showing its exact `6 × 5` shape, 30 sections, fixed `$5` cost, varied ticket counts, dollar totals, coral heat levels, and click-to-pick controls.
 7. `07-drop-live-betting-board.png` — Live heatmap plus assumed per-section chance and best projected next-ticket returns.
 8. `08-drop-pending-result.png` — Winner’s Circle before the Coop Boss chooses the official square.
-9. `09-drop-admin.png` — Auto-unlocked demo admin showing the Chicken Drop label, blank-code notice, locked board/price terms, official-number control, bettor handles, and ticket deletion controls.
+9. `09-drop-admin.png` — Auto-unlocked demo admin showing the Chicken Drop label, blank-code notice, explicit columns × rows, locked grid/price terms, official-number control, bettor handles, and ticket deletion controls.
 
 ## Posting notes
 
@@ -118,7 +118,7 @@ Try the fictional demos:
 
 - Next.js App Router, React, and TypeScript.
 - Supabase Postgres through a small server-side `postgres` wrapper.
-- Server-authoritative validation for close times, official-result locks, valid picks, fixed Chicken Drop pricing, and board range.
+- Server-authoritative validation for close times, official-result locks, valid picks, exact Chicken Drop dimensions, and fixed pricing.
 - Idempotent schema upgrades using `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
 - Separate race and Chicken Drop settlement paths feeding one shared person-level payment netting function.
 - Vercel production deployment from `main`, using the mirrored `vercel-site` application tree.

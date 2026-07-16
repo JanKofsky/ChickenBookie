@@ -13,6 +13,8 @@ export type EventRecord = {
   resultMode: ResultMode;
   gameType: GameType;
   dropMaxNumber: number;
+  dropGridColumns: number;
+  dropGridRows: number;
   dropTicketPrice: number;
   dropWinningNumber: number | null;
 };
@@ -105,6 +107,23 @@ function factorial(value: number): number {
   return value <= 1 ? 1 : value * factorial(value - 1);
 }
 
+function factorDropGrid(value: number) {
+  const total = Number.isInteger(value) && value >= 2 ? value : 25;
+  let rows = Math.floor(Math.sqrt(total));
+  while (rows > 1 && total % rows !== 0) rows -= 1;
+  return { columns: total / rows, rows, total };
+}
+
+function resolveDropGrid(maxNumber: unknown, columns: unknown, rows: unknown) {
+  const total = Number(maxNumber);
+  const storedColumns = Number(columns);
+  const storedRows = Number(rows);
+  if (Number.isInteger(storedColumns) && storedColumns > 0 && Number.isInteger(storedRows) && storedRows > 0 && storedColumns * storedRows === total) {
+    return { columns: storedColumns, rows: storedRows, total };
+  }
+  return factorDropGrid(total);
+}
+
 export async function ensureSchema() {
   await sql`
     CREATE TABLE IF NOT EXISTS events (
@@ -118,6 +137,8 @@ export async function ensureSchema() {
       result_mode TEXT NOT NULL DEFAULT 'winner',
       game_type TEXT NOT NULL DEFAULT 'race',
       drop_max_number INTEGER NOT NULL DEFAULT 25,
+      drop_grid_columns INTEGER NOT NULL DEFAULT 5,
+      drop_grid_rows INTEGER NOT NULL DEFAULT 5,
       drop_ticket_price NUMERIC(10, 2) NOT NULL DEFAULT 5,
       drop_winning_number INTEGER,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -126,6 +147,8 @@ export async function ensureSchema() {
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS betting_timezone TEXT NOT NULL DEFAULT 'America/New_York'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS game_type TEXT NOT NULL DEFAULT 'race'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_max_number INTEGER NOT NULL DEFAULT 25`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_grid_columns INTEGER NOT NULL DEFAULT 5`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_grid_rows INTEGER NOT NULL DEFAULT 5`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_ticket_price NUMERIC(10, 2) NOT NULL DEFAULT 5`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_winning_number INTEGER`;
   await sql`
@@ -193,6 +216,7 @@ export async function ensureSchema() {
   await ensureDefaultEvent();
   await ensureTestEventFixture();
   await ensureTestDropEventFixture();
+  await ensureDropGridDimensionBackfill();
 }
 
 async function ensureTestEventFixture() {
@@ -316,6 +340,8 @@ async function ensureTestDropEventFixture() {
           result_mode = 'winner',
           game_type = 'chicken_drop',
           drop_max_number = 30,
+          drop_grid_columns = 6,
+          drop_grid_rows = 5,
           drop_ticket_price = 5,
           drop_winning_number = NULL
       WHERE id = ${eventId}`;
@@ -329,11 +355,11 @@ async function ensureTestDropEventFixture() {
     const created = await sql`
       INSERT INTO events (
         code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode,
-        game_type, drop_max_number, drop_ticket_price, drop_winning_number
+        game_type, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price, drop_winning_number
       )
       VALUES (
         'test-drop', 'Chicken Drop Test Event', '', '2027-12-31T23:59:00-05:00',
-        'America/New_York', ${defaultDropRule}, 'winner', 'chicken_drop', 30, 5, null
+        'America/New_York', ${defaultDropRule}, 'winner', 'chicken_drop', 30, 6, 5, 5, null
       )
       RETURNING id`;
     eventId = Number(created.rows[0].id);
@@ -364,6 +390,23 @@ async function ensureTestDropEventFixture() {
       INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, drop_number, picks)
       VALUES (${eventId}, ${bettorId(name)}, 'drop_number', 5, null, null, null, null, ${dropNumber}, '[]'::jsonb)`;
   }
+}
+
+async function ensureDropGridDimensionBackfill() {
+  const migrationKey = 'backfill-drop-grid-dimensions-20260716-v1';
+  const migration = await sql`SELECT key FROM app_migrations WHERE key = ${migrationKey} LIMIT 1`;
+  if (migration.rowCount) return;
+  const events = await sql`SELECT id, drop_max_number, drop_grid_columns, drop_grid_rows FROM events WHERE game_type = 'chicken_drop'`;
+  for (const event of events.rows) {
+    const grid = resolveDropGrid(event.drop_max_number, event.drop_grid_columns, event.drop_grid_rows);
+    await sql`
+      UPDATE events
+      SET drop_grid_columns = ${grid.columns},
+          drop_grid_rows = ${grid.rows},
+          drop_max_number = ${grid.total}
+      WHERE id = ${Number(event.id)}`;
+  }
+  await sql`INSERT INTO app_migrations (key) VALUES (${migrationKey}) ON CONFLICT (key) DO NOTHING`;
 }
 
 async function ensureDefaultEvent() {
@@ -400,6 +443,7 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     sql`SELECT race, chicken_id FROM results WHERE event_id = ${eventId}`
   ]);
   const rawEvent = eventResult.rows[0];
+  const dropGrid = resolveDropGrid(rawEvent.drop_max_number, rawEvent.drop_grid_columns, rawEvent.drop_grid_rows);
   const event: EventRecord = {
     id: Number(rawEvent.id),
     code: rawEvent.code,
@@ -409,7 +453,9 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     officialRule: rawEvent.official_rule,
     resultMode: rawEvent.result_mode === "full_order" ? "full_order" : "winner",
     gameType: rawEvent.game_type === "chicken_drop" ? "chicken_drop" : "race",
-    dropMaxNumber: Number(rawEvent.drop_max_number ?? 25),
+    dropMaxNumber: dropGrid.total,
+    dropGridColumns: dropGrid.columns,
+    dropGridRows: dropGrid.rows,
     dropTicketPrice: Number(rawEvent.drop_ticket_price ?? 5),
     dropWinningNumber: rawEvent.drop_winning_number == null ? null : Number(rawEvent.drop_winning_number)
   };
@@ -438,6 +484,8 @@ export async function createEvent(input: {
   resultMode?: ResultMode;
   gameType?: GameType;
   dropMaxNumber?: number;
+  dropGridColumns?: number;
+  dropGridRows?: number;
   dropTicketPrice?: number;
 }) {
   await ensureSchema();
@@ -453,16 +501,20 @@ export async function createEvent(input: {
   const close = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const resultMode = gameType === "race" ? copied?.event.resultMode ?? (input.resultMode === "full_order" ? "full_order" : "winner") : "winner";
   const bettingTimezone = copied?.event.bettingTimezone ?? DEFAULT_TIMEZONE;
-  const dropMaxNumber = gameType === "chicken_drop" ? Number(copied?.event.dropMaxNumber ?? input.dropMaxNumber ?? 25) : 25;
+  if (gameType === "chicken_drop" && (input.dropGridColumns == null) !== (input.dropGridRows == null)) throw new Error("Set both Chicken Drop grid columns and rows.");
+  const legacyGrid = factorDropGrid(Number(input.dropMaxNumber ?? 25));
+  const dropGridColumns = gameType === "chicken_drop" ? Number(copied?.event.dropGridColumns ?? input.dropGridColumns ?? legacyGrid.columns) : 5;
+  const dropGridRows = gameType === "chicken_drop" ? Number(copied?.event.dropGridRows ?? input.dropGridRows ?? legacyGrid.rows) : 5;
+  const dropMaxNumber = dropGridColumns * dropGridRows;
   const dropTicketPrice = gameType === "chicken_drop" ? Number(copied?.event.dropTicketPrice ?? input.dropTicketPrice ?? 5) : 5;
-  if (!Number.isInteger(dropMaxNumber) || dropMaxNumber < 2 || dropMaxNumber > 500) throw new Error("Chicken Drop boards need between 2 and 500 numbered squares.");
+  if (!Number.isInteger(dropGridColumns) || dropGridColumns < 1 || !Number.isInteger(dropGridRows) || dropGridRows < 1 || dropMaxNumber < 2 || dropMaxNumber > 500) throw new Error("Chicken Drop grids need whole-number columns and rows with 2 to 500 total sections.");
   if (!Number.isFinite(dropTicketPrice) || dropTicketPrice < 0.01 || dropTicketPrice > 10_000) throw new Error("Chicken Drop ticket price must be between $0.01 and $10,000.");
   const defaultRule = gameType === "chicken_drop"
     ? "The first confirmed chicken dropping decides the winning square. If it touches a line, use the square containing most of the dropping; if that is unclear, reset for another drop. If nobody picked the winning square, every ticket is refunded."
     : "first beak across the line wins";
   const event = await sql`
-    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode, game_type, drop_max_number, drop_ticket_price)
-    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? defaultRule}, ${resultMode}, ${gameType}, ${dropMaxNumber}, ${dropTicketPrice})
+    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode, game_type, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price)
+    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? defaultRule}, ${resultMode}, ${gameType}, ${dropMaxNumber}, ${dropGridColumns}, ${dropGridRows}, ${dropTicketPrice})
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (const chicken of sourceChickens) await sql`INSERT INTO chickens (event_id, slot, name, photo_url, bio) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl}, ${chicken.bio ?? ""})`;
@@ -601,6 +653,8 @@ export async function updateEventConfig(input: {
   officialRule: string;
   resultMode: ResultMode;
   dropMaxNumber?: number;
+  dropGridColumns?: number;
+  dropGridRows?: number;
   dropTicketPrice?: number;
   chickens: Array<{ id: number; name: string; photoUrl?: string | null; bio?: string }>;
   races: Array<{ race: number; name: string; description: string }>;
@@ -612,20 +666,28 @@ export async function updateEventConfig(input: {
   const resultMode = input.resultMode === "full_order" ? "full_order" : "winner";
   const bettingTimezone = input.bettingTimezone.trim() || DEFAULT_TIMEZONE;
   if (!input.bettingCloseAt.trim() || Number.isNaN(Date.parse(input.bettingCloseAt))) throw new Error("Bets open until needs a real date and time.");
-  const event = await sql`SELECT game_type, drop_max_number, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
+  const event = await sql`SELECT game_type, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
 
   if (event.rows[0].game_type === "chicken_drop") {
-    const dropMaxNumber = Number(input.dropMaxNumber ?? event.rows[0].drop_max_number);
+    const currentGrid = resolveDropGrid(event.rows[0].drop_max_number, event.rows[0].drop_grid_columns, event.rows[0].drop_grid_rows);
+    const hasColumns = input.dropGridColumns != null;
+    const hasRows = input.dropGridRows != null;
+    if (hasColumns !== hasRows) throw new Error("Set both Chicken Drop grid columns and rows.");
+    const legacyGrid = input.dropMaxNumber == null ? currentGrid : factorDropGrid(Number(input.dropMaxNumber));
+    const dropGridColumns = Number(hasColumns ? input.dropGridColumns : legacyGrid.columns);
+    const dropGridRows = Number(hasRows ? input.dropGridRows : legacyGrid.rows);
+    const dropMaxNumber = dropGridColumns * dropGridRows;
     const dropTicketPrice = Math.round(Number(input.dropTicketPrice ?? event.rows[0].drop_ticket_price) * 100) / 100;
-    if (!Number.isInteger(dropMaxNumber) || dropMaxNumber < 2 || dropMaxNumber > 500) throw new Error("Chicken Drop boards need between 2 and 500 numbered squares.");
+    if (!Number.isInteger(dropGridColumns) || dropGridColumns < 1 || !Number.isInteger(dropGridRows) || dropGridRows < 1 || dropMaxNumber < 2 || dropMaxNumber > 500) throw new Error("Chicken Drop grids need whole-number columns and rows with 2 to 500 total sections.");
     if (!Number.isFinite(dropTicketPrice) || dropTicketPrice < 0.01 || dropTicketPrice > 10_000) throw new Error("Chicken Drop ticket price must be between $0.01 and $10,000.");
     const betStats = await sql`SELECT COUNT(*) AS count, MAX(drop_number) AS max_number FROM bets WHERE event_id = ${input.eventId}`;
     const betCount = Number(betStats.rows[0]?.count ?? 0);
     const highestPick = betStats.rows[0]?.max_number == null ? 0 : Number(betStats.rows[0].max_number);
     const winningNumber = event.rows[0].drop_winning_number == null ? 0 : Number(event.rows[0].drop_winning_number);
     if (dropMaxNumber < Math.max(highestPick, winningNumber)) throw new Error("The board cannot end below an existing pick or official winning number.");
-    if (betCount > 0 && dropMaxNumber !== Number(event.rows[0].drop_max_number)) throw new Error("Board size is locked after the first Chicken Drop bet.");
+    const gridChanged = dropGridColumns !== currentGrid.columns || dropGridRows !== currentGrid.rows;
+    if ((betCount > 0 || winningNumber > 0) && gridChanged) throw new Error("Grid shape is locked after the first Chicken Drop bet or official result.");
     if (betCount > 0 && Math.abs(dropTicketPrice - Number(event.rows[0].drop_ticket_price)) > 0.004) throw new Error("Ticket price is locked after the first Chicken Drop bet.");
     await sql`
       UPDATE events
@@ -635,6 +697,8 @@ export async function updateEventConfig(input: {
           official_rule = ${input.officialRule.trim()},
           result_mode = 'winner',
           drop_max_number = ${dropMaxNumber},
+          drop_grid_columns = ${dropGridColumns},
+          drop_grid_rows = ${dropGridRows},
           drop_ticket_price = ${dropTicketPrice}
       WHERE id = ${input.eventId}`;
     return getEventPayload(input.eventId);

@@ -59,7 +59,7 @@ The participant flow is split into Betting Coop, Contenders & Races, Ticket Boar
 
 Chicken Drop is a first-class event format, not a special race bet. The admin chooses:
 
-- The number of grid sections, producing a board numbered from `1` through that count.
+- The physical grid shape as columns across × rows down, such as `2 × 2`, `4 × 2`, or `3 × 8`. The product becomes the number of sections.
 - One fixed cost for every ticket.
 - The event close time and timezone.
 - The written rules used to identify the official square.
@@ -68,7 +68,7 @@ The default rules say that the first confirmed chicken dropping decides the winn
 
 ### Player flow
 
-Players place a ticket by entering their name, optionally entering a Venmo handle, and clicking a numbered square on the grid. The selected square receives a visible gold outline and a “your pick” label before submission.
+Players place a ticket by entering their name, optionally entering a Venmo handle, and clicking a numbered square on the grid. The selected square receives a visible gold outline and a “your pick” label before submission. Numbers run left to right and then top to bottom, and the board always preserves the host’s exact column × row shape. On a narrow screen, the board scrolls sideways instead of rearranging its squares.
 
 Every square shows live public totals:
 
@@ -88,7 +88,7 @@ The Coop Boss records one winning number. Saving it immediately closes betting a
 
 If several tickets picked the winning square, each winning ticket receives one equal share. A person holding two winning tickets receives two shares. If nobody picked the official square, every ticket is refunded.
 
-The board size and ticket price are locked in the UI after the first ticket so all bettors keep the same terms. The server also rejects ticket-price changes after betting begins and prevents a board from being reduced below an existing pick or official result.
+The exact grid shape and ticket price are locked in the UI after the first ticket so all bettors keep the same terms and every number remains in the same physical location. The grid shape also locks when an official result exists. The server enforces those locks as well.
 
 ## Shared-pool settlement
 
@@ -119,7 +119,7 @@ The administrator can:
 - Unlock an event with its admin code.
 - Edit the event name, close time, timezone, and rules.
 - Edit race metadata, chicken names, chicken bios, and chicken photos for race events.
-- Set the numbered board and fixed ticket cost before Chicken Drop betting begins.
+- Set the Chicken Drop board’s columns, rows, and fixed ticket cost before betting begins.
 - Record, replace, or clear official results.
 - Add or correct bettor Venmo handles.
 - Delete accidental tickets.
@@ -132,7 +132,7 @@ Admin codes are not displayed after creation and there is no recovery flow. Blan
 
 Core tables:
 
-- `events`: shared event settings plus `game_type`, `drop_max_number`, `drop_ticket_price`, and `drop_winning_number`.
+- `events`: shared event settings plus `game_type`, derived `drop_max_number`, `drop_grid_columns`, `drop_grid_rows`, `drop_ticket_price`, and `drop_winning_number`.
 - `chickens`: race-event flock entries and image/bio metadata.
 - `races`: race-event race card entries.
 - `bettors`: event-scoped display names and normalized Venmo handles.
@@ -156,7 +156,7 @@ Core tables:
 - `DELETE /api/admin`: deletes one accidental ticket.
 - `POST /api/contact`: sends the public contact form without exposing private provider details to the browser.
 
-The API is the authority for close times, result locks, valid event picks, Chicken Drop ranges, and fixed drop pricing. The client cannot change the price of a Chicken Drop ticket by modifying the request.
+The API is the authority for close times, result locks, valid event picks, Chicken Drop grid dimensions, and fixed drop pricing. The client cannot move numbered sections or change the price of a Chicken Drop ticket after betting by modifying the request.
 
 ## Demo events and data isolation
 
@@ -164,7 +164,7 @@ Three event codes have distinct purposes:
 
 - `corn hub` is the real event. The default-event helper creates it only if it does not exist; feature migrations do not reset or reseed it.
 - `test` is the fictional race demo. It contains 15 made-up contenders, four races, fake bettors, fake Venmo handles, fake tickets, and completed results. Its admin area is intentionally unlocked.
-- `test-drop` is the Chicken Drop demo. It uses 30 numbered grid sections, a fixed `$5` ticket, fake bettors and Venmo handles, and deliberately uneven ticket counts for the heatmap. It starts with no official result so the grid is open for new bets. Its admin area is intentionally unlocked with a blank admin code; use Coop Boss to choose the winning number and reveal settlement.
+- `test-drop` is the Chicken Drop demo. It uses a `6 × 5` board (30 numbered sections), a fixed `$5` ticket, fake bettors and Venmo handles, and deliberately uneven ticket counts for the heatmap. It starts with no official result so the grid is open for new bets. Its admin area is intentionally unlocked with a blank admin code; use Coop Boss to choose the winning number and reveal settlement.
 
 The two test events contain no real flock names or contact information.
 
