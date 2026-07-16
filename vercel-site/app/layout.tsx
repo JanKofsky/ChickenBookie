@@ -30,9 +30,9 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/assets/chicken_bookie_logo.png",
-        width: 1200,
-        height: 630,
-        alt: "Chicken Bookie chicken logo"
+        width: 363,
+        height: 339,
+        alt: "Chicken Bookie logo"
       }
     ]
   },

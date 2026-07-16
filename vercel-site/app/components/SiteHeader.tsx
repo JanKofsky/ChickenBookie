@@ -2,7 +2,7 @@ export default function SiteHeader() {
   return (
     <nav className="topbar" aria-label="Primary">
       <a className="brand" href="/">
-        <img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />
+        <img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie logo" />
         <span>Chicken Bookie</span>
       </a>
       <div className="nav-links" aria-label="Site pages">

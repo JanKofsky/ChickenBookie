@@ -157,7 +157,7 @@ export default function Home() {
         <div className="app-topbar">
           <a className="brand" href="/" onClick={(event) => { event.preventDefault(); leaveEvent(); }}>
             <span>Chicken Bookie</span>
-            <img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />
+            <img src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie logo" />
           </a>
           <button type="button" className="ghost-button" onClick={leaveEvent}>Back to main page</button>
         </div>
@@ -167,7 +167,7 @@ export default function Home() {
           <div>
             <div className="hero-title">
               <h1>{payload?.event.name ?? "Chicken Bookie"}</h1>
-              {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie chicken logo" />}
+              {!payload && <img className="hero-logo" src="/assets/chicken_bookie_logo.png" alt="Chicken Bookie logo" />}
             </div>
             <p className="hero-subtitle">{payload ? `${payload.chickens.length} chickens | ${payload.races.length} races` : "a private barnyard betting tool"}</p>
             {payload ? <p className="lede">{payload.event.officialRule}</p> : (
