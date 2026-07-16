@@ -195,7 +195,7 @@ export default function Home() {
           <div className="tabs" role="tablist">
             {[
               ["bet", "Betting Coop"],
-              ["flock", "Starting Flock"],
+              ["flock", "Contenders & Races"],
               ["tickets", "Ticket Board"],
               ["winners", "Winner's Circle"],
               ["boss", "Coop Boss"],
@@ -333,11 +333,22 @@ function Winners({ payload }: { payload: EventPayload }) {
 function VenmoHandle({ handle }: { handle: string }) {
   const [copied, setCopied] = useState(false);
   async function copyHandle() {
-    await navigator.clipboard.writeText(handle);
+    try {
+      await navigator.clipboard.writeText(handle);
+    } catch {
+      const field = document.createElement("textarea");
+      field.value = handle;
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      document.execCommand("copy");
+      field.remove();
+    }
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1200);
   }
-  return <button type="button" className="venmo-handle" title={`Copy ${handle}`} onClick={copyHandle}>{copied ? "Copied!" : handle}</button>;
+  return <button type="button" className="venmo-handle" title={`Copy ${handle}`} aria-label={`Copy Venmo handle ${handle}`} onClick={copyHandle}><span>{handle}</span><small aria-live="polite">{copied ? "Copied!" : "Copy"}</small></button>;
 }
 
 function WinnerCallout({ payload }: { payload: EventPayload }) {
