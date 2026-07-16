@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdmin, deleteBet, updateEventConfig } from "../../../lib/chickenBookie";
+import { checkAdmin, deleteBet, updateBettors, updateEventConfig } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -35,6 +35,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not unlock admin.") }, { status: 400 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const payload = await updateBettors({
+      eventId: Number(body.eventId),
+      adminCode: String(body.adminCode ?? ""),
+      bettors: Array.isArray(body.bettors) ? body.bettors : []
+    });
+    return NextResponse.json(payload);
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not save Venmo handles.") }, { status: 400 });
   }
 }
 

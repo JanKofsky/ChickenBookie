@@ -15,6 +15,7 @@ export type EventRecord = {
 export type Bet = {
   id: number;
   bettor: string;
+  venmo: string;
   betType: BetType;
   stake: number;
   race: number | null;
@@ -37,8 +38,8 @@ export type EventPayload = {
 export type BetType = "race_winner" | "race_place" | "race_show" | "exacta" | "trifecta" | "sweep" | "exact_ticket" | "any_win" | "any_order_three";
 export type Settlement = {
   tickets: Array<Bet & { won: boolean; weight: number; payoutWeight: number; payout: number; net: number; result: string; label: string }>;
-  people: Array<{ bettor: string; staked: number; payout: number; net: number }>;
-  payments: Array<{ from: string; to: string; amount: number }>;
+  people: Array<{ bettor: string; venmo: string; staked: number; payout: number; net: number }>;
+  payments: Array<{ from: string; fromVenmo: string; to: string; toVenmo: string; amount: number }>;
 };
 
 export const BET_TYPES: Record<BetType, string> = {
@@ -136,8 +137,10 @@ export async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS bettors (
       id SERIAL PRIMARY KEY,
       event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-      name TEXT NOT NULL
+      name TEXT NOT NULL,
+      venmo TEXT NOT NULL DEFAULT ''
     )`;
+  await sql`ALTER TABLE bettors ADD COLUMN IF NOT EXISTS venmo TEXT NOT NULL DEFAULT ''`;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS bettors_event_lower_name_idx ON bettors (event_id, lower(name))`;
   await sql`
     CREATE TABLE IF NOT EXISTS bets (
@@ -203,7 +206,7 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     sql`SELECT * FROM events WHERE id = ${eventId}`,
     sql`SELECT id, slot, name, photo_url, bio FROM chickens WHERE event_id = ${eventId} ORDER BY slot`,
     sql`SELECT race, name, description FROM races WHERE event_id = ${eventId} ORDER BY race`,
-    sql`SELECT b.*, bo.name AS bettor FROM bets b JOIN bettors bo ON bo.id = b.bettor_id WHERE b.event_id = ${eventId} ORDER BY b.created_at DESC, b.id DESC`,
+    sql`SELECT b.*, bo.name AS bettor, bo.venmo FROM bets b JOIN bettors bo ON bo.id = b.bettor_id WHERE b.event_id = ${eventId} ORDER BY b.created_at DESC, b.id DESC`,
     sql`SELECT race, chicken_id FROM results WHERE event_id = ${eventId}`
   ]);
   const rawEvent = eventResult.rows[0];
@@ -252,9 +255,10 @@ export async function createEvent(input: { code: string; name: string; adminCode
   return getEventPayload(eventId);
 }
 
-export async function addBet(input: { eventId: number; bettor: string; betType: BetType; stake: number; race?: number | null; picks: number[] }) {
+export async function addBet(input: { eventId: number; bettor: string; venmo?: string; betType: BetType; stake: number; race?: number | null; picks: number[] }) {
   await ensureSchema();
   const bettorName = input.bettor.trim().replace(/\s+/g, " ");
+  const venmo = normalizeVenmo(input.venmo ?? "");
   if (!bettorName) throw new Error("Gambler name is required.");
   if (input.stake <= 0) throw new Error("Stake must be more than zero.");
   const event = await sql`SELECT betting_close_at FROM events WHERE id = ${input.eventId}`;
@@ -268,8 +272,8 @@ export async function addBet(input: { eventId: number; bettor: string; betType: 
   const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
   const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
   const bettor = await sql`
-    INSERT INTO bettors (event_id, name) VALUES (${input.eventId}, ${bettorName})
-    ON CONFLICT (event_id, lower(name)) DO UPDATE SET name = bettors.name
+    INSERT INTO bettors (event_id, name, venmo) VALUES (${input.eventId}, ${bettorName}, ${venmo})
+    ON CONFLICT (event_id, lower(name)) DO UPDATE SET venmo = CASE WHEN EXCLUDED.venmo = '' THEN bettors.venmo ELSE EXCLUDED.venmo END
     RETURNING id`;
   const picks = input.picks.map(Number).filter(Boolean);
   if (!picks.length) throw new Error("Pick at least one chicken.");
@@ -325,6 +329,20 @@ export async function deleteBet(input: { eventId: number; adminCode: string; bet
   await assertAdmin(input.eventId, input.adminCode);
   await sql`DELETE FROM bets WHERE event_id = ${input.eventId} AND id = ${input.betId}`;
   return getEventPayload(input.eventId);
+}
+
+export async function updateBettors(input: { eventId: number; adminCode: string; bettors: Array<{ name: string; venmo: string }> }) {
+  await ensureSchema();
+  await assertAdmin(input.eventId, input.adminCode);
+  for (const bettor of input.bettors) {
+    await sql`UPDATE bettors SET venmo = ${normalizeVenmo(bettor.venmo)} WHERE event_id = ${input.eventId} AND lower(name) = lower(${bettor.name})`;
+  }
+  return getEventPayload(input.eventId);
+}
+
+export function normalizeVenmo(value: string) {
+  const handle = value.trim().replace(/^@+/, "").replace(/\s+/g, "");
+  return handle ? `@${handle}` : "";
 }
 
 export async function updateEventConfig(input: {
@@ -392,6 +410,7 @@ function rowToBet(row: Record<string, unknown>): Bet {
   return {
     id: Number(row.id),
     bettor: String(row.bettor),
+    venmo: String(row.venmo ?? ""),
     betType: String(row.bet_type) as BetType,
     stake: Number(row.stake),
     race: row.race == null ? null : Number(row.race),
@@ -425,11 +444,12 @@ export function makeSettlement(bets: Bet[], results: Results, chickens: Chicken[
     }
   }
   const people = Array.from(tickets.reduce((map, ticket) => {
-    const current = map.get(ticket.bettor) ?? { bettor: ticket.bettor, staked: 0, payout: 0, net: 0 };
+    const current = map.get(ticket.bettor) ?? { bettor: ticket.bettor, venmo: ticket.venmo, staked: 0, payout: 0, net: 0 };
+    if (ticket.venmo) current.venmo = ticket.venmo;
     current.staked += ticket.stake; current.payout += ticket.payout; current.net += ticket.net;
     map.set(ticket.bettor, current);
     return map;
-  }, new Map<string, { bettor: string; staked: number; payout: number; net: number }>()).values()).sort((a, b) => b.net - a.net || a.bettor.localeCompare(b.bettor));
+  }, new Map<string, { bettor: string; venmo: string; staked: number; payout: number; net: number }>()).values()).sort((a, b) => b.net - a.net || a.bettor.localeCompare(b.bettor));
   return { tickets, people, payments: makePayments(people) };
 }
 
@@ -460,16 +480,16 @@ function describeBet(bet: Bet, chickens: Chicken[], races: Race[]) {
   return `${bet.picks.map((pick) => name(pick)).join(", ")} win in any order`;
 }
 
-function makePayments(people: Array<{ bettor: string; staked: number; payout: number; net: number }>) {
-  const debtors = people.filter((person) => person.net < -0.004).map((person) => ({ name: person.bettor, amount: -person.net })).sort((a, b) => b.amount - a.amount);
-  const creditors = people.filter((person) => person.net > 0.004).map((person) => ({ name: person.bettor, amount: person.net })).sort((a, b) => b.amount - a.amount);
-  const payments: Array<{ from: string; to: string; amount: number }> = [];
+function makePayments(people: Array<{ bettor: string; venmo: string; staked: number; payout: number; net: number }>) {
+  const debtors = people.filter((person) => person.net < -0.004).map((person) => ({ name: person.bettor, venmo: person.venmo, amount: -person.net })).sort((a, b) => b.amount - a.amount);
+  const creditors = people.filter((person) => person.net > 0.004).map((person) => ({ name: person.bettor, venmo: person.venmo, amount: person.net })).sort((a, b) => b.amount - a.amount);
+  const payments: Array<{ from: string; fromVenmo: string; to: string; toVenmo: string; amount: number }> = [];
   const hub = creditors[0];
-  const addPayment = (from: string, to: string, amount: number) => {
+  const addPayment = (from: string, fromVenmo: string, to: string, toVenmo: string, amount: number) => {
     if (amount <= 0.004 || from === to) return;
     const existing = payments.find((payment) => payment.from === from && payment.to === to);
     if (existing) existing.amount += amount;
-    else payments.push({ from, to, amount });
+    else payments.push({ from, fromVenmo, to, toVenmo, amount });
   };
   const nextCreditor = () => creditors.find((creditor) => creditor.amount > 0.004 && creditor !== hub) ?? creditors.find((creditor) => creditor.amount > 0.004);
 
@@ -477,12 +497,12 @@ function makePayments(people: Array<{ bettor: string; staked: number; payout: nu
     const first = nextCreditor();
     if (first) {
       const amount = Math.min(debtor.amount, first.amount);
-      addPayment(debtor.name, first.name, amount);
+      addPayment(debtor.name, debtor.venmo, first.name, first.venmo, amount);
       debtor.amount -= amount;
       first.amount -= amount;
     }
     if (debtor.amount > 0.004 && hub) {
-      addPayment(debtor.name, hub.name, debtor.amount);
+      addPayment(debtor.name, debtor.venmo, hub.name, hub.venmo, debtor.amount);
       hub.amount -= debtor.amount;
       debtor.amount = 0;
     }
@@ -491,7 +511,7 @@ function makePayments(people: Array<{ bettor: string; staked: number; payout: nu
   if (hub) {
     for (const creditor of creditors) {
       if (creditor !== hub && creditor.amount > 0.004) {
-        addPayment(hub.name, creditor.name, creditor.amount);
+        addPayment(hub.name, hub.venmo, creditor.name, creditor.venmo, creditor.amount);
         hub.amount -= creditor.amount;
         creditor.amount = 0;
       }

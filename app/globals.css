@@ -190,7 +190,12 @@ h1 {
 .muted { color: var(--muted); font-weight: 650; line-height: 1.5; }
 .fine-print { margin: 8px 0 0; color: rgba(222, 209, 182, 0.74); font-size: 0.82rem; line-height: 1.45; }
 .grid-form, .bet-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
-.bet-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bet-form { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.venmo-input { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(7, 11, 8, 0.52); }
+.venmo-input > span { padding-left: 11px; color: rgba(222, 209, 182, 0.7); font-weight: 900; }
+.venmo-input input { border: 0; background: transparent; }
+.venmo-handle { display: inline-block; margin: 0 5px; padding: 2px 6px; border: 1px solid rgba(222, 209, 182, 0.18); border-radius: 5px; background: rgba(222, 209, 182, 0.08); color: rgba(222, 209, 182, 0.68); font-family: inherit; font-size: 0.78em; user-select: text; }
+.bettor-admin-card { align-items: center; }
 .admin-unlock { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; margin-top: 16px; }
 .admin-unlock .check-row,
 .admin-unlock .form-error { grid-column: 1 / -1; }
@@ -314,7 +319,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   text-transform: uppercase;
 }
 .payment-list { display: grid; gap: 10px; margin: 16px 0; }
-.payment { padding: 13px 15px; border-left: 5px solid var(--mustard); font-weight: 850; }
+.payment { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 13px 15px; border-left: 5px solid var(--mustard); font-weight: 850; }
 .winner-callout {
   margin: 10px 0 18px;
   padding: 15px;

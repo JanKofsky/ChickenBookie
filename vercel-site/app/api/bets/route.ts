@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const payload = await addBet({
       eventId: Number(body.eventId),
       bettor: String(body.bettor ?? ""),
+      venmo: String(body.venmo ?? ""),
       betType: body.betType,
       stake: Number(body.stake),
       race: body.race == null ? null : Number(body.race),
