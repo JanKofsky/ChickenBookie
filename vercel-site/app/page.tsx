@@ -649,14 +649,15 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     setPayload(data);
     setCartMessage(`Bet #${bet.id} removed. Your total was updated.`);
   }
-  if (paymentSubmitted) return <aside className="host-payment-summary payment-congrats"><div><span className="payment-hatch" aria-hidden="true">🥚 → 🐣</span><span>Payment ID <span className="payment-id-badge">{paymentId}</span></span><h3>Egg-cellent! Payment is headed to the Coop Boss.</h3><p>Your host will verify the receipt before your bets count.</p><button type="button" className="payment-retry-link" onClick={() => { void updateSubmitted(false); }}>Payment didn’t go through? Try again</button></div></aside>;
+  const memoEditor = <div className="payment-memo-editor"><span>Use this exact Venmo memo</span><div><code>{note}</code><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy memo"}</button></div></div>;
+  if (paymentSubmitted) return <aside className="host-payment-summary payment-congrats"><div><span className="payment-hatch" aria-hidden="true">🥚 → 🐣</span><span>Payment ID <span className="payment-id-badge">{paymentId}</span></span><h3>Egg-cellent! Payment is headed to the Coop Boss.</h3><p>Your host will verify the receipt before your bets count.</p>{memoEditor}<button type="button" className="payment-retry-link" onClick={() => { void updateSubmitted(false); }}>Payment didn’t go through? Try again</button></div></aside>;
   return <aside className="host-payment-summary" aria-live="polite">
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <section className="pending-bet-cart"><header><span>Your pending bet cart</span><strong>{pendingBets.length} bet{pendingBets.length === 1 ? "" : "s"}</strong></header>{pendingBets.map((bet) => <div key={bet.id}><span><b>{describeBet(bet, payload.chickens, payload.races)}</b><small>Bet #{bet.id}</small></span><strong>{money(bet.stake)}</strong><button type="button" aria-label={`Remove bet ${bet.id}`} onClick={() => { void removeFromCart(bet); }}>Remove</button></div>)}{cartMessage && <p>{cartMessage}</p>}</section>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
     <a className="venmo-pay-link full-payment-link" href={venmoPaymentUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
-    <div className="payment-helper-menu"><div><span>Use this exact Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy memo"}</button></div></div>
+    {memoEditor}
     <p>Click to open Venmo to the host and attempt to fill in the total and event note. The note is also copied as a fallback. Review the recipient, amount, and note before sending; the host will verify receipt.</p>
   </aside>;
 }
