@@ -16,6 +16,18 @@ const BET_TYPES: Record<BetType, string> = {
   any_order_three: "Picked chickens win in any order",
   drop_number: "Chicken Drop number"
 };
+const BET_TYPE_HELP: Record<BetType, string> = {
+  race_winner: "Pick the chicken that will finish 1st in one race.",
+  race_place: "Pick a chicken to finish 1st or 2nd in one race.",
+  race_show: "Pick a chicken to finish in the top 3 in one race.",
+  exacta: "Pick the exact 1st- and 2nd-place order.",
+  trifecta: "Pick the exact 1st-, 2nd-, and 3rd-place order.",
+  sweep: "Pick one chicken to win every race.",
+  exact_ticket: "Pick the winner of every race in order.",
+  any_win: "Pick one chicken to win at least one race.",
+  any_order_three: "Pick the race winners; the race order does not matter.",
+  drop_number: "Pick the winning Chicken Drop number."
+};
 const simpleBetTypes: BetType[] = ["race_winner", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const fullOrderBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const raceBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta"];
@@ -319,7 +331,7 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
     <div className="panel-title-row"><h2>Chicken Drop betting grid</h2><SettlementHelpTip payload={payload} /></div>
     <p className="muted"><b>Chicken Drop:</b> pick the numbered square where the chicken will make its first confirmed drop.</p>
     <div className="drop-price-card"><span>Fixed cost per ticket</span><strong>{money(payload.event.dropTicketPrice)}</strong><small>Repeat picks on the same number are allowed.</small></div>
-    {payload.event.poolMode === "host_managed" && <div className="notice"><b>Pay once when you are finished:</b> 1. Add all your tickets. 2. Pay the running total once. 3. The host confirms every covered ticket together.</div>}
+    {payload.event.poolMode === "host_managed" && <div className="notice">1. Place your bet(s). 2. Pay the host. 3. Done—your bets become active after host verification.</div>}
     {resultsOfficial && <div className="notice">The official drop is #{payload.event.dropWinningNumber}. The board stays visible, but new bets are closed. Coop Boss can clear the result to reopen betting before the close time.</div>}
     <form className="drop-bet-form" onSubmit={submit}>
       {!resultsOfficial && <div className="drop-player-fields">
@@ -437,12 +449,12 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage(payload.event.poolMode === "host_managed" ? "Bet added to your unpaid total. Add another bet or pay the combined total below." : "Bet added."); }
   }
   if (resultsOfficial) return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Results are official, so betting is closed for this event.</p><p className="fine-print">Coop Boss can reopen betting only by clearing the winners and setting a new future close time.</p></section>;
-  return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">{payload.event.poolMode === "host_managed" ? "Use the same name each time. A bet only counts after the host confirms its payment." : "Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping."}</p>{payload.event.poolMode === "host_managed" ? <div className="notice"><b>Pay once when you are finished:</b> 1. Add all your bets. 2. Pay the running total once. 3. The host confirms every covered bet together. Until then, they remain pending and do not count.</div> : <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>}<form className="bet-form" onSubmit={submit}>
+  return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">{payload.event.poolMode === "host_managed" ? "Use the same name each time. A bet only counts after the host confirms its payment." : "Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping."}</p>{payload.event.poolMode === "host_managed" ? <div className="notice">1. Place your bet(s). 2. Pay the host. 3. Done—your bets become active after host verification.</div> : <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>}<form className="bet-form" onSubmit={submit}>
     <label>Name<input value={bettor} onChange={(event) => setBettor(event.target.value)} />{existingName && <small className="field-note">this ticket will be grouped with the previous bettor using this name</small>}</label>
     <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
     {payload.event.poolMode === "host_managed" && Number(stake) > 0 && <p className="fine-print">This {money(Number(stake))} bet will be added to your running unpaid total.</p>}
-    <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
+    <label>What are you betting on?<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select><small className="field-note bet-type-help">{BET_TYPE_HELP[betType]}</small></label>
     {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => { setRace(Number(event.target.value)); setPicks([]); }}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={pickerChickens} optionsByIndex={exactTicketOptions} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
     <button type="submit">Add bet</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
