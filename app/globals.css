@@ -234,13 +234,13 @@ h1 {
 .fine-print { margin: 8px 0 0; color: rgba(222, 209, 182, 0.74); font-size: 0.82rem; line-height: 1.45; }
 .grid-form, .bet-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
 .bet-form { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.bettor-details { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 7px 9px 9px; border: 1px solid rgba(222, 209, 182, 0.14); border-radius: 8px; background: rgba(222, 209, 182, 0.04); }
+.bettor-details { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 7px 9px 9px; border: 1px solid rgba(222, 209, 182, 0.12); border-radius: 8px; background: rgba(7, 11, 8, 0.18); }
 .bettor-details legend { padding: 0 5px; color: rgba(222, 209, 182, 0.58); font-size: 0.67rem; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
 .bettor-details label,
 .drop-player-fields label { gap: 4px; color: rgba(222, 209, 182, 0.66); font-size: 0.76rem; }
 .bettor-details input,
 .drop-player-fields input { min-height: 36px; padding-block: 7px; color: rgba(255, 243, 216, 0.9); }
-.wager-details { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px, 0.75fr) minmax(280px, 1.55fr); gap: 16px; margin: 0; padding: 11px 12px 12px; border: 1px solid rgba(217, 240, 194, 0.25); border-radius: 9px; background-color: rgba(14, 31, 21, 0.96); background-image: linear-gradient(rgba(217, 240, 194, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(217, 240, 194, 0.025) 1px, transparent 1px); background-size: 24px 24px; }
+.wager-details { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px, 0.75fr) minmax(280px, 1.55fr); gap: 16px; margin: 0; padding: 11px 12px 12px; border: 1px solid rgba(255, 243, 216, 0.16); border-radius: 9px; background: rgba(7, 11, 8, 0.34); backdrop-filter: blur(1px); }
 .wager-details legend { padding: 0 6px; color: var(--mustard-light); font-family: var(--font-puffy), system-ui, sans-serif; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
 .wager-details > label { align-content: start; color: var(--ink); }
 .wager-details > label + label { padding-left: 16px; border-left: 1px solid rgba(217, 240, 194, 0.16); }
@@ -269,16 +269,16 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .bet-type-field { --bet-accent: 217, 240, 194; gap: 6px; padding: 9px; border: 1px solid rgba(var(--bet-accent), 0.34); border-radius: 9px; background: rgba(var(--bet-accent), 0.055); }
 .wager-details .bet-type-field { padding: 0; border: 0; background: transparent; }
 .bet-type-field select { border-color: rgba(var(--bet-accent), 0.65); background-color: rgba(7, 11, 8, 0.88); }
-.bet-type-help { display: grid; gap: 2px; padding: 6px 8px; border-left: 3px solid rgb(var(--bet-accent)); background: rgba(var(--bet-accent), 0.09); }
+.bet-type-help { display: grid; gap: 2px; padding: 6px 8px; border-left: 2px solid rgba(var(--bet-accent), 0.48); background: rgba(7, 11, 8, 0.22); }
 .bet-type-help b { color: rgb(var(--bet-accent)); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; }
 .bet-type-help small { color: var(--ink); font-size: 0.8rem; font-weight: 750; line-height: 1.25; }
-.pick-details { grid-column: 1 / -1; display: grid; gap: 9px; margin: 0; padding: 10px 12px 12px; border: 1px solid rgba(217, 240, 194, 0.25); border-radius: 9px; background-color: rgba(14, 31, 21, 0.96); background-image: linear-gradient(rgba(217, 240, 194, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(217, 240, 194, 0.025) 1px, transparent 1px); background-size: 24px 24px; }
+.pick-details { grid-column: 1 / -1; display: grid; gap: 9px; margin: 0; padding: 10px 12px 12px; border: 1px solid rgba(255, 243, 216, 0.16); border-radius: 9px; background: rgba(7, 11, 8, 0.34); backdrop-filter: blur(1px); }
 .pick-details legend { padding: 0 6px; color: var(--ink); font-weight: 900; }
 .pick-details > label { max-width: 440px; }
 .pick-details .chicken-buttons,
 .pick-details .pick-grid { margin: 0; }
-.bet-form > button[type="submit"] { grid-column: 1 / -1; justify-self: end; width: min(100%, 270px); min-height: 46px; border: 1px solid rgba(255, 238, 157, 0.58); background: #b87531; box-shadow: none; font-family: var(--font-puffy), system-ui, sans-serif; font-size: 1rem; letter-spacing: 0.02em; }
-.bet-form > button[type="submit"]:hover { background: #ca8a3e; }
+.bet-form > button[type="submit"] { grid-column: 1 / -1; justify-self: end; width: min(100%, 270px); min-height: 46px; border: 1px solid rgba(240, 217, 121, 0.48); background: rgba(197, 121, 53, 0.2); box-shadow: none; color: var(--ink); font-family: var(--font-puffy), system-ui, sans-serif; font-size: 1rem; letter-spacing: 0.02em; }
+.bet-form > button[type="submit"]:hover { background: rgba(197, 121, 53, 0.32); }
 .check-row { display: inline-flex; width: fit-content; grid-template-columns: none; align-items: center; gap: 8px; color: var(--muted); font-size: 0.92rem; }
 .check-row input { width: auto; min-height: auto; }
 .form-ok { color: #d9f0c2; font-weight: 850; }
@@ -331,10 +331,10 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .chicken-buttons { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .chicken-buttons button { min-height: 58px; color: var(--ink); background: rgba(8, 13, 9, 0.66); box-shadow: none; text-align: left; }
 .chicken-buttons button span { display: block; color: var(--title-accent); font-size: 0.75rem; }
-.pick-details .chicken-buttons { padding: 8px; border-radius: 7px; background: rgba(5, 13, 8, 0.58); }
-.pick-details .chicken-buttons button { border-color: rgba(217, 240, 194, 0.16); background: #1b3424; }
-.pick-details .chicken-buttons button:hover { border-color: rgba(240, 217, 121, 0.55); background: #23432e; }
-.chicken-buttons button.selected { color: #172016; background: var(--mustard-light); border-color: var(--mustard-light); box-shadow: none; }
+.pick-details .chicken-buttons { padding: 8px; border-radius: 7px; background: rgba(7, 11, 8, 0.2); }
+.pick-details .chicken-buttons button { border-color: rgba(255, 243, 216, 0.14); background: rgba(14, 31, 21, 0.46); }
+.pick-details .chicken-buttons button:hover { border-color: rgba(240, 217, 121, 0.42); background: rgba(35, 67, 46, 0.5); }
+.chicken-buttons button.selected { color: var(--ink); background: rgba(240, 217, 121, 0.2); border-color: rgba(240, 217, 121, 0.65); box-shadow: none; }
 .game-format-card,
 .drop-price-card {
   display: grid;
