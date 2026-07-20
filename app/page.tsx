@@ -577,7 +577,7 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
       <div><span>3. Payment note</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
     </div>
-    <p>The payment button opens the official host profile supplied by the host and copies the full amount for easy pasting. Confirm the profile and amount in Venmo before sending. Chicken Bookie cannot read Venmo transactions; the host confirms the group after receiving it.</p>
+    <p>You’ll be redirected to the host’s Venmo profile with your full total copied for easy pasting. Copy the event note above, review everything in Venmo, and then send. Your host will verify payment.</p>
   </aside>;
 }
 
