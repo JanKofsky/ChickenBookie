@@ -550,6 +550,7 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
   const total = pendingBets.reduce((sum, bet) => sum + Number(bet.stake), 0);
   const displayName = pendingBets[0].bettor;
   const note = `${payload.event.name} (${payload.event.code}) - ${pendingBets.length} bet${pendingBets.length === 1 ? "" : "s"} for ${displayName}`;
+  const hostProfileUrl = payload.event.hostVenmoLink || "https://account.venmo.com/";
   async function copyPaymentField(label: string, value: string) {
     try {
       await navigator.clipboard.writeText(value);
@@ -570,13 +571,13 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
+    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} target="_blank" rel="noreferrer" onClick={() => { void copyPaymentField("amount", total.toFixed(2)); }}>Pay my full {money(total)} total to {payload.event.hostVenmo}</a>
     <div className="payment-helper-menu">
       <div><span>1. Recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
       <div><span>3. Payment note</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
-      <a className="venmo-pay-link" href="https://account.venmo.com/" target="_blank" rel="noreferrer">Open Venmo to pay once</a>
     </div>
-    <p>In Venmo, choose Pay/Request and paste these details. Confirm the recipient yourself before sending. Chicken Bookie cannot read Venmo transactions; the host confirms the group after receiving it.</p>
+    <p>The payment button opens the official host profile supplied by the host and copies the full amount for easy pasting. Confirm the profile and amount in Venmo before sending. Chicken Bookie cannot read Venmo transactions; the host confirms the group after receiving it.</p>
   </aside>;
 }
 
@@ -648,6 +649,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
   const [resultMode, setResultMode] = useState(payload.event.resultMode);
   const [poolMode, setPoolMode] = useState<PoolMode>(payload.event.poolMode);
   const [hostVenmo, setHostVenmo] = useState(payload.event.hostVenmo.replace(/^@/, ""));
+  const [hostVenmoLink, setHostVenmoLink] = useState(payload.event.hostVenmoLink);
   const [dropGridColumns, setDropGridColumns] = useState(String(payload.event.dropGridColumns));
   const [dropGridRows, setDropGridRows] = useState(String(payload.event.dropGridRows));
   const [dropTicketPrice, setDropTicketPrice] = useState(String(payload.event.dropTicketPrice));
@@ -717,7 +719,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
       return;
     }
     setChickens(compactChickens);
-    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, poolMode, hostVenmo, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
+    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, poolMode, hostVenmo, hostVenmoLink, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
     if (body.length > 4_000_000) {
       setMessage("Chicken photos are still too large to save together. Remove one photo or upload smaller images.");
       return;
@@ -795,8 +797,11 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
         <p className="fine-print wide-field">Update the event name, deadline, rules, and settlement method here.</p>
         <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
         <label>Settlement type<select disabled={settlementTypeLocked} value={poolMode} onChange={(event) => setPoolMode(event.target.value as PoolMode)}><option value="peer_to_peer">Player-to-player settlement (optional)</option><option value="host_managed">Host-maintained pool</option></select></label>
-        {poolMode === "host_managed" && <label>Host Venmo<div className="venmo-input"><span>@</span><input required disabled={settlementTypeLocked} value={hostVenmo} placeholder="host username" onChange={(event) => setHostVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>}
-        <p className="fine-print wide-field">{settlementTypeLocked ? "Settlement type and host Venmo are locked after the first bet so nobody’s payment terms change." : "You can choose or change settlement here until the first bet is submitted. Host-maintained pools require a host Venmo and a nonblank admin code."}</p>
+        {poolMode === "host_managed" && <>
+          <label>Host Venmo username<div className="venmo-input"><span>@</span><input required disabled={settlementTypeLocked} value={hostVenmo} placeholder="host username" onChange={(event) => setHostVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
+          <label className="wide-field">Official host Venmo profile link<input type="url" required={!settlementTypeLocked} disabled={settlementTypeLocked} value={hostVenmoLink} placeholder="Paste the profile link shared from Venmo" onChange={(event) => setHostVenmoLink(event.target.value)} /><small className="field-note">In Venmo, open the host profile or Venmo Me screen and use Share. Paste that official venmo.com profile link here. Prefilled payment links are rejected.</small></label>
+        </>}
+        <p className="fine-print wide-field">{settlementTypeLocked ? "Settlement type and host Venmo details are locked after the first bet so nobody’s payment terms change." : "You can choose or change settlement here until the first bet is submitted. Host-maintained pools require the host username, official Venmo profile-share link, and admin code."}</p>
         <label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label>
         <label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label>
         <label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>

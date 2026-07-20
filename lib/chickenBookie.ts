@@ -14,6 +14,7 @@ export type EventRecord = {
   gameType: GameType;
   poolMode: PoolMode;
   hostVenmo: string;
+  hostVenmoLink: string;
   dropMaxNumber: number;
   dropGridColumns: number;
   dropGridRows: number;
@@ -142,6 +143,7 @@ export async function ensureSchema() {
       game_type TEXT NOT NULL DEFAULT 'race',
       pool_mode TEXT NOT NULL DEFAULT 'peer_to_peer',
       host_venmo TEXT NOT NULL DEFAULT '',
+      host_venmo_link TEXT NOT NULL DEFAULT '',
       drop_max_number INTEGER NOT NULL DEFAULT 25,
       drop_grid_columns INTEGER NOT NULL DEFAULT 5,
       drop_grid_rows INTEGER NOT NULL DEFAULT 5,
@@ -154,6 +156,7 @@ export async function ensureSchema() {
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS game_type TEXT NOT NULL DEFAULT 'race'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_mode TEXT NOT NULL DEFAULT 'peer_to_peer'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS host_venmo TEXT NOT NULL DEFAULT ''`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS host_venmo_link TEXT NOT NULL DEFAULT ''`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_max_number INTEGER NOT NULL DEFAULT 25`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_grid_columns INTEGER NOT NULL DEFAULT 5`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_grid_rows INTEGER NOT NULL DEFAULT 5`;
@@ -465,6 +468,7 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     gameType: rawEvent.game_type === "chicken_drop" ? "chicken_drop" : "race",
     poolMode: rawEvent.pool_mode === "host_managed" ? "host_managed" : "peer_to_peer",
     hostVenmo: String(rawEvent.host_venmo ?? ""),
+    hostVenmoLink: String(rawEvent.host_venmo_link ?? ""),
     dropMaxNumber: dropGrid.total,
     dropGridColumns: dropGrid.columns,
     dropGridRows: dropGrid.rows,
@@ -696,6 +700,21 @@ export function normalizeVenmo(value: string) {
   return handle ? `@${handle}` : "";
 }
 
+function normalizeVenmoProfileLink(value: string) {
+  const raw = value.trim();
+  if (!raw) return "";
+  let profileUrl: URL;
+  try { profileUrl = new URL(raw); } catch { throw new Error("Paste the official profile link shared by Venmo."); }
+  const allowedHosts = new Set(["venmo.com", "www.venmo.com", "account.venmo.com"]);
+  if (profileUrl.protocol !== "https:" || !allowedHosts.has(profileUrl.hostname.toLowerCase())) throw new Error("The host profile link must be an official venmo.com link.");
+  const pathParts = profileUrl.pathname.split("/").filter(Boolean);
+  if (pathParts.length !== 2 || pathParts[0].toLowerCase() !== "u") throw new Error("Paste the direct Venmo profile link ending in /u/username.");
+  for (const unsafeKey of ["txn", "amount", "note", "recipients"]) {
+    if (profileUrl.searchParams.has(unsafeKey)) throw new Error("Use a Venmo profile-share link, not a prefilled payment link.");
+  }
+  return profileUrl.toString();
+}
+
 export async function updateEventConfig(input: {
   eventId: number;
   adminCode: string;
@@ -706,6 +725,7 @@ export async function updateEventConfig(input: {
   resultMode: ResultMode;
   poolMode: PoolMode;
   hostVenmo?: string;
+  hostVenmoLink?: string;
   dropMaxNumber?: number;
   dropGridColumns?: number;
   dropGridRows?: number;
@@ -720,14 +740,17 @@ export async function updateEventConfig(input: {
   const resultMode = input.resultMode === "full_order" ? "full_order" : "winner";
   const bettingTimezone = input.bettingTimezone.trim() || DEFAULT_TIMEZONE;
   if (!input.bettingCloseAt.trim() || Number.isNaN(Date.parse(input.bettingCloseAt))) throw new Error("Bets open until needs a real date and time.");
-  const event = await sql`SELECT game_type, pool_mode, host_venmo, admin_code, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
+  const event = await sql`SELECT game_type, pool_mode, host_venmo, host_venmo_link, admin_code, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
   const poolMode: PoolMode = input.poolMode === "host_managed" ? "host_managed" : "peer_to_peer";
   const hostVenmo = normalizeVenmo(input.hostVenmo ?? "");
+  const hostVenmoLink = normalizeVenmoProfileLink(input.hostVenmoLink ?? "");
+  if (hostVenmoLink && normalizeVenmo(decodeURIComponent(new URL(hostVenmoLink).pathname.split("/").filter(Boolean)[1] ?? "")).toLowerCase() !== hostVenmo.toLowerCase()) throw new Error("The Venmo profile link username must match the host Venmo username.");
   const betCount = Number((await sql`SELECT COUNT(*) AS count FROM bets WHERE event_id = ${input.eventId}`).rows[0]?.count ?? 0);
-  const poolSettingsChanged = poolMode !== event.rows[0].pool_mode || hostVenmo !== String(event.rows[0].host_venmo ?? "");
+  const poolSettingsChanged = poolMode !== event.rows[0].pool_mode || hostVenmo !== String(event.rows[0].host_venmo ?? "") || hostVenmoLink !== String(event.rows[0].host_venmo_link ?? "");
   if (betCount > 0 && poolSettingsChanged) throw new Error("Settlement type and host Venmo are locked after the first bet.");
   if (poolMode === "host_managed" && !hostVenmo) throw new Error("Host Venmo is required for a host-maintained pool.");
+  if (poolMode === "host_managed" && betCount === 0 && !hostVenmoLink) throw new Error("Paste the host's official Venmo profile-share link so bettors can reach the correct profile.");
   if (poolMode === "host_managed" && !String(event.rows[0].admin_code ?? "")) throw new Error("Set an admin code when creating the event before switching to a host-maintained pool.");
 
   if (event.rows[0].game_type === "chicken_drop") {
@@ -759,6 +782,7 @@ export async function updateEventConfig(input: {
           result_mode = 'winner',
           pool_mode = ${poolMode},
           host_venmo = ${hostVenmo},
+          host_venmo_link = ${hostVenmoLink},
           drop_max_number = ${dropMaxNumber},
           drop_grid_columns = ${dropGridColumns},
           drop_grid_rows = ${dropGridRows},
@@ -778,7 +802,8 @@ export async function updateEventConfig(input: {
         official_rule = ${input.officialRule.trim()},
         result_mode = ${resultMode},
         pool_mode = ${poolMode},
-        host_venmo = ${hostVenmo}
+        host_venmo = ${hostVenmo},
+        host_venmo_link = ${hostVenmoLink}
     WHERE id = ${input.eventId}`;
 
   for (const chicken of input.chickens) {

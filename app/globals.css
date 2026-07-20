@@ -739,7 +739,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .host-payment-summary > div span { color: var(--muted); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
 .host-payment-summary > div strong { color: #d9f0c2; font-size: 1.8rem; }
 .host-payment-summary > div small { color: var(--muted); }
-.payment-helper-menu { display: grid; gap: 8px; }
+.payment-helper-menu { grid-column: 1 / -1; display: grid; gap: 8px; }
 .payment-helper-menu > div {
   display: grid;
   grid-template-columns: minmax(92px, auto) minmax(0, 1fr) auto;
@@ -766,6 +766,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 }
 .venmo-pay-link:hover,
 .venmo-pay-link:focus-visible { background: #a2efbd; transform: translateY(-1px); }
+.full-payment-link { font-size: 1.02rem; }
 .host-payment-summary > p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 0.82rem; }
 .delete-row { display: block; width: 100%; margin: 8px 0; color: #ffe6df; background: rgba(183, 68, 57, 0.36); box-shadow: none; text-align: left; }
 .bet-manager { margin-top: 24px; padding-top: 4px; border-top: 1px solid var(--line); }
@@ -813,7 +814,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .host-payment-summary { grid-template-columns: 1fr; }
   .host-payment-summary > p { grid-column: auto; }
   .host-payment-heading,
-  .payment-flow-steps { grid-column: auto; }
+  .payment-flow-steps,
+  .payment-helper-menu { grid-column: auto; }
   .payment-flow-steps { grid-template-columns: 1fr; }
   .payment-helper-menu > div { grid-template-columns: 1fr auto; }
   .payment-helper-menu > div span { grid-column: 1 / -1; }
