@@ -941,7 +941,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
           <a href="#admin-results">Results</a>
         </div>
       </nav>
-      {poolMode === "host_managed" && pendingPaymentBatches.length > 0 && <div className="notice payment-alert"><div><b>{pendingPaymentBatches.length} payment{pendingPaymentBatches.length === 1 ? " needs" : "s need"} review</b><span>Match each payment ID in Venmo, then approve received payments.</span></div><a href="#admin-payments">Review payments</a></div>}
+      {poolMode === "host_managed" && pendingPaymentBatches.length > 0 && <div className="notice payment-alert"><div><b>{pendingPaymentBatches.length} payment{pendingPaymentBatches.length === 1 ? " needs" : "s need"} review</b></div><a href="#admin-payments">Review payments</a></div>}
 
       <form id="admin-event-setup" className="grid-form admin-section-target coop-section coop-event-section" onSubmit={saveConfig}>
         <h3>Event setup</h3>
