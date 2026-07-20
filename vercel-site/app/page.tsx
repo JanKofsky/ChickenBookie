@@ -693,20 +693,16 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not delete bet.")); else { setPayload(data); setMessage("Bet deleted."); }
   }
-  async function setPaymentVerified(betId: number, verified: boolean) {
-    setMessage(verified ? "Confirming payment..." : "Moving bet back to pending...");
-    const response = await fetch("/api/admin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_payment", eventId: payload.event.id, adminCode, betId, verified }) });
+  async function updatePaymentBatch(paymentId: string, bettor: string, count: number, total: number, verified: boolean) {
+    const prompt = verified
+      ? `Confirm payment ${paymentId} from ${bettor} for ${money(total)}? All ${count} covered bet${count === 1 ? "" : "s"} will start counting.`
+      : `Undo confirmation for payment ${paymentId}? All ${count} covered bet${count === 1 ? "" : "s"} will return to pending.`;
+    if (!window.confirm(prompt)) return;
+    setMessage(`${verified ? "Confirming" : "Reopening"} payment ${paymentId} for ${bettor}...`);
+    const response = await fetch("/api/admin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_bettor_payments", eventId: payload.event.id, adminCode, paymentId, verified }) });
     const data = await response.json();
-    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not update payment status."));
-    else { setPayload(data); setMessage(verified ? "Payment confirmed; bet now counts." : "Payment marked pending; bet no longer counts."); }
-  }
-  async function confirmPaymentBatch(paymentId: string, bettor: string, count: number, total: number) {
-    if (!window.confirm(`Confirm payment ${paymentId} from ${bettor} for ${money(total)}? All ${count} covered bet${count === 1 ? "" : "s"} will start counting.`)) return;
-    setMessage(`Confirming payment ${paymentId} for ${bettor}...`);
-    const response = await fetch("/api/admin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_bettor_payments", eventId: payload.event.id, adminCode, paymentId }) });
-    const data = await response.json();
-    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not confirm the grouped payment."));
-    else { setPayload(data); setMessage(`Payment ${paymentId} confirmed; ${count} bet${count === 1 ? "" : "s"} for ${bettor} now count.`); }
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not update the grouped payment."));
+    else { setPayload(data); setMessage(verified ? `Payment ${paymentId} confirmed; ${count} bet${count === 1 ? "" : "s"} for ${bettor} now count.` : `Payment ${paymentId} returned to pending.`); }
   }
   async function clearWinners() {
     const response = await fetch("/api/results", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode }) });
@@ -774,15 +770,17 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
   const betPageCount = Math.max(1, Math.ceil(matchingBets.length / betsPerPage));
   const currentBetPage = Math.min(betPage, betPageCount - 1);
   const visibleBets = matchingBets.slice(currentBetPage * betsPerPage, (currentBetPage + 1) * betsPerPage);
-  const pendingPaymentGroups = new Map<string, { count: number; total: number }>();
+  const paymentGroups = new Map<string, { paymentId: string; bettor: string; venmo: string; count: number; total: number; verifiedCount: number }>();
   for (const bet of payload.bets) {
-    if (bet.paymentVerified) continue;
+    if (payload.event.poolMode !== "host_managed") continue;
     const key = bet.paymentId || normalizeName(bet.bettor);
-    const group = pendingPaymentGroups.get(key) ?? { count: 0, total: 0 };
+    const group = paymentGroups.get(key) ?? { paymentId: bet.paymentId, bettor: bet.bettor, venmo: bet.venmo, count: 0, total: 0, verifiedCount: 0 };
     group.count += 1;
     group.total += Number(bet.stake);
-    pendingPaymentGroups.set(key, group);
+    if (bet.paymentVerified) group.verifiedCount += 1;
+    paymentGroups.set(key, group);
   }
+  const paymentBatches = Array.from(paymentGroups.values()).sort((a, b) => Number(a.verifiedCount === a.count) - Number(b.verifiedCount === b.count));
   return (
     <section className="panel">
       <h2>Coop Boss</h2>
@@ -870,13 +868,23 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
       </form>}
 
       {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
+      {payload.event.poolMode === "host_managed" && <section className="payment-batch-manager">
+        <div className="bet-manager-heading"><div><h3>Bettor payments</h3><p className="fine-print">Each row is one combined payment for that bettor’s current batch of bets. If they return after it is confirmed, their new bets get a new payment ID. Confirm one payment at a time after matching its ID in Venmo.</p></div><strong>{paymentBatches.filter((group) => group.verifiedCount < group.count).length} pending</strong></div>
+        {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="payment-batch-list">{paymentBatches.map((group) => {
+          const verified = group.verifiedCount === group.count;
+          return <article className={`payment-batch-row ${verified ? "confirmed" : "pending"}`} key={group.paymentId || normalizeName(group.bettor)}>
+            <div><strong>{group.bettor}</strong><span className="payment-id-badge">{group.paymentId}</span><small>{group.venmo} · {group.count} bet{group.count === 1 ? "" : "s"}</small></div>
+            <div><strong>{money(group.total)}</strong><span>{verified ? "Payment confirmed" : "Waiting for payment"}</span><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo confirmation" : `Confirm ${group.paymentId}`}</button></div>
+          </article>;
+        })}</div>}
+      </section>}
       <section className="bet-manager">
         <div className="bet-manager-heading"><div><h3>Manage bets{payload.event.poolMode === "host_managed" ? " & payments" : ""}</h3><p className="fine-print">Showing at most {betsPerPage} at once instead of loading all {payload.bets.length.toLocaleString()} bets.</p></div><strong>{matchingBets.length.toLocaleString()} match{matchingBets.length === 1 ? "" : "es"}</strong></div>
-        <label>Search by bettor, payment ID, bet ID, pick, amount, Venmo, or status<input type="search" value={betSearch} placeholder="e.g. CB-A1B2C3D4, Avery, #142, pending" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); }} /></label>
-        {visibleBets.length === 0 ? <p className="muted">No bets match that search.</p> : <div className="bet-admin-list">{visibleBets.map((bet) => { const pendingGroup = pendingPaymentGroups.get(bet.paymentId || normalizeName(bet.bettor)); return <article className="bet-admin-row" key={bet.id}>
+        <label>Search by bettor, payment ID, bet ID, pick, amount, Venmo, or status<input type="search" value={betSearch} placeholder="e.g. A1B2C3D4, Avery, #142, pending" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); }} /></label>
+        {visibleBets.length === 0 ? <p className="muted">No bets match that search.</p> : <div className="bet-admin-list">{visibleBets.map((bet) => <article className="bet-admin-row" key={bet.id}>
           <div><strong>#{bet.id} · {bet.bettor}</strong><span>{describeBet(bet, payload.chickens, payload.races)}</span><small>{money(bet.stake)}{bet.venmo ? ` · ${bet.venmo}` : ""}{payload.event.poolMode === "host_managed" ? <> · <span className="payment-id-badge">{bet.paymentId}</span> · {bet.paymentVerified ? "payment confirmed" : "payment pending"}</> : ""}</small></div>
-          <div>{payload.event.poolMode === "host_managed" && (bet.paymentVerified ? <button type="button" className="ghost-button" onClick={() => setPaymentVerified(bet.id, false)}>Mark pending</button> : <button type="button" className="ghost-button" onClick={() => confirmPaymentBatch(bet.paymentId, bet.bettor, pendingGroup?.count ?? 1, pendingGroup?.total ?? Number(bet.stake))}>Confirm {bet.paymentId} · {pendingGroup?.count ?? 1} bet{(pendingGroup?.count ?? 1) === 1 ? "" : "s"} · {money(pendingGroup?.total ?? Number(bet.stake))}</button>)}<button className="delete-row" type="button" onClick={() => removeBet(bet.id)}>Delete</button></div>
-        </article>; })}</div>}
+          <div><button className="delete-row" type="button" onClick={() => removeBet(bet.id)}>Delete</button></div>
+        </article>)}</div>}
         {betPageCount > 1 && <nav className="bet-pagination" aria-label="Bet manager pages"><button type="button" disabled={currentBetPage === 0} onClick={() => setBetPage(Math.max(0, currentBetPage - 1))}>Previous</button><span>Page {currentBetPage + 1} of {betPageCount}</span><button type="button" disabled={currentBetPage >= betPageCount - 1} onClick={() => setBetPage(Math.min(betPageCount - 1, currentBetPage + 1))}>Next</button></nav>}
       </section>
       </div>

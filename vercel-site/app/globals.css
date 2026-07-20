@@ -811,6 +811,14 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .bet-manager-heading { display: flex; justify-content: space-between; gap: 16px; align-items: end; margin-bottom: 12px; }
 .bet-manager-heading h3 { margin-bottom: 0; }
 .bet-manager-heading > strong { color: var(--title-accent); white-space: nowrap; }
+.payment-batch-manager { margin-top: 24px; padding: 18px; border: 1px solid rgba(241, 174, 62, 0.38); border-radius: 12px; background: rgba(255, 249, 232, 0.5); }
+.payment-batch-list { display: grid; gap: 9px; }
+.payment-batch-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+.payment-batch-row.pending { border-color: rgba(241, 174, 62, 0.7); }
+.payment-batch-row.confirmed { opacity: 0.72; }
+.payment-batch-row > div { display: grid; gap: 4px; }
+.payment-batch-row > div:last-child { justify-items: end; }
+.payment-batch-row small, .payment-batch-row span { color: var(--muted); }
 .bet-admin-list { display: grid; gap: 7px; margin-top: 12px; }
 .bet-admin-row {
   display: grid;
@@ -857,6 +865,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .payment-flow-steps { grid-template-columns: 1fr; }
   .payment-helper-menu > div { grid-template-columns: 1fr auto; }
   .payment-helper-menu > div span { grid-column: 1 / -1; }
+  .payment-batch-row { grid-template-columns: 1fr; }
+  .payment-batch-row > div:last-child { justify-items: stretch; }
   .bet-admin-row { grid-template-columns: 1fr; }
   .bet-admin-row > div:last-child { justify-content: flex-end; flex-wrap: wrap; }
   .ticket { grid-template-columns: 1fr; }

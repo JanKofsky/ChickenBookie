@@ -214,9 +214,10 @@ export async function ensureSchema() {
   await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS payment_id TEXT NOT NULL DEFAULT ''`;
   await sql`
     UPDATE bets b
-    SET payment_id = 'CB-' || UPPER(SUBSTRING(MD5(b.event_id::text || ':' || b.bettor_id::text) FROM 1 FOR 8))
+    SET payment_id = UPPER(SUBSTRING(MD5(b.event_id::text || ':' || b.bettor_id::text) FROM 1 FOR 8))
     FROM events e
     WHERE b.event_id = e.id AND e.pool_mode = 'host_managed' AND b.payment_id = ''`;
+  await sql`UPDATE bets SET payment_id = SUBSTRING(payment_id FROM 4) WHERE payment_id LIKE 'CB-%'`;
   await sql`
     CREATE TABLE IF NOT EXISTS results (
       event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -603,7 +604,7 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
   if (hostManaged) {
     const existingPayment = await sql`SELECT payment_id FROM bets WHERE event_id = ${input.eventId} AND bettor_id = ${Number(bettor.rows[0].id)} AND payment_verified = FALSE AND payment_id <> '' ORDER BY id DESC LIMIT 1`;
     if (existingPayment.rowCount) paymentId = String(existingPayment.rows[0].payment_id);
-    else paymentId = `CB-${String((await sql`SELECT UPPER(SUBSTRING(MD5(RANDOM()::text || CLOCK_TIMESTAMP()::text) FROM 1 FOR 8)) AS id`).rows[0].id)}`;
+    else paymentId = String((await sql`SELECT UPPER(SUBSTRING(MD5(RANDOM()::text || CLOCK_TIMESTAMP()::text) FROM 1 FOR 8)) AS id`).rows[0].id);
   }
   await sql`
     INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, drop_number, picks, payment_verified, payment_id)
@@ -676,21 +677,22 @@ export async function verifyBetPayment(input: { eventId: number; adminCode: stri
   return getEventPayload(input.eventId);
 }
 
-export async function verifyBettorPayments(input: { eventId: number; adminCode: string; paymentId: string }) {
+export async function verifyBettorPayments(input: { eventId: number; adminCode: string; paymentId: string; verified?: boolean }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
   const paymentId = input.paymentId.trim().toUpperCase();
+  const verified = input.verified !== false;
   if (!paymentId) throw new Error("Payment ID is required.");
   const event = await sql`SELECT pool_mode FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount || event.rows[0].pool_mode !== "host_managed") throw new Error("Payment confirmation is only used for host-maintained pools.");
   const updated = await sql`
     UPDATE bets b
-    SET payment_verified = TRUE
+    SET payment_verified = ${verified}
     WHERE b.event_id = ${input.eventId}
       AND b.payment_id = ${paymentId}
       AND b.payment_verified = FALSE
     RETURNING b.id`;
-  if (!updated.rowCount) throw new Error("No pending bets found for that payment ID.");
+  if (!updated.rowCount) throw new Error("No bets found for that payment ID.");
   return getEventPayload(input.eventId);
 }
 

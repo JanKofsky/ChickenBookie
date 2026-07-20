@@ -127,7 +127,7 @@ The administrator can:
 - Set the Chicken Drop board’s columns, rows, and fixed ticket cost before betting begins.
 - Record, replace, or clear official results.
 - Add or correct bettor Venmo handles.
-- Confirm one combined host payment for all of a bettor's pending tickets.
+- Confirm one combined host payment per bettor batch, using its payment ID; later bets form a new batch after the earlier payment is confirmed.
 - Delete accidental tickets.
 
 Admin codes are not displayed after creation and there is no recovery flow. Only intentionally open built-in demos use blank admin codes.

@@ -54,7 +54,8 @@ export async function PUT(request: NextRequest) {
       const payload = await verifyBettorPayments({
         eventId: Number(body.eventId),
         adminCode: String(body.adminCode ?? ""),
-        paymentId: String(body.paymentId ?? "")
+        paymentId: String(body.paymentId ?? ""),
+        verified: body.verified !== false
       });
       return NextResponse.json(payload);
     }
