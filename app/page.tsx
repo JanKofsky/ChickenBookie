@@ -550,7 +550,7 @@ function SettlementExplainer({ payload }: { payload: EventPayload }) {
           : `Bettors send each race-bet stake to the host (${payload.event.hostVenmo}). Only bets whose payments the host confirms enter the pool. After race results are official, the host sends each bettor's full payout shown below.`
         : isDropEvent
           ? "Venmo is not required and nobody prepays the site or host. After the winning square is official, the optional payment list shows how players could settle the Chicken Drop directly with one another."
-          : "Venmo is not required and nobody prepays the site or host. After race results are official, the optional payment list shows how bettors could settle directly with one another."}</p>
+          : "Stakes are not prepaid. After race results are official, the optional payment list shows how bettors settle directly with one another."}</p>
       <p><b>{isDropEvent ? "Chicken Drop" : "Chicken Race"} {isHostManaged ? "payout" : "settlement"} math:</b> {isDropEvent
         ? "Every counted ticket on the winning square gets its ticket price back, then those tickets split the losing-square pool equally. If nobody picked the winning square, every counted ticket is refunded."
         : "Each winning ticket gets its stake back, then winning tickets share the losing-ticket pool based on bet difficulty. If no ticket wins, every counted bet is refunded."}</p>
