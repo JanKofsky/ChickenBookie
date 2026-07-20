@@ -445,7 +445,7 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
     {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => { setRace(Number(event.target.value)); setPicks([]); }}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={pickerChickens} optionsByIndex={exactTicketOptions} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
-    <button type="submit">{payload.event.poolMode === "host_managed" ? "Add bet to my unpaid total" : "Add bet"}</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
+    <button type="submit">Add bet</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
   </form>{payload.event.poolMode === "host_managed" && <HostPaymentSummary payload={payload} bettor={bettor} setPayload={setPayload} />}</section>;
 }
 
@@ -504,7 +504,7 @@ function Tickets({ payload }: { payload: EventPayload }) {
   const pageCount = showAll ? 1 : Math.max(1, Math.ceil(matchingBets.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
   const visibleBets = showAll ? matchingBets : matchingBets.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-  return <section className="panel"><h2>Ticket Board</h2>{payload.event.poolMode === "host_managed" && <div className="ticket-count-summary"><strong>{confirmedBets.length} confirmed bet{confirmedBets.length === 1 ? "" : "s"} count</strong>{pendingCount > 0 && <span>{pendingCount} pending · not counted</span>}</div>}<ChickenStatsPanel bets={confirmedBets} chickens={chickens} confirmedOnly={payload.event.poolMode === "host_managed"} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <><div className="ticket-directory-controls"><label>Find tickets<input type="search" value={search} placeholder="Bettor, chicken, payment ID, or status" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matchingBets.length} matching ticket${matchingBets.length === 1 ? "" : "s"}` : `${bets.length} total ticket${bets.length === 1 ? "" : "s"}`}</span>{bets.length > pageSize && <button type="button" className="ghost-button" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show 12 at a time" : `Show all ${bets.length}`}</button>}</div><div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{visibleBets.length === 0 ? <p className="muted">No tickets match that search.</p> : visibleBets.map((bet) => <div className={`ticket-row${bet.paymentVerified ? "" : " pending-ticket"}`} key={bet.id}><strong>{bet.bettor}{!bet.paymentVerified && <small className="field-note">{bet.paymentSubmitted ? "NOT COUNTED — awaiting host confirmation" : "NOT COUNTED — payment not started"}</small>}{payload.event.poolMode === "host_managed" && !bet.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.name, bet.bettor, bet.paymentId)} />}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{!bet.paymentVerified && <small>not counted</small>}{money(bet.stake)}</b></div>)}</div>{pageCount > 1 && <nav className="bet-pagination" aria-label="Ticket Board pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}</>}</section>;
+  return <section className="panel"><h2>Ticket Board</h2>{payload.event.poolMode === "host_managed" && <div className="ticket-count-summary"><strong>{confirmedBets.length} confirmed bet{confirmedBets.length === 1 ? "" : "s"} count</strong>{pendingCount > 0 && <span>{pendingCount} pending · not counted</span>}</div>}<ChickenStatsPanel bets={confirmedBets} chickens={chickens} confirmedOnly={payload.event.poolMode === "host_managed"} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <><div className="ticket-directory-controls"><label>Search tickets<input type="search" value={search} placeholder="Name, chicken, ID, or status" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matchingBets.length} found` : `${bets.length} total`}</span>{bets.length > pageSize && <button type="button" className="ghost-button" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show less" : "Show all"}</button>}</div><div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{visibleBets.length === 0 ? <p className="muted">No tickets found.</p> : visibleBets.map((bet) => <div className={`ticket-row${bet.paymentVerified ? "" : " pending-ticket"}`} key={bet.id}><strong>{bet.bettor}{!bet.paymentVerified && <small className="field-note">{bet.paymentSubmitted ? "NOT COUNTED — awaiting host confirmation" : "NOT COUNTED — payment not started"}</small>}{payload.event.poolMode === "host_managed" && !bet.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.name, bet.bettor, bet.paymentId)} />}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{!bet.paymentVerified && <small>not counted</small>}{money(bet.stake)}</b></div>)}</div>{pageCount > 1 && <nav className="bet-pagination" aria-label="Ticket Board pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}</>}</section>;
 }
 
 function PaymentMemoTip({ memo }: { memo: string }) {
@@ -522,11 +522,12 @@ function ChickenStatsPanel({ bets, chickens, confirmedOnly = false }: { bets: Be
 }
 
 function Winners({ payload }: { payload: EventPayload }) {
-  if (countedBets(payload).length < 2) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">Oh cluck, not enough confirmed bets yet. Add at least two counted tickets before the feed bucket math is worth settling.</p></section>;
-  if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
+  const resultsOfficial = isResultsOfficial(payload);
+  if (countedBets(payload).length < 2) return <section className="panel"><h2>Winner's Circle</h2>{resultsOfficial && <WinnerCallout payload={payload} />}<SettlementExplainer payload={payload} /><p className="muted">Not enough confirmed bets to calculate settlement yet.</p></section>;
+  if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2>{resultsOfficial && <WinnerCallout payload={payload} />}<SettlementExplainer payload={payload} /><p className="muted">{payload.event.gameType === "chicken_drop" ? "Waiting for the official drop number." : "Waiting for every official race winner."}</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
   const hostManaged = payload.event.poolMode === "host_managed";
-  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who pays who plan"}</h3><SettlementPaymentDirectory payments={payments} searchable={!hostManaged} /><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} showPayout={hostManaged} /></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><WinnerCallout payload={payload} /><SettlementExplainer payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who pays who plan"}</h3><SettlementPaymentDirectory payments={payments} searchable={!hostManaged} /><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} tickets={payload.settlement.tickets} showPayout={hostManaged} /></section>;
 }
 
 function SettlementPaymentDirectory({ payments, searchable }: { payments: Array<{ from: string; fromVenmo: string; to: string; toVenmo: string; amount: number }>; searchable: boolean }) {
@@ -540,7 +541,7 @@ function SettlementPaymentDirectory({ payments, searchable }: { payments: Array<
   const currentPage = Math.min(page, pageCount - 1);
   const visible = showAll ? matching : matching.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   return <div className="settlement-payment-directory">
-    {searchable && <div className="settlement-payment-search"><label>Find your payments<input type="search" value={search} placeholder="Type your name or Venmo" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matching.length} payment${matching.length === 1 ? "" : "s"} involving “${search.trim()}”` : `${payments.length} total payment${payments.length === 1 ? "" : "s"}`}</span><small>Search your name to see both what you pay and what you receive. Clear the search to return to the complete plan.</small>{payments.length > pageSize && <button type="button" className="ghost-button settlement-show-all" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show 12 at a time" : `Show all ${payments.length}`}</button>}</div>}
+    {searchable && <div className="settlement-payment-search"><label>Search payments<input type="search" value={search} placeholder="Your name or Venmo" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matching.length} found` : `${payments.length} total`}</span>{payments.length > pageSize && <button type="button" className="ghost-button settlement-show-all" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show less" : "Show all"}</button>}</div>}
     <div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : visible.length === 0 ? <p>No payments match that name or Venmo.</p> : visible.map((payment, idx) => <div className="payment" key={`${payment.from}-${payment.to}-${currentPage}-${idx}`}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div>
     {pageCount > 1 && <nav className="bet-pagination settlement-payment-pages" aria-label="Settlement payment pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}
   </div>;
@@ -648,19 +649,14 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     setPayload(data);
     setCartMessage(`Bet #${bet.id} removed. Your total was updated.`);
   }
-  if (paymentSubmitted) return <aside className="host-payment-summary payment-congrats"><div><span className="payment-hatch" aria-hidden="true">🥚 → 🐣</span><span>Payment ID <span className="payment-id-badge">{paymentId}</span></span><h3>Egg-cellent! Payment is headed to the Coop Boss.</h3><p>Your host will verify the receipt before your covered bets count.</p><button type="button" className="payment-retry-link" onClick={() => { void updateSubmitted(false); }}>Payment didn’t go through? Try again</button></div></aside>;
+  if (paymentSubmitted) return <aside className="host-payment-summary payment-congrats"><div><span className="payment-hatch" aria-hidden="true">🥚 → 🐣</span><span>Payment ID <span className="payment-id-badge">{paymentId}</span></span><h3>Egg-cellent! Payment is headed to the Coop Boss.</h3><p>Your host will verify the receipt before your bets count.</p><button type="button" className="payment-retry-link" onClick={() => { void updateSubmitted(false); }}>Payment didn’t go through? Try again</button></div></aside>;
   return <aside className="host-payment-summary" aria-live="polite">
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <section className="pending-bet-cart"><header><span>Your pending bet cart</span><strong>{pendingBets.length} bet{pendingBets.length === 1 ? "" : "s"}</strong></header>{pendingBets.map((bet) => <div key={bet.id}><span><b>{describeBet(bet, payload.chickens, payload.races)}</b><small>Bet #{bet.id}</small></span><strong>{money(bet.stake)}</strong><button type="button" aria-label={`Remove bet ${bet.id}`} onClick={() => { void removeFromCart(bet); }}>Remove</button></div>)}{cartMessage && <p>{cartMessage}</p>}</section>
-    <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName} · Payment ID <span className="payment-id-badge">{paymentId}</span></small></div>
+    <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
     <a className="venmo-pay-link full-payment-link" href={venmoPaymentUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
-    <div className="payment-helper-menu">
-      <div><span>1. Host recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
-      <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
-      <div><span>3. Payment ID</span><strong className="payment-id-badge">{paymentId}</strong><button type="button" onClick={() => copyPaymentField("payment-id", paymentId)}>{copied === "payment-id" ? "Copied!" : "Copy"}</button></div>
-      <div><span>4. Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
-    </div>
+    <div className="payment-helper-menu"><div><span>Use this exact Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy memo"}</button></div></div>
     <p>Click to open Venmo to the host and attempt to fill in the total and event note. The note is also copied as a fallback. Review the recipient, amount, and note before sending; the host will verify receipt.</p>
   </aside>;
 }
@@ -680,9 +676,19 @@ function WinnerCallout({ payload }: { payload: EventPayload }) {
   })}</div></div>;
 }
 
-function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }>; showPayout: boolean }) {
+function SettlementLedger({ people, tickets, showPayout }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }>; tickets: Array<{ bettor: string; result: string }>; showPayout: boolean }) {
   const [selectedBettor, setSelectedBettor] = useState<string | null>(null);
-  const rows = people.map((person) => ({ ...person, earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0 }))
+  const rows = people.map((person) => {
+    const personTickets = tickets.filter((ticket) => ticket.bettor === person.bettor);
+    return {
+      ...person,
+      earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0,
+      betCount: personTickets.length,
+      wonBets: personTickets.filter((ticket) => ticket.result === "Won").length,
+      lostBets: personTickets.filter((ticket) => ticket.result === "Lost").length,
+      refundedBets: personTickets.filter((ticket) => ticket.result === "Refunded").length
+    };
+  })
     .sort((a, b) => b.net - a.net || b.earningsPct - a.earningsPct || a.bettor.localeCompare(b.bettor));
   const rawMaxAxis = Math.max(1, ...rows.map((person) => Math.abs(person.net)));
   const maxAxis = Math.ceil(rawMaxAxis / 25) * 25;
@@ -708,7 +714,8 @@ function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: stri
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
         const detailLabel = showPayout ? `, host payout ${money(person.payout)}` : "";
-        return <button type="button" className={`ledger-axis${selectedBettor === person.bettor ? " selected" : ""}`} key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}${detailLabel}, P/L ${netLabel}, return ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}${detailLabel}, profit loss ${netLabel}, return ${pctLabel}. Tap for details.`} aria-expanded={selectedBettor === person.bettor} onClick={() => setSelectedBettor(selectedBettor === person.bettor ? null : person.bettor)}>
+        const betSummary = `${person.betCount} bet${person.betCount === 1 ? "" : "s"}: ${person.wonBets} won, ${person.lostBets} lost${person.refundedBets ? `, ${person.refundedBets} refunded` : ""}`;
+        return <button type="button" className={`ledger-axis${selectedBettor === person.bettor ? " selected" : ""}`} key={person.bettor} title={`${person.bettor}: ${betSummary}, stake ${money(person.staked)}${detailLabel}, P/L ${netLabel}, return ${pctLabel}`} aria-label={`${person.bettor}, ${betSummary}, staked ${money(person.staked)}${detailLabel}, profit loss ${netLabel}, return ${pctLabel}. Tap for details.`} aria-expanded={selectedBettor === person.bettor} onClick={() => setSelectedBettor(selectedBettor === person.bettor ? null : person.bettor)}>
           <i className={person.net >= 0 ? "profit-loss-layer positive" : "profit-loss-layer"} style={person.net >= 0 ? { left: "50%", width: `${profitLossWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - profitLossWidth}%`, width: `${profitLossWidth}%`, background: netColor(person.earningsPct) }} />
           <b className={person.net >= 0 ? "ledger-bar-label positive" : "ledger-bar-label"}>{netLabel}</b>
         </button>;
@@ -720,6 +727,7 @@ function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: stri
     </div>
     {selectedPerson && <div className="ledger-tap-detail" aria-live="polite">
       <div><span>Bettor</span><strong>{selectedPerson.bettor}</strong></div>
+      <div><span>Bets</span><strong>{selectedPerson.betCount} total · {selectedPerson.wonBets} won · {selectedPerson.lostBets} lost{selectedPerson.refundedBets ? ` · ${selectedPerson.refundedBets} refunded` : ""}</strong></div>
       <div><span>Original stake</span><strong>{money(selectedPerson.staked)}</strong></div>
       <div><span>Net P/L</span><strong className={selectedPerson.net >= 0 ? "positive" : ""}>{selectedPerson.net >= 0 ? "+" : ""}{money(selectedPerson.net)}</strong></div>
       <div><span>Return</span><strong>{selectedPerson.earningsPct >= 0 ? "+" : ""}{Math.round(selectedPerson.earningsPct)}%</strong></div>

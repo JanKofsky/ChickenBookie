@@ -462,10 +462,11 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .ticket-count-summary { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; padding: 10px 12px; border: 1px solid rgba(217, 240, 194, 0.28); border-radius: 9px; background: rgba(217, 240, 194, 0.07); }
 .ticket-count-summary strong { color: #d9f0c2; }
 .ticket-count-summary span { color: var(--mustard-light); font-weight: 850; }
-.ticket-directory-controls { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 10px; align-items: end; margin: 16px 0 10px; padding: 12px; border: 1px solid rgba(217, 240, 194, 0.2); border-radius: 10px; background: rgba(7, 11, 8, 0.38); }
-.ticket-directory-controls label { margin: 0; }
-.ticket-directory-controls > span { color: var(--muted); font-weight: 850; }
-.ticket-directory-controls > button { min-height: 40px; width: auto; }
+.ticket-directory-controls { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; margin: 12px 0 8px; }
+.ticket-directory-controls label { width: min(100%, 280px); margin: 0; font-size: 0.76rem; }
+.ticket-directory-controls input { min-height: 36px; padding: 7px 10px; }
+.ticket-directory-controls > span { color: var(--muted); font-size: 0.78rem; font-weight: 750; }
+.ticket-directory-controls > button { min-height: 34px; width: auto; padding: 6px 9px; }
 .ticket-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.9fr) minmax(220px, 2fr) minmax(96px, 0.55fr);
@@ -509,13 +510,13 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 }
 .payment-list { display: grid; gap: 10px; margin: 16px 0; }
 .settlement-payment-directory { margin-bottom: 24px; }
-.settlement-payment-search { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: end; gap: 8px 16px; margin: 12px 0; padding: 14px; border: 1px solid rgba(88, 61, 35, 0.18); border-radius: 14px; background: rgba(255, 248, 229, 0.72); }
-.settlement-payment-search label { margin: 0; }
-.settlement-payment-search > span { font-weight: 850; }
-.settlement-payment-search > small { grid-column: 1 / -1; color: var(--muted); }
-.settlement-show-all { grid-column: 1 / -1; justify-self: start; width: auto; }
+.settlement-payment-search { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 12px; margin: 12px 0 8px; }
+.settlement-payment-search label { width: min(100%, 280px); margin: 0; font-size: 0.76rem; }
+.settlement-payment-search input { min-height: 36px; padding: 7px 10px; }
+.settlement-payment-search > span { font-size: 0.78rem; font-weight: 750; }
+.settlement-show-all { width: auto; min-height: 34px; padding: 6px 9px; }
 .settlement-payment-pages { margin-top: 12px; }
-@media (max-width: 640px) { .settlement-payment-search { grid-template-columns: 1fr; align-items: stretch; } .settlement-payment-search > small, .settlement-show-all { grid-column: auto; } }
+@media (max-width: 640px) { .settlement-payment-search { align-items: flex-end; } .settlement-payment-search label { width: 100%; } }
 .settlement-explainer {
   margin: 10px 0 18px;
   padding: 12px 14px;
@@ -830,13 +831,13 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .payment-helper-menu > div span { font-size: 0.68rem; }
 .payment-helper-menu > div strong { color: var(--ink); font-size: 0.86rem; overflow-wrap: anywhere; }
 .payment-helper-menu > div button { min-height: 30px; padding: 5px 9px; }
-.payment-id-badge {
+.host-payment-summary > div .payment-id-badge {
   display: inline-block;
   padding: 2px 6px;
   border: 1px solid rgba(88, 62, 45, 0.22);
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--ink);
+  background: #fff8e5;
+  color: #24180f;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -936,8 +937,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket { grid-template-columns: 1fr; }
   .ticket b { text-align: left; }
   .ticket-table { gap: 5px; }
-  .ticket-directory-controls { grid-template-columns: 1fr; align-items: stretch; }
-  .ticket-directory-controls > button { width: 100%; }
+  .ticket-directory-controls { align-items: flex-end; }
+  .ticket-directory-controls label { width: 100%; }
+  .ticket-directory-controls > button { width: auto; }
   .ticket-row { grid-template-columns: minmax(70px, 0.72fr) minmax(0, 1.5fr) minmax(68px, 0.62fr); gap: 6px; padding: 9px 8px; font-size: 0.88rem; }
   .ticket-head { font-size: 0.62rem; letter-spacing: 0.04em; }
   .ticket-row b { text-align: right; }
