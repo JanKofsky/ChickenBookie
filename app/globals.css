@@ -717,6 +717,25 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   background: linear-gradient(135deg, rgba(61, 192, 118, 0.18), rgba(7, 11, 8, 0.72));
 }
 .host-payment-summary > div { display: grid; gap: 2px; }
+.host-payment-heading { grid-column: 1 / -1; }
+.host-payment-heading h3 { margin: 0 0 4px; color: #d9f0c2; }
+.host-payment-heading p { margin: 0; color: var(--muted); }
+.payment-flow-steps {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.payment-flow-steps li { display: flex; gap: 9px; align-items: center; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(7, 11, 8, 0.42); }
+.payment-flow-steps li > b { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: var(--muted); background: rgba(255, 255, 255, 0.08); }
+.payment-flow-steps li.done > b { color: #091109; background: #d9f0c2; }
+.payment-flow-steps li.active { border-color: rgba(126, 226, 167, 0.65); }
+.payment-flow-steps li.active > b { color: #07120c; background: #7ee2a7; }
+.payment-flow-steps span { display: grid; color: var(--ink); font-weight: 850; }
+.payment-flow-steps span strong { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
 .host-payment-summary > div span { color: var(--muted); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
 .host-payment-summary > div strong { color: #d9f0c2; font-size: 1.8rem; }
 .host-payment-summary > div small { color: var(--muted); }
@@ -793,6 +812,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .admin-section-nav { top: 4px; margin-inline: -3px; }
   .host-payment-summary { grid-template-columns: 1fr; }
   .host-payment-summary > p { grid-column: auto; }
+  .host-payment-heading,
+  .payment-flow-steps { grid-column: auto; }
+  .payment-flow-steps { grid-template-columns: 1fr; }
   .payment-helper-menu > div { grid-template-columns: 1fr auto; }
   .payment-helper-menu > div span { grid-column: 1 / -1; }
   .bet-admin-row { grid-template-columns: 1fr; }

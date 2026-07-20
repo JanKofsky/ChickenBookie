@@ -317,7 +317,7 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
     <div className="panel-title-row"><h2>Chicken Drop betting grid</h2><SettlementHelpTip payload={payload} /></div>
     <p className="muted"><b>Chicken Drop:</b> pick the numbered square where the chicken will make its first confirmed drop.</p>
     <div className="drop-price-card"><span>Fixed cost per ticket</span><strong>{money(payload.event.dropTicketPrice)}</strong><small>Repeat picks on the same number are allowed.</small></div>
-    {payload.event.poolMode === "host_managed" && <div className="notice"><b>Making several picks?</b> Add all your tickets first, then use one Venmo payment for the combined unpaid total. The host can confirm them together.</div>}
+    {payload.event.poolMode === "host_managed" && <div className="notice"><b>Pay once when you are finished:</b> 1. Add all your tickets. 2. Pay the running total once. 3. The host confirms every covered ticket together.</div>}
     {resultsOfficial && <div className="notice">The official drop is #{payload.event.dropWinningNumber}. The board stays visible, but new bets are closed. Coop Boss can clear the result to reopen betting before the close time.</div>}
     <form className="drop-bet-form" onSubmit={submit}>
       {!resultsOfficial && <div className="drop-player-fields">
@@ -325,7 +325,7 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
         <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
       </div>}
       <DropNumberGrid payload={payload} selectedNumber={selectedNumber} onSelect={resultsOfficial ? undefined : setSelectedNumber} />
-      {!resultsOfficial && <button type="submit" className="drop-submit" disabled={selectedNumber == null}>{selectedNumber == null ? "Pick a number to place your bet" : `Place ${money(payload.event.dropTicketPrice)} bet on #${selectedNumber}`}</button>}
+      {!resultsOfficial && <button type="submit" className="drop-submit" disabled={selectedNumber == null}>{selectedNumber == null ? "Pick a number to add a ticket" : payload.event.poolMode === "host_managed" ? `Add #${selectedNumber} to my unpaid total` : `Place ${money(payload.event.dropTicketPrice)} bet on #${selectedNumber}`}</button>}
       <p className="fine-print">{payload.event.poolMode === "host_managed" ? "Chicken Bookie records the host's payment confirmation; Venmo processes the actual payment." : "Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money."}</p>
       {message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
     </form>
@@ -422,7 +422,7 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage(payload.event.poolMode === "host_managed" ? "Bet added to your unpaid total. Add another bet or pay the combined total below." : "Bet added."); }
   }
   if (resultsOfficial) return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Results are official, so betting is closed for this event.</p><p className="fine-print">Coop Boss can reopen betting only by clearing the winners and setting a new future close time.</p></section>;
-  return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p>{payload.event.poolMode === "host_managed" ? <div className="notice"><b>Making several bets?</b> Add them all first, then use one Venmo payment for your combined unpaid total. The host can confirm them together.</div> : <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>}<form className="bet-form" onSubmit={submit}>
+  return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p>{payload.event.poolMode === "host_managed" ? <div className="notice"><b>Pay once when you are finished:</b> 1. Add all your bets. 2. Pay the running total once. 3. The host confirms every covered bet together.</div> : <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>}<form className="bet-form" onSubmit={submit}>
     <label>Name<input value={bettor} onChange={(event) => setBettor(event.target.value)} />{existingName && <small className="field-note">this ticket will be grouped with the previous bettor using this name</small>}</label>
     <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
@@ -430,7 +430,7 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
     {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
-    <button type="submit">{payload.event.poolMode === "host_managed" ? "Submit bet for payment confirmation" : "Add bet"}</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
+    <button type="submit">{payload.event.poolMode === "host_managed" ? "Add bet to my unpaid total" : "Add bet"}</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
   </form>{payload.event.poolMode === "host_managed" && <HostPaymentSummary payload={payload} bettor={bettor} />}</section>;
 }
 
@@ -566,12 +566,14 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
     window.setTimeout(() => setCopied(""), 1400);
   }
   return <aside className="host-payment-summary" aria-live="polite">
+    <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
+    <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
     <div className="payment-helper-menu">
       <div><span>1. Recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
       <div><span>3. Payment note</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
-      <a className="venmo-pay-link" href="https://account.venmo.com/" target="_blank" rel="noreferrer">Open Venmo</a>
+      <a className="venmo-pay-link" href="https://account.venmo.com/" target="_blank" rel="noreferrer">Open Venmo to pay once</a>
     </div>
     <p>In Venmo, choose Pay/Request and paste these details. Confirm the recipient yourself before sending. Chicken Bookie cannot read Venmo transactions; the host confirms the group after receiving it.</p>
   </aside>;
