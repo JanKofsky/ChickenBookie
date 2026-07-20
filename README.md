@@ -7,6 +7,8 @@ Chicken Bookie is a private, event-code-based scorekeeping app for two gloriousl
 
 The app records picks in Cluck Bucks, calculates a shared-pool settlement, and produces a simplified “who pays whom” plan. It does not create player accounts and does not collect, hold, process, or transfer money.
 
+Each event chooses one settlement type: optional **player-to-player settlement guidance**, where Venmo is not required and players decide whether and how to pay one another after the event, or a **host-maintained pool**. For a host-maintained pool, the host supplies a Venmo handle and protected admin code at setup; bettors must supply their own Venmo handle and send each stake to the host. Submitted tickets remain payment pending—and are excluded from totals, boards, projections, and settlement—until the host confirms receipt in Coop Boss. Chicken Bookie records that manual confirmation but does not access Venmo transaction data.
+
 ## Current production architecture
 
 The active product is the Next.js App Router application deployed through Vercel. The older Streamlit/SQLite prototype remains in the repository only as legacy code and is not part of the production or preview deployment.
@@ -28,7 +30,7 @@ An administrator creates an event with:
 - An optional admin code.
 - Format-specific settings.
 
-Players open the event with its code. They do not need an account. A player enters a display name and may add a Venmo handle; Chicken Bookie automatically normalizes the handle to include one leading `@`.
+Players open the event with its code. They do not need an account. A player enters a display name and may add a Venmo handle; the handle is required in host-maintained pools. Chicken Bookie automatically normalizes it to include one leading `@`.
 
 Using the same display name groups that person’s tickets in settlement. The Coop Boss can correct or add bettor Venmo handles later.
 
@@ -68,7 +70,7 @@ The default rules say that the first confirmed chicken dropping decides the winn
 
 ### Player flow
 
-Players place a ticket by entering their name, optionally entering a Venmo handle, and clicking a numbered square on the grid. The selected square receives a visible gold outline and a “your pick” label before submission. Numbers run left to right and then top to bottom, and the board always preserves the host’s exact column × row shape. On a narrow screen, the board scrolls sideways instead of rearranging its squares.
+Players place a ticket by entering their name, entering a Venmo handle when required by the pool mode, and clicking a numbered square on the grid. The selected square receives a visible gold outline and a “your pick” label before submission. Numbers run left to right and then top to bottom, and the board always preserves the host’s exact column × row shape. On a narrow screen, the board scrolls sideways instead of rearranging its squares.
 
 Every square shows live public totals:
 
@@ -132,11 +134,11 @@ Admin codes are not displayed after creation and there is no recovery flow. Blan
 
 Core tables:
 
-- `events`: shared event settings plus `game_type`, derived `drop_max_number`, `drop_grid_columns`, `drop_grid_rows`, `drop_ticket_price`, and `drop_winning_number`.
+- `events`: shared event settings plus `game_type`, `pool_mode`, host Venmo, and Chicken Drop configuration.
 - `chickens`: race-event flock entries and image/bio metadata.
 - `races`: race-event race card entries.
 - `bettors`: event-scoped display names and normalized Venmo handles.
-- `bets`: common stake/type fields, race picks, and optional `drop_number`.
+- `bets`: common stake/type fields, race picks, optional `drop_number`, and host payment-confirmation state.
 - `results`: first-place race results.
 - `result_places`: full-order race results.
 - `app_migrations`: one-time fixture migration markers.
@@ -152,7 +154,7 @@ Core tables:
 - `DELETE /api/results`: clears official results.
 - `POST /api/admin`: verifies an admin code.
 - `PATCH /api/admin`: updates event configuration.
-- `PUT /api/admin`: updates bettor Venmo handles.
+- `PUT /api/admin`: updates bettor Venmo handles or confirms host-received payments.
 - `DELETE /api/admin`: deletes one accidental ticket.
 - `POST /api/contact`: sends the public contact form without exposing private provider details to the browser.
 

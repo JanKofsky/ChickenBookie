@@ -187,6 +187,45 @@ h1 {
 .panel { padding: clamp(16px, 2.6vw, 26px); background: var(--panel-strong); }
 .panel h2 { margin: 0 0 8px; font-size: 1.45rem; }
 .panel h3 { margin: 22px 0 10px; }
+.panel-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.panel-title-row h2 { margin: 0; }
+.help-tip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 2px solid var(--title-accent);
+  border-radius: 50%;
+  color: var(--title-accent);
+  background: rgba(7, 11, 8, 0.82);
+  font-weight: 950;
+  cursor: help;
+  outline: none;
+}
+.help-tip:focus-visible { box-shadow: 0 0 0 3px rgba(217, 240, 194, 0.24); }
+.help-tip-content {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 9px);
+  left: 0;
+  display: none;
+  width: min(360px, calc(100vw - 42px));
+  padding: 12px 14px;
+  border: 1px solid rgba(217, 240, 194, 0.44);
+  border-radius: 10px;
+  color: var(--ink);
+  background: #101912;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.help-tip:hover .help-tip-content,
+.help-tip:focus .help-tip-content { display: grid; gap: 7px; }
+.help-tip-content b { color: var(--title-accent); }
+.help-tip-content small { color: var(--muted); font-size: 0.78rem; }
 .muted { color: var(--muted); font-weight: 650; line-height: 1.5; }
 .fine-print { margin: 8px 0 0; color: rgba(222, 209, 182, 0.74); font-size: 0.82rem; line-height: 1.45; }
 .grid-form, .bet-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
@@ -415,6 +454,17 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   background: rgba(7, 11, 8, 0.58);
   box-shadow: none;
 }
+
+.ticket-row.pending-ticket {
+  opacity: 0.68;
+  border-left: 4px solid #d48b22;
+}
+
+.pending-ticket .field-note {
+  display: block;
+  color: #9a5b00;
+  font-weight: 700;
+}
 .ticket-row > * { overflow-wrap: anywhere; }
 .ticket-row b { text-align: right; }
 .ticket-head {
@@ -427,6 +477,21 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   text-transform: uppercase;
 }
 .payment-list { display: grid; gap: 10px; margin: 16px 0; }
+.settlement-explainer {
+  margin: 10px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid rgba(217, 240, 194, 0.28);
+  border-radius: 10px;
+  background: rgba(217, 240, 194, 0.07);
+}
+.settlement-explainer summary {
+  color: var(--title-accent);
+  font-weight: 950;
+  cursor: pointer;
+}
+.settlement-explainer div { display: grid; gap: 8px; margin-top: 10px; }
+.settlement-explainer p { margin: 0; color: var(--muted); line-height: 1.45; }
+.settlement-explainer b { color: var(--ink); }
 .payment { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 13px 15px; border-left: 5px solid var(--mustard); font-weight: 850; }
 .winner-callout {
   margin: 10px 0 18px;
@@ -556,14 +621,6 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   transform: translateY(-50%);
   border-radius: 999px;
 }
-.stake-layer {
-  height: 20px;
-  border: 1px solid rgba(220, 224, 214, 0.42);
-  background:
-    repeating-linear-gradient(45deg, rgba(222, 226, 218, 0.34) 0, rgba(222, 226, 218, 0.34) 4px, rgba(132, 139, 128, 0.22) 4px, rgba(132, 139, 128, 0.22) 8px);
-  opacity: 0.88;
-  z-index: 3;
-}
 .profit-loss-layer { height: 14px; z-index: 2; }
 .profit-loss-layer.positive { box-shadow: 0 0 10px rgba(217, 240, 194, 0.10); }
 .ledger-net {
@@ -573,6 +630,10 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   font-weight: 500;
   letter-spacing: 0;
   text-align: right;
+  flex-direction: column;
+  align-items: flex-end !important;
+  justify-content: center;
+  line-height: 1.05;
 }
 .ledger-net.positive { color: #d9f0c2; }
 .ledger-net span {
@@ -598,6 +659,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 @media (max-width: 820px) {
   .shell { width: calc(100% - 8px); }
   .panel { padding: 14px 10px; }
+  .help-tip-content { right: 0; left: auto; }
   .topbar, .app-topbar, .event-switch { align-items: stretch; flex-direction: column; }
   .hero-switch { max-width: none; }
   .nav-links { margin-left: 0; }
@@ -620,7 +682,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .stat-bar { grid-template-columns: 1fr; gap: 5px; }
   .stat-bar b { text-align: left; white-space: normal; }
   .ledger-axis-head { display: none; }
-  .ledger-plot { grid-template-columns: fit-content(92px) minmax(120px, 1fr) minmax(74px, auto); gap: 6px; padding: 8px; }
+  .ledger-plot { grid-template-columns: fit-content(92px) minmax(100px, 1fr) minmax(100px, auto); gap: 6px; padding: 8px; }
   .ledger-labels strong,
   .ledger-results b { font-size: 0.82rem; }
   .ledger-net { text-align: right; }
