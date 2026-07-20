@@ -118,7 +118,7 @@ const pickedChickenIds = (bet: Bet) => {
 };
 const normalizeName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
 const paymentMemoPart = (value: string, fallback: string) => value.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 60) || fallback;
-const paymentMemo = (eventName: string, bettor: string, paymentId: string) => `${paymentMemoPart(eventName, "event")}_${paymentMemoPart(bettor, "bettor")}_${paymentId}`;
+const paymentMemo = (eventCode: string, bettor: string, paymentId: string) => `${paymentMemoPart(eventCode, "event")}_${paymentMemoPart(bettor, "bettor")}_${paymentId}`;
 const countedBets = (payload: EventPayload) => payload.bets.filter((bet) => bet.paymentVerified);
 const isResultsOfficial = (payload: EventPayload) => payload.event.gameType === "chicken_drop"
   ? payload.event.dropWinningNumber != null
@@ -539,7 +539,7 @@ function Tickets({ payload }: { payload: EventPayload }) {
   const visibleGroups = showAll ? groupedBets : groupedBets.slice(currentPage * groupsPerPage, (currentPage + 1) * groupsPerPage);
   return <section className="panel"><h2>Ticket Board</h2>{payload.event.poolMode === "host_managed" && <div className="ticket-count-summary"><strong>{confirmedBets.length} confirmed bet{confirmedBets.length === 1 ? "" : "s"} count</strong>{pendingCount > 0 && <span>{pendingCount} pending</span>}</div>}<ChickenStatsPanel bets={confirmedBets} chickens={chickens} confirmedOnly={payload.event.poolMode === "host_managed"} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <><div className="ticket-directory-controls"><label>Search tickets<input type="search" value={search} placeholder="Name, chicken, ID, or status" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matchingBets.length} found` : `${bets.length} total`}</span>{groupedBets.length > groupsPerPage && <button type="button" className="ghost-button" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show less" : "Show all"}</button>}</div><div className="ticket-groups">{visibleGroups.length === 0 ? <p className="muted">No tickets found.</p> : visibleGroups.map((group) => {
     const total = group.bets.reduce((sum, bet) => sum + Number(bet.stake), 0);
-    return <section className={`ticket-group${group.paymentVerified ? "" : " pending-ticket"}`} key={`${group.paymentVerified}:${group.paymentId}:${normalizeName(group.bettor)}`}><header><div><strong>{group.bettor}</strong>{!group.paymentVerified && <span>Pending</span>}</div><b>{group.bets.length} bet{group.bets.length === 1 ? "" : "s"} · {money(total)}</b>{payload.event.poolMode === "host_managed" && !group.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.name, group.bettor, group.paymentId)} />}</header>{group.bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{BET_TYPES[bet.betType]}</strong><span>{describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</section>;
+    return <section className={`ticket-group${group.paymentVerified ? "" : " pending-ticket"}`} key={`${group.paymentVerified}:${group.paymentId}:${normalizeName(group.bettor)}`}><header><div><strong>{group.bettor}</strong>{!group.paymentVerified && <span>Pending</span>}</div><b>{group.bets.length} bet{group.bets.length === 1 ? "" : "s"} · {money(total)}</b>{payload.event.poolMode === "host_managed" && !group.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.code, group.bettor, group.paymentId)} />}</header>{group.bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{BET_TYPES[bet.betType]}</strong><span>{describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</section>;
   })}</div>{pageCount > 1 && <nav className="bet-pagination" aria-label="Ticket Board pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}</>}</section>;
 }
 
@@ -552,7 +552,7 @@ function HostPayoutPayments({ payload }: { payload: EventPayload }) {
   const payments = payload.settlement?.payments.filter((payment) => payment.amount > 0.004) ?? [];
   return <section className="host-payout-manager coop-section"><h3>Pay winners</h3>{payments.length === 0 ? <p className="muted">No payouts needed.</p> : <div className="admin-table-wrap"><table className="admin-data-table payout-payment-table"><thead><tr><th>Winner</th><th>Venmo</th><th>Payout</th><th>Memo</th><th>Action</th></tr></thead><tbody>{payments.map((payment) => {
     const handle = payment.toVenmo.replace(/^@/, "");
-    const note = `${paymentMemoPart(payload.event.name, "event")}_${paymentMemoPart(payment.to, "winner")}_PAYOUT`;
+    const note = `${paymentMemoPart(payload.event.code, "event")}_${paymentMemoPart(payment.to, "winner")}_PAYOUT`;
     const url = new URL(`https://account.venmo.com/u/${encodeURIComponent(handle)}`);
     url.searchParams.set("txn", "pay");
     url.searchParams.set("recipients", handle);
@@ -653,7 +653,7 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
   const paymentSubmitted = pendingBets.every((bet) => bet.paymentSubmitted);
   const total = pendingBets.reduce((sum, bet) => sum + Number(bet.stake), 0);
   const displayName = pendingBets[0].bettor;
-  const note = paymentMemo(payload.event.name, displayName, paymentId);
+  const note = paymentMemo(payload.event.code, displayName, paymentId);
   const hostProfileUrl = payload.event.hostVenmoLink || "https://account.venmo.com/";
   const venmoPaymentUrl = (() => {
     const url = new URL(hostProfileUrl);
