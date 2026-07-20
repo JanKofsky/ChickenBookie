@@ -11,8 +11,6 @@ export type EventRecord = {
   bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
-  poolMode: PoolMode;
-  hostVenmo?: string;
   gameType: GameType;
   poolMode: PoolMode;
   hostVenmo: string;
@@ -688,6 +686,8 @@ export async function updateEventConfig(input: {
   bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
+  poolMode: PoolMode;
+  hostVenmo?: string;
   dropMaxNumber?: number;
   dropGridColumns?: number;
   dropGridRows?: number;
