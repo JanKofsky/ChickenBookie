@@ -234,9 +234,10 @@ h1 {
 .fine-print { margin: 8px 0 0; color: rgba(222, 209, 182, 0.74); font-size: 0.82rem; line-height: 1.45; }
 .loading-flock { display: grid; gap: 4px; overflow: hidden; padding: 8px 12px; border: 1px solid rgba(255, 243, 216, 0.16); border-radius: 10px; background: rgba(7, 11, 8, 0.42); color: var(--muted); font-size: 0.8rem; font-weight: 800; text-align: center; }
 .loading-runway { position: relative; height: 48px; overflow: hidden; border-bottom: 1px dashed rgba(240, 217, 121, 0.22); }
-.loading-runway i { position: absolute; bottom: 2px; left: -52px; width: 43px; height: 43px; border: 1px solid rgba(255, 243, 216, 0.2); border-radius: 50%; background: url("/assets/loading-chicken-01.png") center / cover no-repeat; box-shadow: 0 4px 9px rgba(0, 0, 0, 0.22); animation: flock-run 3.2s linear infinite; }
-.loading-runway i:nth-child(2) { width: 39px; height: 39px; background-image: url("/assets/loading-chicken-02.png"); animation-delay: -1.05s; }
-.loading-runway i:nth-child(3) { width: 36px; height: 36px; background-image: url("/assets/loading-chicken-03.png"); animation-delay: -2.1s; }
+.loading-runway i { position: absolute; bottom: 2px; left: -52px; width: 44px; height: 41px; background: #d66752; -webkit-mask: url("/assets/chicken_bookie_logo.png") center / contain no-repeat; mask: url("/assets/chicken_bookie_logo.png") center / contain no-repeat; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.25)); animation: flock-run 3.6s linear infinite; }
+.loading-runway i:nth-child(2) { width: 41px; height: 38px; background: #8fb874; animation-delay: -0.9s; }
+.loading-runway i:nth-child(3) { width: 39px; height: 36px; background: #fff3d8; animation-delay: -1.8s; }
+.loading-runway i:nth-child(4) { width: 37px; height: 34px; background: #f0d979; animation-delay: -2.7s; }
 @keyframes flock-run { 0% { left: -52px; transform: translateY(0) rotate(-2deg); } 25% { transform: translateY(-4px) rotate(2deg); } 50% { transform: translateY(0) rotate(-2deg); } 75% { transform: translateY(-3px) rotate(2deg); } 100% { left: calc(100% + 8px); transform: translateY(0) rotate(-2deg); } }
 @media (prefers-reduced-motion: reduce) { .loading-runway { display: flex; align-items: end; justify-content: center; gap: 7px; } .loading-runway i { position: static; animation: none; } }
 .grid-form, .bet-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }

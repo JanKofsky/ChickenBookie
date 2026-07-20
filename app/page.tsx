@@ -135,7 +135,7 @@ function friendlyError(message: string) {
 }
 
 function LoadingFlock() {
-  return <div className="loading-flock" role="status" aria-live="polite"><div className="loading-runway" aria-hidden="true"><i /><i /><i /></div><span>Loading the coop...</span></div>;
+  return <div className="loading-flock" role="status" aria-live="polite"><div className="loading-runway" aria-hidden="true"><i /><i /><i /><i /></div><span>Loading the coop...</span></div>;
 }
 
 export default function Home() {
