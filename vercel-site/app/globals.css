@@ -472,14 +472,14 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .ticket-directory-controls input { min-height: 36px; padding: 7px 10px; }
 .ticket-directory-controls > span { color: var(--muted); font-size: 0.78rem; font-weight: 750; }
 .ticket-directory-controls > button { min-height: 34px; width: auto; padding: 6px 9px; }
-.ticket-groups { display: grid; gap: 8px; }
+.ticket-groups { display: grid; gap: 4px; }
 .ticket-group { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: rgba(7, 11, 8, 0.42); }
 .ticket-group.pending-ticket { border-left: 3px solid #d48b22; background: rgba(126, 79, 18, 0.11); }
-.ticket-group > header { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; gap: 8px; align-items: center; padding: 7px 10px; background: rgba(217, 240, 194, 0.08); }
+.ticket-group > header { display: grid; grid-template-columns: minmax(120px, 1fr) auto auto; gap: 6px; align-items: center; padding: 5px 8px; background: rgba(217, 240, 194, 0.08); }
 .ticket-group > header > div { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .ticket-group > header > div span { color: #f2b65c; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; }
 .ticket-group > header > b { color: var(--muted); font-size: 0.78rem; }
-.ticket-group .ticket-row { border-width: 1px 0 0; border-radius: 0; padding: 6px 10px; }
+.ticket-group .ticket-row { grid-template-columns: minmax(110px, 0.8fr) minmax(200px, 2fr) minmax(78px, 0.45fr); gap: 8px; border-width: 1px 0 0; border-radius: 0; padding: 4px 8px; }
 .ticket-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.9fr) minmax(220px, 2fr) minmax(96px, 0.55fr);
@@ -985,9 +985,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket-directory-controls { align-items: flex-end; }
   .ticket-directory-controls label { width: 100%; }
   .ticket-directory-controls > button { width: auto; }
-  .ticket-group > header { grid-template-columns: 1fr auto; padding: 6px 8px; }
+  .ticket-group > header { grid-template-columns: 1fr auto; padding: 5px 7px; }
   .ticket-group > header .ticket-memo-wrap { grid-column: 1 / -1; }
-  .ticket-group .ticket-row { padding: 6px 7px; }
+  .ticket-group .ticket-row { grid-template-columns: minmax(66px, 0.72fr) minmax(0, 1.5fr) minmax(62px, 0.55fr); gap: 5px; padding: 4px 6px; }
   .ticket-row { grid-template-columns: minmax(70px, 0.72fr) minmax(0, 1.5fr) minmax(68px, 0.62fr); gap: 6px; padding: 9px 8px; font-size: 0.88rem; }
   .ticket-head { font-size: 0.62rem; letter-spacing: 0.04em; }
   .ticket-row b { text-align: right; }
