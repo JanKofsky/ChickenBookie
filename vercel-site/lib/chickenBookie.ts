@@ -645,7 +645,8 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
     const raceBetTypes = new Set<BetType>(["race_winner", "race_place", "race_show", "exacta", "trifecta"]);
     if (raceBetTypes.has(betType)) {
       if (race == null) throw new Error("Pick a race.");
-      if (picks.some((pick) => !allowedForRace(race).has(pick))) throw new Error("Pick a chicken running in that race.");
+      const selectedRace = race;
+      if (picks.some((pick) => !allowedForRace(selectedRace).has(pick))) throw new Error("Pick a chicken running in that race.");
     } else if (betType === "exact_ticket") {
       const orderedRaces = [...raceNumbers];
       if (picks.length !== orderedRaces.length || picks.some((pick, index) => !allowedForRace(orderedRaces[index]).has(pick))) throw new Error("Pick an eligible winner for every race.");
