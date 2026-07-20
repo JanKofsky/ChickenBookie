@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdmin, deleteBet, updateBettors, updateEventConfig, verifyBetPayment, verifyBettorPayments } from "../../../lib/chickenBookie";
+import { checkAdmin, deleteBet, deletePaymentBatch, updateBettors, updateEventConfig, verifyBetPayment, verifyBettorPayments } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -14,11 +14,9 @@ function errorMessage(error: unknown, fallback: string) {
 export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
-    const payload = await deleteBet({
-      eventId: Number(body.eventId),
-      adminCode: String(body.adminCode ?? ""),
-      betId: Number(body.betId)
-    });
+    const payload = body.paymentId
+      ? await deletePaymentBatch({ eventId: Number(body.eventId), adminCode: String(body.adminCode ?? ""), paymentId: String(body.paymentId) })
+      : await deleteBet({ eventId: Number(body.eventId), adminCode: String(body.adminCode ?? ""), betId: Number(body.betId) });
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not delete bet.") }, { status: 400 });

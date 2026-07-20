@@ -536,6 +536,20 @@ function PaymentMemoTip({ memo }: { memo: string }) {
   return <span className={`ticket-memo-wrap${open ? " open" : ""}`}><button type="button" className="ticket-memo-trigger" aria-expanded={open} onClick={() => setOpen(!open)}>Payment memo</button><span className="ticket-memo-detail" role="tooltip"><small>Use this exact Venmo memo</small><b>{memo}</b></span></span>;
 }
 
+function HostPayoutPayments({ payload }: { payload: EventPayload }) {
+  const payments = payload.settlement?.payments.filter((payment) => payment.amount > 0.004) ?? [];
+  return <section className="host-payout-manager coop-section"><h3>Pay winners</h3>{payments.length === 0 ? <p className="muted">No payouts needed.</p> : <div className="admin-table-wrap"><table className="admin-data-table payout-payment-table"><thead><tr><th>Winner</th><th>Venmo</th><th>Payout</th><th>Memo</th><th>Action</th></tr></thead><tbody>{payments.map((payment) => {
+    const handle = payment.toVenmo.replace(/^@/, "");
+    const note = `${paymentMemoPart(payload.event.name, "event")}_${paymentMemoPart(payment.to, "winner")}_PAYOUT`;
+    const url = new URL(`https://account.venmo.com/u/${encodeURIComponent(handle)}`);
+    url.searchParams.set("txn", "pay");
+    url.searchParams.set("recipients", handle);
+    url.searchParams.set("amount", payment.amount.toFixed(2));
+    url.searchParams.set("note", note);
+    return <tr key={`${payment.to}:${payment.amount}`}><td><strong>{payment.to}</strong></td><td>{payment.toVenmo}</td><td><strong>{money(payment.amount)}</strong></td><td><PaymentMemoTip memo={note} /></td><td>{handle ? <a className="venmo-pay-link payout-venmo-link" href={url.toString()} target="_blank" rel="noreferrer">Pay in Venmo</a> : <span className="table-status waiting">Missing Venmo</span>}</td></tr>;
+  })}</tbody></table></div>}</section>;
+}
+
 function ChickenStatsPanel({ bets, chickens, confirmedOnly = false }: { bets: Bet[]; chickens: Chicken[]; confirmedOnly?: boolean }) {
   const stats = chickens.map((chicken) => {
     const matching = bets.filter((bet) => pickedChickenIds(bet).includes(chicken.id));
@@ -841,6 +855,12 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not update the grouped payment."));
     else { setPayload(data); setMessage(verified ? `Payment ${paymentId} confirmed; ${count} bet${count === 1 ? "" : "s"} for ${bettor} now count.` : `Payment ${paymentId} returned to pending.`); }
   }
+  async function removePaymentBatch(paymentId: string, bettor: string, count: number, total: number) {
+    if (!window.confirm(`Delete all ${count} bet${count === 1 ? "" : "s"} from ${bettor} in payment ${paymentId} (${money(total)})? This cannot be undone.`)) return;
+    const response = await fetch("/api/admin", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, paymentId }) });
+    const data = await response.json();
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not delete that payment batch.")); else { setPayload(data); setMessage(`${count} bet${count === 1 ? "" : "s"} deleted.`); }
+  }
   async function clearWinners() {
     const response = await fetch("/api/results", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode }) });
     const data = await response.json();
@@ -994,7 +1014,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="admin-table-wrap"><table className="admin-data-table payment-review-table"><thead><tr><th>Bettor</th><th>Payment ID</th><th>Venmo</th><th>Bets</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{paymentBatches.map((group) => {
           const verified = group.verifiedCount === group.count;
           const readyForReview = !verified && group.submittedCount > 0;
-          return <tr className={verified ? "confirmed" : readyForReview ? "ready-review" : "pending"} key={group.paymentId || normalizeName(group.bettor)}><td><strong>{group.bettor}</strong></td><td><span className="payment-id-badge">{group.paymentId}</span></td><td>{group.venmo}</td><td>{group.count}</td><td><strong>{money(group.total)}</strong></td><td><span className={`table-status ${verified ? "confirmed" : readyForReview ? "ready" : "waiting"}`}>{verified ? "✓ Approved" : readyForReview ? "Ready to review" : "Pending"}</span></td><td><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo" : readyForReview ? "Approve" : "Confirm"}</button></td></tr>;
+          return <tr className={verified ? "confirmed" : readyForReview ? "ready-review" : "pending"} key={group.paymentId || normalizeName(group.bettor)}><td><strong>{group.bettor}</strong></td><td><span className="payment-id-badge">{group.paymentId}</span></td><td>{group.venmo}</td><td>{group.count}</td><td><strong>{money(group.total)}</strong></td><td><span className={`table-status ${verified ? "confirmed" : readyForReview ? "ready" : "waiting"}`}>{verified ? "✓ Approved" : readyForReview ? "Ready to review" : "Pending"}</span></td><td><span className="payment-row-actions"><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo" : readyForReview ? "Approve" : "Confirm"}</button><button type="button" className="delete-row" onClick={() => removePaymentBatch(group.paymentId, group.bettor, group.count, group.total)}>Delete bets</button></span></td></tr>;
         })}</tbody></table></div>}
       </section>}
       {bettors.length > 0 && <form className="grid-form coop-section coop-venmo-section" onSubmit={saveBettors}>
@@ -1025,6 +1045,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
         {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" className="ghost-button" onClick={clearWinners}>Clear results</button>}
       </form>
+      {poolMode === "host_managed" && payload.settlement && <HostPayoutPayments payload={payload} />}
       <div className="event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>Delete event</button></div>
     </section>
   );

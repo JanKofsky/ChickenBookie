@@ -753,6 +753,23 @@ export async function deleteBet(input: { eventId: number; adminCode: string; bet
   return getEventPayload(input.eventId);
 }
 
+export async function deletePaymentBatch(input: { eventId: number; adminCode: string; paymentId: string }) {
+  await ensureSchema();
+  await assertAdmin(input.eventId, input.adminCode);
+  const paymentId = input.paymentId.trim().toUpperCase();
+  if (!paymentId) throw new Error("Payment ID is required.");
+  const removed = await sql`
+    DELETE FROM bets b
+    USING events e
+    WHERE b.event_id = ${input.eventId}
+      AND b.payment_id = ${paymentId}
+      AND b.event_id = e.id
+      AND e.pool_mode = 'host_managed'
+    RETURNING b.id`;
+  if (!removed.rowCount) throw new Error("No bets were found for that payment batch.");
+  return getEventPayload(input.eventId);
+}
+
 export async function verifyBetPayment(input: { eventId: number; adminCode: string; betId: number; verified: boolean }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
