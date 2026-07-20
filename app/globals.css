@@ -818,6 +818,12 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .venmo-pay-link:focus-visible { background: #a2efbd; transform: translateY(-1px); }
 .full-payment-link { font-size: 1.02rem; }
 .host-payment-summary > p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 0.82rem; }
+.payment-congrats { display: block; border-color: rgba(112, 255, 94, 0.76); text-align: center; }
+.payment-congrats > div { justify-items: center; gap: 8px; }
+.payment-congrats h3, .payment-congrats p { margin: 0; }
+.payment-hatch { font-size: 2rem; letter-spacing: 0.12em; filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.32)); }
+.payment-retry-link { min-height: 0; padding: 3px 5px; border: 0; background: transparent; box-shadow: none; color: var(--muted); font-size: 0.75rem; text-decoration: underline; }
+.payment-retry-link:hover, .payment-retry-link:focus-visible { color: var(--mustard-light); background: transparent; transform: none; }
 .delete-row { display: block; width: 100%; margin: 8px 0; color: #ffe6df; background: rgba(183, 68, 57, 0.36); box-shadow: none; text-align: left; }
 .bet-manager { margin-top: 24px; padding-top: 4px; border-top: 1px solid var(--line); }
 .bet-manager-heading { display: flex; justify-content: space-between; gap: 16px; align-items: end; margin-bottom: 12px; }

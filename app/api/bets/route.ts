@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addBet } from "../../../lib/chickenBookie";
+import { addBet, markPaymentSubmitted } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -27,6 +27,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not add bet.") }, { status: 400 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const payload = await markPaymentSubmitted({ eventId: Number(body.eventId), paymentId: String(body.paymentId ?? ""), venmo: String(body.venmo ?? ""), submitted: body.submitted !== false });
+    return NextResponse.json(payload);
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not mark payment as sent.") }, { status: 400 });
   }
 }
 

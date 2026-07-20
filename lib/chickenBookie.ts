@@ -26,6 +26,7 @@ export type Bet = {
   bettor: string;
   venmo: string;
   paymentId: string;
+  paymentSubmitted: boolean;
   betType: BetType;
   stake: number;
   race: number | null;
@@ -206,11 +207,13 @@ export async function ensureSchema() {
       drop_number INTEGER,
       picks JSONB NOT NULL DEFAULT '[]'::jsonb,
       payment_verified BOOLEAN NOT NULL DEFAULT TRUE,
+      payment_submitted BOOLEAN NOT NULL DEFAULT FALSE,
       payment_id TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
   await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS drop_number INTEGER`;
   await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS payment_verified BOOLEAN NOT NULL DEFAULT TRUE`;
+  await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS payment_submitted BOOLEAN NOT NULL DEFAULT FALSE`;
   await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS payment_id TEXT NOT NULL DEFAULT ''`;
   await sql`
     UPDATE bets b
@@ -602,7 +605,7 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
     RETURNING id`;
   let paymentId = "";
   if (hostManaged) {
-    const existingPayment = await sql`SELECT payment_id FROM bets WHERE event_id = ${input.eventId} AND bettor_id = ${Number(bettor.rows[0].id)} AND payment_verified = FALSE AND payment_id <> '' ORDER BY id DESC LIMIT 1`;
+    const existingPayment = await sql`SELECT payment_id FROM bets WHERE event_id = ${input.eventId} AND bettor_id = ${Number(bettor.rows[0].id)} AND payment_verified = FALSE AND payment_submitted = FALSE AND payment_id <> '' ORDER BY id DESC LIMIT 1`;
     if (existingPayment.rowCount) paymentId = String(existingPayment.rows[0].payment_id);
     else paymentId = String((await sql`SELECT UPPER(SUBSTRING(MD5(RANDOM()::text || CLOCK_TIMESTAMP()::text) FROM 1 FOR 8)) AS id`).rows[0].id);
   }
@@ -688,6 +691,28 @@ export async function verifyBetPayment(input: { eventId: number; adminCode: stri
   if (!event.rowCount || event.rows[0].pool_mode !== "host_managed") throw new Error("Payment confirmation is only used for host-maintained pools.");
   const updated = await sql`UPDATE bets SET payment_verified = ${input.verified} WHERE event_id = ${input.eventId} AND id = ${input.betId} RETURNING id`;
   if (!updated.rowCount) throw new Error("Bet not found.");
+  return getEventPayload(input.eventId);
+}
+
+export async function markPaymentSubmitted(input: { eventId: number; paymentId: string; venmo: string; submitted?: boolean }) {
+  await ensureSchema();
+  const paymentId = input.paymentId.trim().toUpperCase();
+  const venmo = normalizeVenmo(input.venmo);
+  const submitted = input.submitted !== false;
+  if (!paymentId || !venmo) throw new Error("Payment ID and bettor Venmo are required.");
+  const updated = await sql`
+    UPDATE bets b
+    SET payment_submitted = ${submitted}
+    FROM bettors bo, events e
+    WHERE b.bettor_id = bo.id
+      AND b.event_id = e.id
+      AND b.event_id = ${input.eventId}
+      AND b.payment_id = ${paymentId}
+      AND lower(bo.venmo) = lower(${venmo})
+      AND e.pool_mode = 'host_managed'
+      AND b.payment_verified = FALSE
+    RETURNING b.id`;
+  if (!updated.rowCount) throw new Error("Could not match that pending payment to the bettor Venmo handle.");
   return getEventPayload(input.eventId);
 }
 
@@ -872,6 +897,7 @@ function rowToBet(row: Record<string, unknown>): Bet {
     bettor: String(row.bettor),
     venmo: String(row.venmo ?? ""),
     paymentId: String(row.payment_id ?? ""),
+    paymentSubmitted: row.payment_submitted === true,
     betType: String(row.bet_type) as BetType,
     stake: Number(row.stake),
     race: row.race == null ? null : Number(row.race),
