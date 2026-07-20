@@ -903,15 +903,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
   const pendingPaymentBatches = paymentBatches.filter((group) => group.verifiedCount < group.count);
   const reportedSentBatches = pendingPaymentBatches.filter((group) => group.submittedCount === group.count);
   return (
-    <section className="panel">
-      <h2>Coop Boss</h2>
+    <section className="panel coop-boss">
+      <div className="coop-boss-heading"><h2>Coop Boss</h2>{!isTestEvent && <div className="admin-session-status"><span>Admin unlocked</span><button type="button" className="ghost-button" onClick={() => setUnlocked(false)}>Lock</button></div>}</div>
       {isTestEvent && <div className="notice">Demo admin is already unlocked. The admin code is blank.</div>}
-      {!isTestEvent && <form className="admin-unlock" onSubmit={unlock}>
-        <label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
-        <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
-        <button type="submit">Admin unlocked</button>
-      </form>}
-      {countedBets(payload).length < 2 && <p className="muted">Oh cluck, not enough counted bets yet. You can save results, but settlement waits until at least two confirmed tickets exist.</p>}
+      {countedBets(payload).length < 2 && <p className="muted">Not enough counted bets for settlement yet.</p>}
       {payload.bets.length === 0 && <div className="notice"><b>Finish setup before sharing:</b> choose the settlement type below, review the event details and contestants, then press <b>Save event setup</b>.</div>}
 
       <nav className="admin-section-nav" aria-label="Coop Boss sections">
@@ -926,7 +921,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
       </nav>
       {poolMode === "host_managed" && reportedSentBatches.length > 0 && <div className="notice payment-alert"><div><b>{reportedSentBatches.length} payment{reportedSentBatches.length === 1 ? " is" : "s are"} ready for review</b><span>Match each payment ID in Venmo, then approve it so those bets count.</span></div><a href="#admin-payments">Review & approve</a></div>}
 
-      <form id="admin-event-setup" className="grid-form admin-section-target" onSubmit={saveConfig}>
+      <form id="admin-event-setup" className="grid-form admin-section-target coop-section coop-event-section" onSubmit={saveConfig}>
         <h3>Event setup</h3>
         <p className="fine-print wide-field">Update event details and settlement.</p>
         <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
@@ -973,7 +968,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         <button type="submit">Save event setup</button>
       </form>
 
-      {payload.event.poolMode === "host_managed" && <section id="admin-payments" className="payment-batch-manager admin-section-target">
+      {payload.event.poolMode === "host_managed" && <section id="admin-payments" className="payment-batch-manager admin-section-target coop-section">
         <div className="bet-manager-heading"><div><h3>Payment review & approval</h3><p className="fine-print">Match the ID in Venmo, then approve the batch.</p></div><strong>{reportedSentBatches.length} to review</strong></div>
         {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="payment-batch-list">{paymentBatches.map((group) => {
           const verified = group.verifiedCount === group.count;
@@ -984,7 +979,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
           </article>;
         })}</div>}
       </section>}
-      {bettors.length > 0 && <form className="grid-form" onSubmit={saveBettors}>
+      {bettors.length > 0 && <form className="grid-form coop-section coop-venmo-section" onSubmit={saveBettors}>
         <h3>Bettor Venmo handles</h3>
         {bettors.map((bettor, idx) => <div className="admin-card bettor-admin-card" key={normalizeName(bettor.name)}>
           <strong>{bettor.name}</strong>
@@ -994,7 +989,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
       </form>}
 
       {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
-      <div id="admin-bet-management" className="admin-management-section admin-section-target">
+      <div id="admin-bet-management" className="admin-management-section admin-section-target coop-section">
       <section className="bet-manager">
         <div className="bet-manager-heading"><h3>Bet management</h3><div className="bet-manager-actions"><strong>{matchingBets.length.toLocaleString()} bet{matchingBets.length === 1 ? "" : "s"}</strong>{matchingBets.length > betsPerPage && <button type="button" className="ghost-button" onClick={() => { setShowAllAdminBets(!showAllAdminBets); setBetPage(0); }}>{showAllAdminBets ? "Show less" : "Show all"}</button>}</div></div>
         <label>Search bets<input type="search" value={betSearch} placeholder="Name, payment ID, bet ID, pick, or status" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); setShowAllAdminBets(false); }} /></label>
@@ -1006,7 +1001,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
       </section>
       </div>
 
-      <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
+      <form id="admin-results" className="grid-form result-entry admin-section-target coop-section" onSubmit={save}>
         <h3>Results</h3>
         <p className="fine-print wide-field">{isDropEvent ? "Enter the official winning square." : "Enter the official race results."}</p>
         {poolMode === "host_managed" && pendingHostBets.length > 0 && <div className="notice error wide-field"><b>Payment check required:</b> {pendingHostBets.length} unverified bet{pendingHostBets.length === 1 ? "" : "s"} will be permanently removed if you save winners now. <a href="#admin-payments">Review and confirm payments first.</a></div>}
@@ -1016,7 +1011,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
           {chickensForRace(race, payload.chickens).map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
         </div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
         <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
-        {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
+        {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" className="ghost-button" onClick={clearWinners}>Clear results</button>}
       </form>
       <div className="event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>Delete event</button></div>
     </section>
