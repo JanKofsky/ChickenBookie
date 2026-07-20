@@ -597,6 +597,7 @@ function WinnerCallout({ payload }: { payload: EventPayload }) {
 }
 
 function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }>; showPayout: boolean }) {
+  const [selectedBettor, setSelectedBettor] = useState<string | null>(null);
   const rows = people.map((person) => ({ ...person, earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0 }))
     .sort((a, b) => b.net - a.net || b.earningsPct - a.earningsPct || a.bettor.localeCompare(b.bettor));
   const rawMaxAxis = Math.max(1, ...rows.map((person) => Math.abs(person.net)));
@@ -610,8 +611,9 @@ function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: stri
     if (pct > -50) return "var(--loss-soft)";
     return "var(--loss-mid)";
   };
+  const selectedPerson = rows.find((person) => person.bettor === selectedBettor) ?? null;
   return <div className="ledger-graph">
-    <p className="fine-print"><b>Net P/L</b> means net profit or loss. The return percentage is on the right{showPayout ? ", with the amount paid by the host underneath" : ""}; hover for the original stake and full details.</p>
+    <p className="fine-print"><b>Net P/L</b> means net profit or loss. The return percentage is on the right{showPayout ? ", with the amount paid by the host underneath" : ""}. Hover with a mouse or tap a bar to see the original stake and full details.</p>
     <div className="ledger-axis-head"><span>Bettor</span><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span>Return</span></div>
     <div className="ledger-plot">
       <div className="ledger-labels">{rows.map((person) => <strong key={person.bettor}>{person.bettor}</strong>)}</div>
@@ -622,16 +624,24 @@ function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: stri
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
         const detailLabel = showPayout ? `, host payout ${money(person.payout)}` : "";
-        return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}${detailLabel}, P/L ${netLabel}, return ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}${detailLabel}, profit loss ${netLabel}, return ${pctLabel}`}>
+        return <button type="button" className={`ledger-axis${selectedBettor === person.bettor ? " selected" : ""}`} key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}${detailLabel}, P/L ${netLabel}, return ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}${detailLabel}, profit loss ${netLabel}, return ${pctLabel}. Tap for details.`} aria-expanded={selectedBettor === person.bettor} onClick={() => setSelectedBettor(selectedBettor === person.bettor ? null : person.bettor)}>
           <i className={person.net >= 0 ? "profit-loss-layer positive" : "profit-loss-layer"} style={person.net >= 0 ? { left: "50%", width: `${profitLossWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - profitLossWidth}%`, width: `${profitLossWidth}%`, background: netColor(person.earningsPct) }} />
           <b className={person.net >= 0 ? "ledger-bar-label positive" : "ledger-bar-label"}>{netLabel}</b>
-        </div>;
+        </button>;
       })}</div>
       <div className="ledger-results">{rows.map((person) => {
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{pctLabel}{showPayout && <span>Host pays {money(person.payout)}</span>}</b>;
       })}</div>
     </div>
+    {selectedPerson && <div className="ledger-tap-detail" aria-live="polite">
+      <div><span>Bettor</span><strong>{selectedPerson.bettor}</strong></div>
+      <div><span>Original stake</span><strong>{money(selectedPerson.staked)}</strong></div>
+      <div><span>Net P/L</span><strong className={selectedPerson.net >= 0 ? "positive" : ""}>{selectedPerson.net >= 0 ? "+" : ""}{money(selectedPerson.net)}</strong></div>
+      <div><span>Return</span><strong>{selectedPerson.earningsPct >= 0 ? "+" : ""}{Math.round(selectedPerson.earningsPct)}%</strong></div>
+      {showPayout && <div><span>Host pays</span><strong>{money(selectedPerson.payout)}</strong></div>}
+      <button type="button" className="ghost-button" onClick={() => setSelectedBettor(null)}>Close details</button>
+    </div>}
   </div>;
 }
 

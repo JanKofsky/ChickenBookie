@@ -610,10 +610,21 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 }
 .ledger-axis {
   position: relative;
+  width: 100%;
   height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
   overflow: hidden;
   border-radius: 4px;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  text-align: left;
 }
+.ledger-axis:hover,
+.ledger-axis:focus-visible,
+.ledger-axis.selected { outline: 1px solid rgba(255, 243, 216, 0.62); outline-offset: -1px; background: rgba(255, 243, 216, 0.06); }
 .ledger-axis i {
   position: absolute;
   top: 50%;
@@ -655,6 +666,22 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   font-weight: 400;
   opacity: 0.78;
 }
+.ledger-tap-detail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  gap: 8px;
+  align-items: stretch;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(217, 240, 194, 0.34);
+  border-radius: 10px;
+  background: rgba(217, 240, 194, 0.07);
+}
+.ledger-tap-detail > div { display: grid; gap: 2px; min-width: 0; }
+.ledger-tap-detail span { color: var(--muted); font-size: 0.68rem; font-weight: 850; text-transform: uppercase; }
+.ledger-tap-detail strong { color: #ffd0c8; overflow-wrap: anywhere; }
+.ledger-tap-detail strong.positive { color: #d9f0c2; }
+.ledger-tap-detail button { align-self: center; min-height: 34px; padding: 6px 10px; }
 .result-entry {
   padding: 16px;
   border: 2px solid rgba(112, 255, 94, 0.86);
@@ -834,6 +861,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ledger-labels strong,
   .ledger-results b { font-size: 0.82rem; }
   .ledger-net { text-align: right; }
+  .ledger-tap-detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ledger-tap-detail button { grid-column: 1 / -1; }
 }
 
 .site-footer {
