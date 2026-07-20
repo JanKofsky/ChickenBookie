@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
       eventId: Number(body.eventId),
       adminCode: String(body.adminCode ?? ""),
       winningNumber: body.winningNumber == null ? null : Number(body.winningNumber),
-      results: body.results ?? {}
+      results: body.results ?? {},
+      removeUnverified: body.removeUnverified === true
     });
     return NextResponse.json(payload);
   } catch (error) {

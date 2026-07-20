@@ -181,6 +181,10 @@ h1 {
 .scoreboard strong { display: block; margin-top: 4px; font-size: clamp(0.98rem, 1.5vw, 1.12rem); line-height: 1.12; overflow-wrap: anywhere; }
 .notice { margin: 18px 0; border-left: 5px solid var(--mustard); border-radius: 8px; background: var(--panel-strong); padding: 12px 14px; color: var(--muted); font-weight: 800; }
 .notice.error, .form-error { color: #ffd0c8; font-family: var(--font-chunky), Inter, system-ui, sans-serif; font-style: oblique 10deg; font-weight: 500; }
+.payment-alert { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-left-color: #ff725f; }
+.payment-alert > div { display: grid; gap: 3px; }
+.payment-alert b { color: var(--ink); }
+.payment-alert a, .notice.error a { color: var(--mustard); font-weight: 900; }
 .tabs { display: flex; gap: 7px; flex-wrap: wrap; margin: 14px 0 14px; }
 .tabs button { min-height: 38px; color: var(--ink); background: rgba(7, 11, 8, 0.54); box-shadow: none; }
 .tabs button.active { color: var(--ink); background: linear-gradient(135deg, rgba(143, 184, 116, 0.30), rgba(240, 217, 121, 0.17)); border-color: rgba(217, 240, 194, 0.64); box-shadow: 0 2px 0 rgba(40, 70, 34, 0.28); }
@@ -856,7 +860,10 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .admin-card,
   .chicken-admin-card { grid-template-columns: 1fr; }
   .bet-manager-heading { align-items: start; flex-direction: column; gap: 4px; }
-  .admin-section-nav { top: 4px; margin-inline: -3px; }
+  .admin-section-nav { top: 4px; margin-inline: -3px; padding: 8px; }
+  .admin-section-nav > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow: visible; }
+  .admin-section-nav a { display: grid; min-height: 42px; place-items: center; padding: 7px 8px; border-radius: 8px; font-size: 0.78rem; line-height: 1.15; text-align: center; white-space: normal; }
+  .admin-section-target { scroll-margin-top: 210px; }
   .host-payment-summary { grid-template-columns: 1fr; }
   .host-payment-summary > p { grid-column: auto; }
   .host-payment-heading,
@@ -867,6 +874,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .payment-helper-menu > div span { grid-column: 1 / -1; }
   .payment-batch-row { grid-template-columns: 1fr; }
   .payment-batch-row > div:last-child { justify-items: stretch; }
+  .payment-alert { align-items: stretch; flex-direction: column; }
   .bet-admin-row { grid-template-columns: 1fr; }
   .bet-admin-row > div:last-child { justify-content: flex-end; flex-wrap: wrap; }
   .ticket { grid-template-columns: 1fr; }

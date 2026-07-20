@@ -128,6 +128,8 @@ The administrator can:
 - Record, replace, or clear official results.
 - Add or correct bettor Venmo handles.
 - Confirm one combined host payment per bettor batch, using its payment ID; later bets form a new batch after the earlier payment is confirmed.
+- See a dashboard warning and pending-payment count, jump directly to each payment, and confirm one batch at a time.
+- Before saving host-pool winners, explicitly remove any remaining unverified bets after a detailed warning; the server blocks silent settlement with pending payments.
 - Delete accidental tickets.
 
 Admin codes are not displayed after creation and there is no recovery flow. Only intentionally open built-in demos use blank admin codes.

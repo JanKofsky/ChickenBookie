@@ -612,15 +612,24 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
   return getEventPayload(input.eventId);
 }
 
-export async function saveResults(input: { eventId: number; adminCode: string; results: Results; winningNumber?: number | null }) {
+export async function saveResults(input: { eventId: number; adminCode: string; results: Results; winningNumber?: number | null; removeUnverified?: boolean }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
-  const event = await sql`SELECT game_type, result_mode, drop_max_number FROM events WHERE id = ${input.eventId}`;
+  const event = await sql`SELECT game_type, result_mode, drop_max_number, pool_mode FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
+  const pending = event.rows[0].pool_mode === "host_managed"
+    ? await sql`SELECT COUNT(*) AS count FROM bets WHERE event_id = ${input.eventId} AND payment_verified = FALSE`
+    : null;
+  const pendingCount = Number(pending?.rows[0]?.count ?? 0);
+  if (pendingCount > 0 && !input.removeUnverified) throw new Error(`${pendingCount} unverified bet${pendingCount === 1 ? " remains" : "s remain"}. Confirm payments or explicitly remove the pending bets before saving results.`);
+  const removePendingBets = async () => {
+    if (pendingCount > 0) await sql`DELETE FROM bets WHERE event_id = ${input.eventId} AND payment_verified = FALSE`;
+  };
   if (event.rows[0].game_type === "chicken_drop") {
     const winningNumber = Number(input.winningNumber);
     const maxNumber = Number(event.rows[0].drop_max_number);
     if (!Number.isInteger(winningNumber) || winningNumber < 1 || winningNumber > maxNumber) throw new Error(`Pick a winning number from 1 to ${maxNumber}.`);
+    await removePendingBets();
     await sql`UPDATE events SET drop_winning_number = ${winningNumber} WHERE id = ${input.eventId}`;
     return getEventPayload(input.eventId);
   }
@@ -630,21 +639,26 @@ export async function saveResults(input: { eventId: number; adminCode: string; r
   const chickenCount = (await sql`SELECT COUNT(*) AS count FROM chickens WHERE event_id = ${input.eventId}`).rows[0]?.count;
   const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
   const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
+  const validatedResults: Array<{ race: number; places: number[] }> = [];
   for (const [race, result] of Object.entries(input.results)) {
     const places = Array.isArray(result) ? result.map(Number).filter(Boolean) : [];
     if (!places[0]) throw new Error("Pick a first-place chicken for every race.");
     if (fullOrderMode && places.length !== Number(chickenCount)) throw new Error("Rank every chicken for every race.");
     if (new Set(places).size !== places.length) throw new Error("Do not rank the same chicken twice in one race.");
     if (places.some((place) => !chickenIds.has(place))) throw new Error("Pick chickens from this event.");
+    validatedResults.push({ race: Number(race), places });
+  }
+  await removePendingBets();
+  for (const result of validatedResults) {
     await sql`
       INSERT INTO results (event_id, race, chicken_id, updated_at)
-      VALUES (${input.eventId}, ${Number(race)}, ${Number(places[0])}, NOW())
+      VALUES (${input.eventId}, ${result.race}, ${Number(result.places[0])}, NOW())
       ON CONFLICT (event_id, race) DO UPDATE SET chicken_id = EXCLUDED.chicken_id, updated_at = NOW()`;
-    await sql`DELETE FROM result_places WHERE event_id = ${input.eventId} AND race = ${Number(race)}`;
-    for (let index = 0; index < places.length; index += 1) {
+    await sql`DELETE FROM result_places WHERE event_id = ${input.eventId} AND race = ${result.race}`;
+    for (let index = 0; index < result.places.length; index += 1) {
       await sql`
         INSERT INTO result_places (event_id, race, place, chicken_id, updated_at)
-        VALUES (${input.eventId}, ${Number(race)}, ${index + 1}, ${places[index]}, NOW())
+        VALUES (${input.eventId}, ${result.race}, ${index + 1}, ${result.places[index]}, NOW())
         ON CONFLICT (event_id, race, place) DO UPDATE SET chicken_id = EXCLUDED.chicken_id, updated_at = NOW()`;
     }
   }
