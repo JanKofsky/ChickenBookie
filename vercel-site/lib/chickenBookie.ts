@@ -12,6 +12,8 @@ export type EventRecord = {
   officialRule: string;
   resultMode: ResultMode;
   gameType: GameType;
+  poolMode: PoolMode;
+  hostVenmo: string;
   dropMaxNumber: number;
   dropGridColumns: number;
   dropGridRows: number;
@@ -31,8 +33,10 @@ export type Bet = {
   dropNumber: number | null;
   picks: number[];
   createdAt: string;
+  paymentVerified: boolean;
 };
 export type GameType = "race" | "chicken_drop";
+export type PoolMode = "peer_to_peer" | "host_managed";
 export type ResultMode = "winner" | "full_order";
 export type Results = Record<number, number[]>;
 export type EventPayload = {
@@ -136,6 +140,8 @@ export async function ensureSchema() {
       official_rule TEXT NOT NULL,
       result_mode TEXT NOT NULL DEFAULT 'winner',
       game_type TEXT NOT NULL DEFAULT 'race',
+      pool_mode TEXT NOT NULL DEFAULT 'peer_to_peer',
+      host_venmo TEXT NOT NULL DEFAULT '',
       drop_max_number INTEGER NOT NULL DEFAULT 25,
       drop_grid_columns INTEGER NOT NULL DEFAULT 5,
       drop_grid_rows INTEGER NOT NULL DEFAULT 5,
@@ -146,6 +152,8 @@ export async function ensureSchema() {
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS result_mode TEXT NOT NULL DEFAULT 'winner'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS betting_timezone TEXT NOT NULL DEFAULT 'America/New_York'`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS game_type TEXT NOT NULL DEFAULT 'race'`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_mode TEXT NOT NULL DEFAULT 'peer_to_peer'`;
+  await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS host_venmo TEXT NOT NULL DEFAULT ''`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_max_number INTEGER NOT NULL DEFAULT 25`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_grid_columns INTEGER NOT NULL DEFAULT 5`;
   await sql`ALTER TABLE events ADD COLUMN IF NOT EXISTS drop_grid_rows INTEGER NOT NULL DEFAULT 5`;
@@ -193,9 +201,11 @@ export async function ensureSchema() {
       chicken_3 INTEGER,
       drop_number INTEGER,
       picks JSONB NOT NULL DEFAULT '[]'::jsonb,
+      payment_verified BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`;
   await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS drop_number INTEGER`;
+  await sql`ALTER TABLE bets ADD COLUMN IF NOT EXISTS payment_verified BOOLEAN NOT NULL DEFAULT TRUE`;
   await sql`
     CREATE TABLE IF NOT EXISTS results (
       event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -453,6 +463,8 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     officialRule: rawEvent.official_rule,
     resultMode: rawEvent.result_mode === "full_order" ? "full_order" : "winner",
     gameType: rawEvent.game_type === "chicken_drop" ? "chicken_drop" : "race",
+    poolMode: rawEvent.pool_mode === "host_managed" ? "host_managed" : "peer_to_peer",
+    hostVenmo: String(rawEvent.host_venmo ?? ""),
     dropMaxNumber: dropGrid.total,
     dropGridColumns: dropGrid.columns,
     dropGridRows: dropGrid.rows,
@@ -470,9 +482,10 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     results[race] = results[race] ?? [];
     results[race][place - 1] = Number(row.chicken_id);
   }
+  const countedBets = bets.filter((bet) => bet.paymentVerified);
   const settlement = event.gameType === "chicken_drop"
-    ? makeDropSettlement(bets, event.dropWinningNumber)
-    : makeSettlement(bets, results, chickens, races);
+    ? makeDropSettlement(countedBets, event.dropWinningNumber, event.poolMode === "host_managed" ? event.hostVenmo : undefined)
+    : makeSettlement(countedBets, results, chickens, races, event.poolMode === "host_managed" ? event.hostVenmo : undefined);
   return { event, chickens, races, bets, results, settlement };
 }
 
@@ -483,6 +496,8 @@ export async function createEvent(input: {
   copyCode?: string;
   resultMode?: ResultMode;
   gameType?: GameType;
+  poolMode?: PoolMode;
+  hostVenmo?: string;
   dropMaxNumber?: number;
   dropGridColumns?: number;
   dropGridRows?: number;
@@ -494,6 +509,10 @@ export async function createEvent(input: {
   const existing = await sql`SELECT id FROM events WHERE code = ${code} LIMIT 1`;
   if (existing.rowCount) throw new Error("That event code is already taken. Try another one.");
   const gameType: GameType = input.gameType === "chicken_drop" ? "chicken_drop" : "race";
+  const poolMode: PoolMode = input.poolMode === "host_managed" ? "host_managed" : "peer_to_peer";
+  const hostVenmo = normalizeVenmo(input.hostVenmo ?? "");
+  if (poolMode === "host_managed" && !hostVenmo) throw new Error("Host Venmo is required for a host-maintained pool.");
+  if (poolMode === "host_managed" && !input.adminCode.trim()) throw new Error("An admin code is required so only the host can confirm payments.");
   const copied = input.copyCode ? await getEventByCode(input.copyCode) : null;
   if (copied && copied.event.gameType !== gameType) throw new Error("Copy an event with the same game format.");
   const sourceChickens = gameType === "race" ? copied?.chickens ?? DEFAULT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" })) : [];
@@ -513,8 +532,8 @@ export async function createEvent(input: {
     ? "The first confirmed chicken dropping decides the winning square. If it touches a line, use the square containing most of the dropping; if that is unclear, reset for another drop. If nobody picked the winning square, every ticket is refunded."
     : "first beak across the line wins";
   const event = await sql`
-    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode, game_type, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price)
-    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? defaultRule}, ${resultMode}, ${gameType}, ${dropMaxNumber}, ${dropGridColumns}, ${dropGridRows}, ${dropTicketPrice})
+    INSERT INTO events (code, name, admin_code, betting_close_at, betting_timezone, official_rule, result_mode, game_type, pool_mode, host_venmo, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price)
+    VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? defaultRule}, ${resultMode}, ${gameType}, ${poolMode}, ${hostVenmo}, ${dropMaxNumber}, ${dropGridColumns}, ${dropGridRows}, ${dropTicketPrice})
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
   for (const chicken of sourceChickens) await sql`INSERT INTO chickens (event_id, slot, name, photo_url, bio) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl}, ${chicken.bio ?? ""})`;
@@ -528,10 +547,12 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
   const venmo = normalizeVenmo(input.venmo ?? "");
   if (!bettorName) throw new Error("Gambler name is required.");
   const event = await sql`
-    SELECT betting_close_at, game_type, drop_max_number, drop_ticket_price, drop_winning_number
+    SELECT betting_close_at, game_type, pool_mode, drop_max_number, drop_ticket_price, drop_winning_number
     FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
   if (Date.now() > Date.parse(event.rows[0].betting_close_at)) throw new Error("Betting is closed.");
+  const hostManaged = event.rows[0].pool_mode === "host_managed";
+  if (hostManaged && !venmo) throw new Error("Your Venmo is required for this host-maintained pool.");
 
   const isDrop = event.rows[0].game_type === "chicken_drop";
   let betType: BetType;
@@ -570,8 +591,8 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
     ON CONFLICT (event_id, lower(name)) DO UPDATE SET venmo = CASE WHEN EXCLUDED.venmo = '' THEN bettors.venmo ELSE EXCLUDED.venmo END
     RETURNING id`;
   await sql`
-    INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, drop_number, picks)
-    VALUES (${input.eventId}, ${Number(bettor.rows[0].id)}, ${betType}, ${stake}, ${race}, ${picks[0] ?? null}, ${picks[1] ?? null}, ${picks[2] ?? null}, ${dropNumber}, ${JSON.stringify(picks)}::jsonb)`;
+    INSERT INTO bets (event_id, bettor_id, bet_type, stake, race, chicken_1, chicken_2, chicken_3, drop_number, picks, payment_verified)
+    VALUES (${input.eventId}, ${Number(bettor.rows[0].id)}, ${betType}, ${stake}, ${race}, ${picks[0] ?? null}, ${picks[1] ?? null}, ${picks[2] ?? null}, ${dropNumber}, ${JSON.stringify(picks)}::jsonb, ${!hostManaged})`;
   return getEventPayload(input.eventId);
 }
 
@@ -630,11 +651,24 @@ export async function deleteBet(input: { eventId: number; adminCode: string; bet
   return getEventPayload(input.eventId);
 }
 
+export async function verifyBetPayment(input: { eventId: number; adminCode: string; betId: number; verified: boolean }) {
+  await ensureSchema();
+  await assertAdmin(input.eventId, input.adminCode);
+  const event = await sql`SELECT pool_mode FROM events WHERE id = ${input.eventId}`;
+  if (!event.rowCount || event.rows[0].pool_mode !== "host_managed") throw new Error("Payment confirmation is only used for host-maintained pools.");
+  const updated = await sql`UPDATE bets SET payment_verified = ${input.verified} WHERE event_id = ${input.eventId} AND id = ${input.betId} RETURNING id`;
+  if (!updated.rowCount) throw new Error("Bet not found.");
+  return getEventPayload(input.eventId);
+}
+
 export async function updateBettors(input: { eventId: number; adminCode: string; bettors: Array<{ name: string; venmo: string }> }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
+  const event = await sql`SELECT pool_mode FROM events WHERE id = ${input.eventId}`;
   for (const bettor of input.bettors) {
-    await sql`UPDATE bettors SET venmo = ${normalizeVenmo(bettor.venmo)} WHERE event_id = ${input.eventId} AND lower(name) = lower(${bettor.name})`;
+    const venmo = normalizeVenmo(bettor.venmo);
+    if (event.rows[0]?.pool_mode === "host_managed" && !venmo) throw new Error("Every bettor needs a Venmo in a host-maintained pool.");
+    await sql`UPDATE bettors SET venmo = ${venmo} WHERE event_id = ${input.eventId} AND lower(name) = lower(${bettor.name})`;
   }
   return getEventPayload(input.eventId);
 }
@@ -760,11 +794,12 @@ function rowToBet(row: Record<string, unknown>): Bet {
     chicken3: row.chicken_3 == null ? null : Number(row.chicken_3),
     dropNumber: row.drop_number == null ? null : Number(row.drop_number),
     picks,
-    createdAt: String(row.created_at)
+    createdAt: String(row.created_at),
+    paymentVerified: row.payment_verified !== false
   };
 }
 
-export function makeSettlement(bets: Bet[], results: Results, chickens: Chicken[], races: Race[]): Settlement | null {
+export function makeSettlement(bets: Bet[], results: Results, chickens: Chicken[], races: Race[], hostVenmo?: string): Settlement | null {
   if (Object.keys(results).length !== races.length || bets.length < 2) return null;
   const weights = betWeights(chickens.length, races.length);
   const winners = races.map((race) => results[race.race]?.[0]);
@@ -773,10 +808,10 @@ export function makeSettlement(bets: Bet[], results: Results, chickens: Chicken[
     const weight = weights[bet.betType] ?? 1;
     return { ...bet, won, weight, payoutWeight: won ? bet.stake * weight : 0, payout: 0, net: -bet.stake, result: won ? "Won" : "Lost", label: describeBet(bet, chickens, races) };
   }) as Settlement["tickets"];
-  return finalizeSettlement(tickets);
+  return finalizeSettlement(tickets, hostVenmo);
 }
 
-export function makeDropSettlement(bets: Bet[], winningNumber: number | null): Settlement | null {
+export function makeDropSettlement(bets: Bet[], winningNumber: number | null, hostVenmo?: string): Settlement | null {
   if (winningNumber == null || bets.length < 2) return null;
   const tickets = bets.map((bet) => {
     const won = bet.dropNumber === winningNumber;
@@ -791,10 +826,10 @@ export function makeDropSettlement(bets: Bet[], winningNumber: number | null): S
       label: `Number #${bet.dropNumber ?? "?"}`
     };
   }) as Settlement["tickets"];
-  return finalizeSettlement(tickets);
+  return finalizeSettlement(tickets, hostVenmo);
 }
 
-function finalizeSettlement(tickets: Settlement["tickets"]): Settlement {
+function finalizeSettlement(tickets: Settlement["tickets"], hostVenmo?: string): Settlement {
   const totalPool = tickets.reduce((sum, bet) => sum + bet.stake, 0);
   const winningStake = tickets.filter((bet) => bet.won).reduce((sum, bet) => sum + bet.stake, 0);
   const totalWeight = tickets.reduce((sum, bet) => sum + bet.payoutWeight, 0);
@@ -814,7 +849,10 @@ function finalizeSettlement(tickets: Settlement["tickets"]): Settlement {
     map.set(ticket.bettor, current);
     return map;
   }, new Map<string, { bettor: string; venmo: string; staked: number; payout: number; net: number }>()).values()).sort((a, b) => b.net - a.net || a.bettor.localeCompare(b.bettor));
-  return { tickets, people, payments: makePayments(people) };
+  const payments = hostVenmo
+    ? people.filter((person) => person.payout > 0.004).map((person) => ({ from: "Pool host", fromVenmo: hostVenmo, to: person.bettor, toVenmo: person.venmo, amount: Math.round(person.payout * 100) / 100 }))
+    : makePayments(people);
+  return { tickets, people, payments };
 }
 
 function isWinningBet(bet: Bet, results: Results, winners: Array<number | undefined>) {

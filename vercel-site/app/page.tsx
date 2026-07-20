@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import type { Bet, BetType, Chicken, EventPayload, GameType, Race, Results } from "../lib/chickenBookie";
+import type { Bet, BetType, Chicken, EventPayload, GameType, PoolMode, Race, Results } from "../lib/chickenBookie";
 
 const BET_TYPES: Record<BetType, string> = {
   race_winner: "Pick 1st place in one race",
@@ -93,6 +93,7 @@ const pickedChickenIds = (bet: Bet) => {
   return ids.map(Number).filter(Boolean);
 };
 const normalizeName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+const countedBets = (payload: EventPayload) => payload.bets.filter((bet) => bet.paymentVerified);
 const isResultsOfficial = (payload: EventPayload) => payload.event.gameType === "chicken_drop"
   ? payload.event.dropWinningNumber != null
   : Object.keys(payload.results).length > 0;
@@ -144,7 +145,7 @@ export default function Home() {
     window.history.replaceState(null, "", `?event=${encodeURIComponent(data.event.code)}`);
   }
 
-  const totalPool = useMemo(() => payload?.bets.reduce((sum, bet) => sum + Number(bet.stake), 0) ?? 0, [payload]);
+  const totalPool = useMemo(() => payload ? countedBets(payload).reduce((sum, bet) => sum + Number(bet.stake), 0) : 0, [payload]);
   const countdown = payload ? countdownParts(payload.event.bettingCloseAt, now) : null;
   const resultsOfficial = payload ? isResultsOfficial(payload) : false;
 
@@ -188,7 +189,8 @@ export default function Home() {
           {payload && (
             <div className="scoreboard">
               <Stat label="Event code" value={payload.event.code} highlight />
-              <Stat label="Bets" value={String(payload.bets.length)} />
+              <Stat label="Counted bets" value={String(countedBets(payload).length)} />
+              {payload.event.poolMode === "host_managed" && <Stat label="Payment pending" value={String(payload.bets.length - countedBets(payload).length)} />}
               <Stat label="Cluck bucket" value={money(totalPool)} />
             </div>
           )}
@@ -248,6 +250,8 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
   const [adminCode, setAdminCode] = useState("");
   const [showAdminCode, setShowAdminCode] = useState(false);
   const [gameType, setGameType] = useState<GameType>("race");
+  const [poolMode, setPoolMode] = useState<PoolMode>("peer_to_peer");
+  const [hostVenmo, setHostVenmo] = useState("");
   const [resultMode, setResultMode] = useState<"winner" | "full_order">("winner");
   const [dropGridColumns, setDropGridColumns] = useState("6");
   const [dropGridRows, setDropGridRows] = useState("5");
@@ -256,7 +260,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent) {
     event.preventDefault(); setMessage("");
-    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, gameType, resultMode, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), copyCode: gameType === "race" ? copyCode : "" }) });
+    const response = await fetch("/api/events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, code, adminCode, gameType, poolMode, hostVenmo, resultMode, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), copyCode: gameType === "race" ? copyCode : "" }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not create event.")); else onCreated(data);
   }
@@ -264,6 +268,12 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
     <label>Event name<input value={name} onChange={(event) => setName(event.target.value)} /></label>
     <label>Event code<input value={code} onChange={(event) => setCode(event.target.value.toLowerCase())} /></label>
     <label className="wide-field">Event format<select value={gameType} onChange={(event) => setGameType(event.target.value as GameType)}><option value="race">Chicken Race</option><option value="chicken_drop">Chicken Drop (aka Chicken Shit Bingo)</option></select></label>
+    <label className="wide-field">Settlement type<select value={poolMode} onChange={(event) => setPoolMode(event.target.value as PoolMode)}><option value="peer_to_peer">Player-to-player settlement (optional)</option><option value="host_managed">Host-maintained pool</option></select></label>
+    {poolMode === "peer_to_peer" && <p className="fine-print wide-field">Optional settlement guidance only: Chicken Bookie calculates who could pay whom after the event. No Venmo handle is required, and players decide whether and how to settle.</p>}
+    {poolMode === "host_managed" && <>
+      <label>Host Venmo (required)<div className="venmo-input"><span>@</span><input required value={hostVenmo} placeholder="host username" onChange={(event) => setHostVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
+      <p className="fine-print wide-field">Bettors send each stake to the host. Their ticket stays payment pending and does not count until the host confirms it in Coop Boss.</p>
+    </>}
     {gameType === "race" ? <>
       <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
       <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
@@ -273,7 +283,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload) => void
       <label>Cost per ticket<input type="number" min="0.01" max="10000" step="0.01" value={dropTicketPrice} onChange={(event) => setDropTicketPrice(event.target.value)} /></label>
       <p className="fine-print wide-field"><b>{Number(dropGridColumns) || 0} columns × {Number(dropGridRows) || 0} rows = {(Number(dropGridColumns) || 0) * (Number(dropGridRows) || 0)} numbered sections.</b> Players pick directly from this exact grid shape. More than one ticket can land on the same number, and every ticket costs the same amount.</p>
     </>}
-    <label>Admin code (optional)<input type={showAdminCode ? "text" : "password"} placeholder="leave blank if you don't give a cluck" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
+    <label>Admin code {poolMode === "host_managed" ? "(required)" : "(optional)"}<input required={poolMode === "host_managed"} type={showAdminCode ? "text" : "password"} placeholder={poolMode === "host_managed" ? "only the host should know this" : "leave blank if you don't give a cluck"} value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
     <p className="fine-print wide-field">write this down now; Chicken Bookie will not show it again</p>
     <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
     <button type="submit">Create</button>{message && <p className="form-error">{message}</p>}
@@ -304,23 +314,24 @@ function DropBetting({ payload, setPayload }: { payload: EventPayload; setPayloa
     });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add Chicken Drop bet."));
-    else { setPayload(data); setSelectedNumber(null); setMessage("Bet added."); }
+    else { setPayload(data); setSelectedNumber(null); setMessage(payload.event.poolMode === "host_managed" ? "Bet submitted. Send the stake to the host; it counts after host confirmation." : "Bet added."); }
   }
 
   return <section className="panel drop-betting-panel">
-    <h2>Chicken Drop betting grid</h2>
+    <div className="panel-title-row"><h2>Chicken Drop betting grid</h2><SettlementHelpTip payload={payload} /></div>
     <p className="muted"><b>Chicken Drop:</b> pick the numbered square where the chicken will make its first confirmed drop.</p>
     <div className="drop-price-card"><span>Fixed cost per ticket</span><strong>{money(payload.event.dropTicketPrice)}</strong><small>Repeat picks on the same number are allowed.</small></div>
+    {payload.event.poolMode === "host_managed" && <div className="notice"><b>Host-maintained pool:</b> Venmo {money(payload.event.dropTicketPrice)} to <VenmoHandle handle={payload.event.hostVenmo} /> before submitting. Your bet will count after the host confirms payment.</div>}
     {resultsOfficial && <div className="notice">The official drop is #{payload.event.dropWinningNumber}. The board stays visible, but new bets are closed. Coop Boss can clear the result to reopen betting before the close time.</div>}
     <form className="drop-bet-form" onSubmit={submit}>
       {!resultsOfficial && <div className="drop-player-fields">
         <label>Name<input value={bettor} onChange={(event) => setBettor(event.target.value)} />{existingName && <small className="field-note">this ticket will be grouped with the previous bettor using this name</small>}</label>
-        <label>Venmo (optional)<div className="venmo-input"><span>@</span><input value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
+        <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
       </div>}
       <DropNumberGrid payload={payload} selectedNumber={selectedNumber} onSelect={resultsOfficial ? undefined : setSelectedNumber} />
       {!resultsOfficial && <button type="submit" className="drop-submit" disabled={selectedNumber == null}>{selectedNumber == null ? "Pick a number to place your bet" : `Place ${money(payload.event.dropTicketPrice)} bet on #${selectedNumber}`}</button>}
-      <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>
-      {message && <p className={message.includes("added") ? "form-ok" : "form-error"}>{message}</p>}
+      <p className="fine-print">{payload.event.poolMode === "host_managed" ? "Chicken Bookie records the host's payment confirmation; Venmo processes the actual payment." : "Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money."}</p>
+      {message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
     </form>
   </section>;
 }
@@ -331,13 +342,13 @@ function DropNumberBoard({ payload }: { payload: EventPayload }) {
 
 function DropBoardInsights({ payload }: { payload: EventPayload }) {
   const counts = new Map<number, number>();
-  for (const bet of payload.bets) {
+  for (const bet of countedBets(payload)) {
     if (bet.dropNumber != null) counts.set(bet.dropNumber, (counts.get(bet.dropNumber) ?? 0) + 1);
   }
   const numbers = Array.from({ length: payload.event.dropMaxNumber }, (_, index) => index + 1);
   const fewestTickets = Math.min(...numbers.map((number) => counts.get(number) ?? 0));
   const bestNumbers = numbers.filter((number) => (counts.get(number) ?? 0) === fewestTickets);
-  const currentPool = payload.bets.reduce((sum, bet) => sum + Number(bet.stake), 0);
+  const currentPool = countedBets(payload).reduce((sum, bet) => sum + Number(bet.stake), 0);
   const projectedReturn = (currentPool + payload.event.dropTicketPrice) / (fewestTickets + 1);
   const chance = 100 / payload.event.dropMaxNumber;
   const sectionLabel = bestNumbers.slice(0, 8).map((number) => `#${number}`).join(", ");
@@ -357,7 +368,7 @@ function DropNumberGrid({ payload, selectedNumber = null, onSelect }: { payload:
   const rows = payload.event.dropGridRows;
   const numbers = Array.from({ length: payload.event.dropMaxNumber }, (_, index) => index + 1);
   const stats = new Map<number, { count: number; amount: number }>();
-  for (const bet of payload.bets) {
+  for (const bet of countedBets(payload)) {
     if (bet.dropNumber == null) continue;
     const current = stats.get(bet.dropNumber) ?? { count: 0, amount: 0 };
     current.count += 1;
@@ -411,18 +422,34 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     if (selectedPicks.length !== needed) { setMessage(`Pick ${needed} chicken${needed === 1 ? "" : "s"}.`); return; }
     const response = await fetch("/api/bets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, bettor, venmo, stake: stakeValue, betType, race: raceBetTypes.includes(betType) ? race : null, picks: selectedPicks }) });
     const data = await response.json();
-    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage("Bet added."); }
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not add bet.")); else { setPayload(data); setPicks([]); setMessage(payload.event.poolMode === "host_managed" ? "Bet submitted. Send the stake to the host; it counts after host confirmation." : "Bet added."); }
   }
-  if (resultsOfficial) return <section className="panel"><h2>Betting Coop</h2><p className="muted">Results are official, so betting is closed for this event.</p><p className="fine-print">Coop Boss can reopen betting only by clearing the winners and setting a new future close time.</p></section>;
-  return <section className="panel"><h2>Betting Coop</h2><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p><p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p><form className="bet-form" onSubmit={submit}>
+  if (resultsOfficial) return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Results are official, so betting is closed for this event.</p><p className="fine-print">Coop Boss can reopen betting only by clearing the winners and setting a new future close time.</p></section>;
+  return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Use the same name each time. Every Cluck Buck goes into one shared feed bucket for scorekeeping.</p>{payload.event.poolMode === "host_managed" ? <div className="notice"><b>Host-maintained pool:</b> send your stake to <VenmoHandle handle={payload.event.hostVenmo} />. Your bet stays pending until the host confirms payment.</div> : <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>}<form className="bet-form" onSubmit={submit}>
     <label>Name<input value={bettor} onChange={(event) => setBettor(event.target.value)} />{existingName && <small className="field-note">this ticket will be grouped with the previous bettor using this name</small>}</label>
-    <label>Venmo (optional)<div className="venmo-input"><span>@</span><input value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
+    <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
+    {payload.event.poolMode === "host_managed" && Number(stake) > 0 && <p className="fine-print">Send {money(Number(stake))} to {payload.event.hostVenmo} in Venmo before submitting.</p>}
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
     {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
-    <button type="submit">Add bet</button>{message && <p className={message.includes("added") ? "form-ok" : "form-error"}>{message}</p>}
+    <button type="submit">{payload.event.poolMode === "host_managed" ? "Submit bet for payment confirmation" : "Add bet"}</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
   </form></section>;
+}
+
+function SettlementHelpTip({ payload }: { payload: EventPayload }) {
+  const hostManaged = payload.event.poolMode === "host_managed";
+  const tipId = useId();
+  return <span className="help-tip" tabIndex={0} role="button" aria-label="How betting and settlement work" aria-describedby={tipId}>
+    <span aria-hidden="true">?</span>
+    <span className="help-tip-content" id={tipId}>
+      <b>{hostManaged ? "Host-maintained pool" : "Player-to-player settlement"}</b>
+      {hostManaged
+        ? `Send each stake to ${payload.event.hostVenmo}. Your bet stays pending and does not count until the host confirms payment. After results, the host pays every winner’s full payout.`
+        : "Venmo is optional. After results, Chicken Bookie provides an optional list showing how players could settle directly with one another; players decide whether and how to pay."}
+      <small>Winning tickets receive their stake back and a share of the losing-ticket pool. If nobody wins, counted bets are refunded.</small>
+    </span>
+  </span>;
 }
 
 function ChickenPicker({ chickens, picks, setPicks, count, exact, races, labels }: { chickens: Chicken[]; picks: number[]; setPicks: (picks: number[]) => void; count: number; exact: boolean; races: Race[]; labels?: string[] }) {
@@ -450,7 +477,7 @@ function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: 
 }
 
 function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; races: Race[] }) {
-  return <section className="panel"><h2>Ticket Board</h2><ChickenStatsPanel bets={bets} chickens={chickens} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{bet.bettor}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+  return <section className="panel"><h2>Ticket Board</h2><ChickenStatsPanel bets={bets.filter((bet) => bet.paymentVerified)} chickens={chickens} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className={`ticket-row${bet.paymentVerified ? "" : " pending-ticket"}`} key={bet.id}><strong>{bet.bettor}{!bet.paymentVerified && <small className="field-note">payment pending</small>}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
 }
 
 function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[] }) {
@@ -463,10 +490,26 @@ function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[
 }
 
 function Winners({ payload }: { payload: EventPayload }) {
-  if (payload.bets.length < 2) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">Oh cluck, not enough bets yet. Add at least two tickets before the feed bucket math is worth settling.</p></section>;
-  if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
+  if (countedBets(payload).length < 2) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">Oh cluck, not enough confirmed bets yet. Add at least two counted tickets before the feed bucket math is worth settling.</p></section>;
+  if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
-  return <section className="panel"><h2>Winner's Circle</h2><WinnerCallout payload={payload} /><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>Ledger</h3><SettlementLedger people={payload.settlement.people} /></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{payload.event.poolMode === "host_managed" ? "Host payout checklist" : "Who pays whom"}</h3><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>Payout overview</h3><SettlementLedger people={payload.settlement.people} /></section>;
+}
+
+function SettlementExplainer({ payload }: { payload: EventPayload }) {
+  const isHostManaged = payload.event.poolMode === "host_managed";
+  const pendingCount = payload.bets.length - countedBets(payload).length;
+  return <details className="settlement-explainer" open>
+    <summary>How this settlement works</summary>
+    <div>
+      <p><b>{isHostManaged ? "Host-maintained pool:" : "Player-to-player settlement:"}</b> {isHostManaged
+        ? "Bettors send their stakes to the host before the event. Only payments confirmed by the host count. After results, the host pays each person the full payout shown below."
+        : "Venmo is not required and nobody prepays the site or host. After results, Chicken Bookie provides an optional list of direct payments; players decide whether and how to settle with one another."}</p>
+      <p><b>Payout math:</b> Winning tickets get their stake back, then split the losing-ticket pool. Chicken Drop winning tickets split equally; Chicken Race tickets use bet difficulty when dividing the bonus pool. If no ticket wins, every counted ticket is refunded.</p>
+      {isHostManaged && pendingCount > 0 && <p><b>{pendingCount} payment-pending bet{pendingCount === 1 ? " is" : "s are"} excluded</b> from bet counts, pool totals, boards, and payouts until the host confirms receipt.</p>}
+      {payload.settlement && <p><b>Payout overview:</b> The bar shows net profit or loss—not the original bet amount. The label shows total payout and net result. Hover over a bar for stake, payout, profit/loss, and percentage.</p>}
+    </div>
+  </details>;
 }
 
 function VenmoHandle({ handle }: { handle: string }) {
@@ -493,7 +536,7 @@ function VenmoHandle({ handle }: { handle: string }) {
 function WinnerCallout({ payload }: { payload: EventPayload }) {
   if (payload.event.gameType === "chicken_drop") {
     const winningNumber = payload.event.dropWinningNumber;
-    const winningTickets = payload.bets.filter((bet) => bet.dropNumber === winningNumber).length;
+    const winningTickets = countedBets(payload).filter((bet) => bet.dropNumber === winningNumber).length;
     return <div className="winner-callout drop-winner-callout"><span>official Chicken Drop result</span><div><article><b>Winning square</b><strong>#{winningNumber ?? "pending"}</strong><small>{winningTickets === 0 ? "No ticket picked this square, so every ticket is refunded." : `${winningTickets} winning ticket${winningTickets === 1 ? "" : "s"} split the losing pool.`}</small></article></div></div>;
   }
   const chickenNames = new Map(payload.chickens.map((chicken) => [chicken.id, chicken.name]));
@@ -508,7 +551,7 @@ function WinnerCallout({ payload }: { payload: EventPayload }) {
 function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }> }) {
   const rows = people.map((person) => ({ ...person, earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0 }))
     .sort((a, b) => b.net - a.net || b.earningsPct - a.earningsPct || a.bettor.localeCompare(b.bettor));
-  const rawMaxAxis = Math.max(1, ...rows.flatMap((person) => [Math.abs(person.net), person.staked]));
+  const rawMaxAxis = Math.max(1, ...rows.map((person) => Math.abs(person.net)));
   const maxAxis = Math.ceil(rawMaxAxis / 25) * 25;
   const axisTicks = [-maxAxis, -maxAxis / 2, 0, maxAxis / 2, maxAxis];
   const netColor = (pct: number) => {
@@ -520,25 +563,23 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
     return "var(--loss-mid)";
   };
   return <div className="ledger-graph">
+    <p className="fine-print">Bars show profit or loss only. Hover over a bar for the original bet amount and full payout details.</p>
     <div className="ledger-axis-head"><span /><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span /></div>
     <div className="ledger-plot">
       <div className="ledger-labels">{rows.map((person) => <strong key={person.bettor}>{person.bettor}</strong>)}</div>
       <div className="ledger-chart-area">
         <i className="ledger-plot-zero" />
         {rows.map((person) => {
-        const stakeWidth = Math.max(2, (person.staked / maxAxis) * 50);
         const profitLossWidth = Math.max(2, (Math.abs(person.net) / maxAxis) * 50);
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
         return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}, payout ${money(person.payout)}, P/L ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}, payout ${money(person.payout)}, profit loss ${netLabel}, earning ${pctLabel}`}>
-          <i className="stake-layer" style={{ left: "50%", width: `${stakeWidth}%` }} />
           <i className={person.net >= 0 ? "profit-loss-layer positive" : "profit-loss-layer"} style={person.net >= 0 ? { left: "50%", width: `${profitLossWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - profitLossWidth}%`, width: `${profitLossWidth}%`, background: netColor(person.earningsPct) }} />
         </div>;
       })}</div>
       <div className="ledger-results">{rows.map((person) => {
-        const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
-        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{netLabel} <span>({pctLabel})</span></b>;
+        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>Payout {money(person.payout)} <span>Net {netLabel}</span></b>;
       })}</div>
     </div>
   </div>;
@@ -580,6 +621,13 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
     const response = await fetch("/api/admin", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, betId }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not delete bet.")); else { setPayload(data); setMessage("Bet deleted."); }
+  }
+  async function setPaymentVerified(betId: number, verified: boolean) {
+    setMessage(verified ? "Confirming payment..." : "Moving bet back to pending...");
+    const response = await fetch("/api/admin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_payment", eventId: payload.event.id, adminCode, betId, verified }) });
+    const data = await response.json();
+    if (!response.ok) setMessage(friendlyError(data.error ?? "Could not update payment status."));
+    else { setPayload(data); setMessage(verified ? "Payment confirmed; bet now counts." : "Payment marked pending; bet no longer counts."); }
   }
   async function clearWinners() {
     const response = await fetch("/api/results", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode }) });
@@ -647,11 +695,12 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         <label className="check-row"><input type="checkbox" checked={showAdminCode} onChange={(event) => setShowAdminCode(event.target.checked)} /> Show admin code</label>
         <button type="submit">Admin unlocked</button>
       </form>}
-      {payload.bets.length < 2 && <p className="muted">Oh cluck, not enough bets yet. You can save results, but settlement waits until at least two tickets exist.</p>}
+      {countedBets(payload).length < 2 && <p className="muted">Oh cluck, not enough counted bets yet. You can save results, but settlement waits until at least two confirmed tickets exist.</p>}
 
       <form className="grid-form" onSubmit={saveConfig}>
         <h3>Event setup</h3>
         <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
+        <div className="game-format-card wide-field"><span>Settlement type</span><strong>{payload.event.poolMode === "host_managed" ? `Host-maintained pool · ${payload.event.hostVenmo}` : "Player-to-player settlement · optional, no Venmo required"}</strong></div>
         <label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label>
         <label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label>
         <label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
@@ -697,12 +746,22 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         <h3>Bettor Venmo handles</h3>
         {bettors.map((bettor, idx) => <div className="admin-card bettor-admin-card" key={normalizeName(bettor.name)}>
           <strong>{bettor.name}</strong>
-          <label>Venmo (optional)<div className="venmo-input"><span>@</span><input value={bettor.venmo.replace(/^@/, "")} placeholder="username" onChange={(event) => setBettors(bettors.map((item, itemIdx) => itemIdx === idx ? { ...item, venmo: event.target.value.replace(/^@+/, "") } : item))} /></div></label>
+          <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={bettor.venmo.replace(/^@/, "")} placeholder="username" onChange={(event) => setBettors(bettors.map((item, itemIdx) => itemIdx === idx ? { ...item, venmo: event.target.value.replace(/^@+/, "") } : item))} /></div></label>
         </div>)}
         <button type="submit">Save Venmo handles</button>
       </form>}
 
-      {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") ? "form-ok" : "form-error"}>{message}</p>}
+      {payload.event.poolMode === "host_managed" && <div className="grid-form">
+        <h3>Host payment confirmations</h3>
+        <p className="fine-print wide-field">Confirm only after the payment appears in the host's Venmo account. Chicken Bookie does not connect to or read Venmo transactions.</p>
+        {payload.bets.length === 0 ? <p className="muted">No submitted bets yet.</p> : payload.bets.map((bet) => <div className="admin-card bettor-admin-card" key={bet.id}>
+          <strong>#{bet.id} · {bet.bettor} · {money(bet.stake)}</strong>
+          <span>{bet.venmo} · {bet.paymentVerified ? "payment confirmed" : "payment pending"}</span>
+          <button type="button" onClick={() => setPaymentVerified(bet.id, !bet.paymentVerified)}>{bet.paymentVerified ? "Mark payment pending" : "Confirm payment received"}</button>
+        </div>)}
+      </div>}
+
+      {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
       <h3>Delete accidental bet</h3>
       {payload.bets.length === 0 ? <p className="muted">No accidental bets to delete.</p> : payload.bets.map((bet) => <button className="delete-row" type="button" key={bet.id} onClick={() => removeBet(bet.id)}>Delete #{bet.id} - {bet.bettor}{isDropEvent && bet.dropNumber != null ? <> - square #{bet.dropNumber}</> : null} - {money(bet.stake)}</button>)}
     </section>
