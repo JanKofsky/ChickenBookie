@@ -459,6 +459,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .ticket { display: grid; grid-template-columns: 1fr 1.1fr 1.8fr auto; gap: 12px; align-items: center; padding: 12px 14px; }
 .ticket b { color: var(--ink); text-align: right; }
 .ticket-table { display: grid; gap: 7px; margin-top: 14px; }
+.ticket-count-summary { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; padding: 10px 12px; border: 1px solid rgba(217, 240, 194, 0.28); border-radius: 9px; background: rgba(217, 240, 194, 0.07); }
+.ticket-count-summary strong { color: #d9f0c2; }
+.ticket-count-summary span { color: var(--mustard-light); font-weight: 850; }
 .ticket-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.9fr) minmax(220px, 2fr) minmax(96px, 0.55fr);
@@ -476,9 +479,11 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 
 .pending-ticket .field-note {
   display: block;
-  color: #9a5b00;
+  color: var(--mustard-light);
   font-weight: 700;
 }
+.pending-ticket > b { display: grid; gap: 2px; }
+.pending-ticket > b small { color: var(--mustard-light); font-size: 0.65rem; font-weight: 900; text-transform: uppercase; }
 .ticket-memo-wrap { position: relative; display: block; width: fit-content; margin-top: 5px; }
 .ticket-memo-trigger { min-height: 28px; padding: 4px 8px; border-color: rgba(240, 217, 121, 0.42); border-radius: 6px; background: rgba(240, 217, 121, 0.10); box-shadow: none; color: var(--mustard-light); font-size: 0.68rem; }
 .ticket-memo-detail { position: absolute; z-index: 30; bottom: calc(100% + 7px); left: 0; display: none; width: min(360px, 78vw); gap: 4px; padding: 10px 12px; border: 1px solid rgba(240, 217, 121, 0.58); border-radius: 8px; background: rgba(13, 20, 15, 0.98); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.48); color: var(--ink); }
