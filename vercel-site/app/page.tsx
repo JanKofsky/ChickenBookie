@@ -439,15 +439,18 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
 
 function SettlementHelpTip({ payload }: { payload: EventPayload }) {
   const hostManaged = payload.event.poolMode === "host_managed";
+  const isDropEvent = payload.event.gameType === "chicken_drop";
   const tipId = useId();
   return <span className="help-tip" tabIndex={0} role="button" aria-label="How betting and settlement work" aria-describedby={tipId}>
     <span aria-hidden="true">?</span>
     <span className="help-tip-content" id={tipId}>
-      <b>{hostManaged ? "Host-maintained pool" : "Player-to-player settlement"}</b>
+      <b>{isDropEvent ? "Chicken Drop" : "Chicken Race"} · {hostManaged ? "Host-maintained pool" : "Player-to-player settlement"}</b>
       {hostManaged
-        ? `Send each stake to ${payload.event.hostVenmo}. Your bet stays pending and does not count until the host confirms payment. After results, the host pays every winner’s full payout.`
-        : "Venmo is optional. After results, Chicken Bookie provides an optional list showing how players could settle directly with one another; players decide whether and how to pay."}
-      <small>Winning tickets receive their stake back and a share of the losing-ticket pool. If nobody wins, counted bets are refunded.</small>
+        ? `Send ${isDropEvent ? "the fixed ticket price" : "each race-bet stake"} to ${payload.event.hostVenmo}. The ${isDropEvent ? "square" : "bet"} stays pending until the host confirms payment. After the official result, the host sends each bettor's full payout.`
+        : `Venmo is optional. After the official ${isDropEvent ? "winning square" : "race results"}, Chicken Bookie suggests direct player-to-player payments; players decide whether and how to settle.`}
+      <small>{isDropEvent
+        ? "Tickets on the winning square get their ticket price back and split the losing-square pool equally. If nobody picked it, all counted tickets are refunded."
+        : "Winning race tickets get their stake back and share the losing-ticket pool based on bet difficulty. If no ticket wins, all counted bets are refunded."}</small>
     </span>
   </span>;
 }
@@ -498,16 +501,23 @@ function Winners({ payload }: { payload: EventPayload }) {
 
 function SettlementExplainer({ payload }: { payload: EventPayload }) {
   const isHostManaged = payload.event.poolMode === "host_managed";
+  const isDropEvent = payload.event.gameType === "chicken_drop";
   const pendingCount = payload.bets.length - countedBets(payload).length;
   return <details className="settlement-explainer" open>
-    <summary>How this settlement works</summary>
+    <summary>How this {isDropEvent ? "Chicken Drop" : "Chicken Race"} {isHostManaged ? "host pool" : "player settlement"} works</summary>
     <div>
       <p><b>{isHostManaged ? "Host-maintained pool:" : "Player-to-player settlement:"}</b> {isHostManaged
-        ? "Bettors send their stakes to the host before the event. Only payments confirmed by the host count. After results, the host pays each person the full payout shown below."
-        : "Venmo is not required and nobody prepays the site or host. After results, Chicken Bookie provides an optional list of direct payments; players decide whether and how to settle with one another."}</p>
-      <p><b>Payout math:</b> Winning tickets get their stake back, then split the losing-ticket pool. Chicken Drop winning tickets split equally; Chicken Race tickets use bet difficulty when dividing the bonus pool. If no ticket wins, every counted ticket is refunded.</p>
+        ? isDropEvent
+          ? "Players send the fixed ticket price to the host. Only squares whose payments the host confirms enter the pool. After the winning square is official, the host sends each player the full payout shown below."
+          : "Bettors send each race-bet stake to the host. Only bets whose payments the host confirms enter the pool. After race results are official, the host sends each bettor the full payout shown below."
+        : isDropEvent
+          ? "Venmo is not required and nobody prepays the site or host. After the winning square is official, the optional payment list shows how players could settle the Chicken Drop directly with one another."
+          : "Venmo is not required and nobody prepays the site or host. After race results are official, the optional payment list shows how bettors could settle directly with one another."}</p>
+      <p><b>{isDropEvent ? "Chicken Drop payout math:" : "Chicken Race payout math:"}</b> {isDropEvent
+        ? "Every counted ticket on the winning square gets its ticket price back, then those tickets split the losing-square pool equally. If nobody picked the winning square, every counted ticket is refunded."
+        : "Each winning ticket gets its stake back, then winning tickets share the losing-ticket pool based on bet difficulty. If no ticket wins, every counted bet is refunded."}</p>
       {isHostManaged && pendingCount > 0 && <p><b>{pendingCount} payment-pending bet{pendingCount === 1 ? " is" : "s are"} excluded</b> from bet counts, pool totals, boards, and payouts until the host confirms receipt.</p>}
-      {payload.settlement && <p><b>Payout overview:</b> The bar shows net profit or loss—not the original bet amount. The label shows total payout and net result. Hover over a bar for stake, payout, profit/loss, and percentage.</p>}
+      {payload.settlement && <p><b>Payout overview:</b> Each bar is net P/L (profit or loss), and the right column shows total payout plus return percentage. Hover over a bar for the original stake and full details.</p>}
     </div>
   </details>;
 }
@@ -563,8 +573,8 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
     return "var(--loss-mid)";
   };
   return <div className="ledger-graph">
-    <p className="fine-print">Bars show profit or loss only. Hover over a bar for the original bet amount and full payout details.</p>
-    <div className="ledger-axis-head"><span /><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span /></div>
+    <p className="fine-print"><b>Net P/L</b> means net profit or loss. Return percentage and payout are on the right; hover for the original stake and full details.</p>
+    <div className="ledger-axis-head"><span>Bettor</span><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span>Return</span></div>
     <div className="ledger-plot">
       <div className="ledger-labels">{rows.map((person) => <strong key={person.bettor}>{person.bettor}</strong>)}</div>
       <div className="ledger-chart-area">
@@ -575,11 +585,12 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
         return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}, payout ${money(person.payout)}, P/L ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}, payout ${money(person.payout)}, profit loss ${netLabel}, earning ${pctLabel}`}>
           <i className={person.net >= 0 ? "profit-loss-layer positive" : "profit-loss-layer"} style={person.net >= 0 ? { left: "50%", width: `${profitLossWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - profitLossWidth}%`, width: `${profitLossWidth}%`, background: netColor(person.earningsPct) }} />
+          <b className={person.net >= 0 ? "ledger-bar-label positive" : "ledger-bar-label"}>{netLabel}</b>
         </div>;
       })}</div>
       <div className="ledger-results">{rows.map((person) => {
-        const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
-        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>Payout {money(person.payout)} <span>Net {netLabel}</span></b>;
+        const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
+        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{pctLabel} <span>Payout {money(person.payout)}</span></b>;
       })}</div>
     </div>
   </div>;
@@ -763,7 +774,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
 
       <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
         <h3>Results & payouts</h3>
-        <p className="fine-print wide-field">Enter the official result here. Chicken Bookie will automatically calculate the payout guidance.</p>
+        <p className="fine-print wide-field">{isDropEvent ? "Enter the official winning square. Chicken Bookie will identify matching tickets and calculate the split or refunds." : "Enter each official race result. Chicken Bookie will score every bet type and calculate the payout guidance."}</p>
         <h4 className="wide-field">{isDropEvent ? "Official Chicken Drop result" : "Official race results"}</h4>
         {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
           <h3>{race.name}</h3>
