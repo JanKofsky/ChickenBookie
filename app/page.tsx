@@ -704,6 +704,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   return (
     <section className="panel">
       <h2>Coop Boss</h2>
+      <p className="muted admin-intro">Everything for running this event is organized below. Use this menu to jump straight to the job you need.</p>
       {isTestEvent && <div className="notice">Demo admin is already unlocked. The admin code is blank.</div>}
       {!isTestEvent && <form className="admin-unlock" onSubmit={unlock}>
         <label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
@@ -712,8 +713,19 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
       </form>}
       {countedBets(payload).length < 2 && <p className="muted">Oh cluck, not enough counted bets yet. You can save results, but settlement waits until at least two confirmed tickets exist.</p>}
 
-      <form className="grid-form" onSubmit={saveConfig}>
+      <nav className="admin-section-nav" aria-label="Coop Boss sections">
+        <span>Go to</span>
+        <div>
+          <a href="#admin-event-setup">Event setup</a>
+          {!isDropEvent && <a href="#admin-contestants">Contestants & races</a>}
+          <a href="#admin-results">Results & payouts</a>
+          <a href="#admin-bet-management">Bets & payments <b>{payload.bets.length.toLocaleString()}</b></a>
+        </div>
+      </nav>
+
+      <form id="admin-event-setup" className="grid-form admin-section-target" onSubmit={saveConfig}>
         <h3>Event setup</h3>
+        <p className="fine-print wide-field">Update the event name, deadline, rules, and settlement method here.</p>
         <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
         <label>Settlement type<select disabled={settlementTypeLocked} value={poolMode} onChange={(event) => setPoolMode(event.target.value as PoolMode)}><option value="peer_to_peer">Player-to-player settlement (optional)</option><option value="host_managed">Host-maintained pool</option></select></label>
         {poolMode === "host_managed" && <label>Host Venmo<div className="venmo-input"><span>@</span><input required disabled={settlementTypeLocked} value={hostVenmo} placeholder="host username" onChange={(event) => setHostVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>}
@@ -732,7 +744,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         </> : <>
           <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
           <label className="wide-field">Race rules<textarea value={officialRule} placeholder="first to the marshmallow wins" onChange={(event) => setOfficialRule(event.target.value)} rows={3} /></label>
-          <h3>Race card</h3>
+          <div id="admin-contestants" className="wide-field admin-section-target admin-subsection-heading"><h3>Contestants & race card</h3><p className="fine-print">Edit race details, chicken names, notes, and photos.</p></div>
           {races.map((race, idx) => <div className="admin-card" key={race.race}>
             <label>Race name<input value={race.name} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label>
             <label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label>
@@ -749,8 +761,10 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         <button type="submit">Save event setup</button>
       </form>
 
-      <form className="grid-form result-entry" onSubmit={save}>
-        <h3>{isDropEvent ? "Official Chicken Drop result" : "Result entry"}</h3>
+      <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
+        <h3>Results & payouts</h3>
+        <p className="fine-print wide-field">Enter the official result here. Chicken Bookie will automatically calculate the payout guidance.</p>
+        <h4 className="wide-field">{isDropEvent ? "Official Chicken Drop result" : "Official race results"}</h4>
         {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
           <h3>{race.name}</h3>
           {payload.chickens.map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
@@ -759,6 +773,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
       </form>
 
+      <div id="admin-bet-management" className="admin-management-section admin-section-target">
       {bettors.length > 0 && <form className="grid-form" onSubmit={saveBettors}>
         <h3>Bettor Venmo handles</h3>
         {bettors.map((bettor, idx) => <div className="admin-card bettor-admin-card" key={normalizeName(bettor.name)}>
@@ -778,6 +793,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         </article>)}</div>}
         {betPageCount > 1 && <nav className="bet-pagination" aria-label="Bet manager pages"><button type="button" disabled={currentBetPage === 0} onClick={() => setBetPage(Math.max(0, currentBetPage - 1))}>Previous</button><span>Page {currentBetPage + 1} of {betPageCount}</span><button type="button" disabled={currentBetPage >= betPageCount - 1} onClick={() => setBetPage(Math.min(betPageCount - 1, currentBetPage + 1))}>Next</button></nav>}
       </section>
+      </div>
     </section>
   );
 }
