@@ -240,6 +240,13 @@ h1 {
 .drop-player-fields label { gap: 4px; color: rgba(222, 209, 182, 0.66); font-size: 0.76rem; }
 .bettor-details input,
 .drop-player-fields input { min-height: 36px; padding-block: 7px; color: rgba(255, 243, 216, 0.9); }
+.wager-details { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px, 0.75fr) minmax(280px, 1.55fr); gap: 12px; margin: 0; padding: 10px 12px 12px; border: 1px solid rgba(217, 240, 194, 0.34); border-radius: 9px; background: rgba(217, 240, 194, 0.07); }
+.wager-details legend { padding: 0 6px; color: var(--mustard-light); font-size: 0.76rem; font-weight: 950; letter-spacing: 0.07em; text-transform: uppercase; }
+.wager-details > label { align-content: start; color: var(--ink); }
+.wager-step-label { display: flex; align-items: center; gap: 7px; font-weight: 900; }
+.wager-step-label > b { display: inline-grid; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #0a120c; background: var(--mustard-light); font-size: 0.75rem; }
+.bet-amount-field input { min-height: 46px; border-color: rgba(240, 217, 121, 0.62); font-size: 1.08rem; font-weight: 900; }
+.bet-amount-field > small { color: rgba(222, 209, 182, 0.72); font-size: 0.75rem; font-weight: 700; }
 .venmo-input { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(7, 11, 8, 0.52); }
 .venmo-input > span { padding-left: 11px; color: rgba(222, 209, 182, 0.7); font-weight: 900; }
 .venmo-input input { border: 0; background: transparent; }
@@ -259,6 +266,7 @@ h1 {
 label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .field-note { color: rgba(217, 240, 194, 0.78); font-size: 0.78rem; font-weight: 700; line-height: 1.25; }
 .bet-type-field { --bet-accent: 217, 240, 194; gap: 6px; padding: 9px; border: 1px solid rgba(var(--bet-accent), 0.34); border-radius: 9px; background: rgba(var(--bet-accent), 0.055); }
+.wager-details .bet-type-field { padding: 0; border: 0; background: transparent; }
 .bet-type-field select { border-color: rgba(var(--bet-accent), 0.65); background-color: rgba(7, 11, 8, 0.88); }
 .bet-type-help { display: grid; gap: 2px; padding: 6px 8px; border-left: 3px solid rgb(var(--bet-accent)); background: rgba(var(--bet-accent), 0.09); }
 .bet-type-help b { color: rgb(var(--bet-accent)); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; }
@@ -967,6 +975,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .hero-subtitle { margin-top: 12px; }
   .hero-grid, .split, .grid-form, .bet-form, .pick-grid, .admin-unlock, .drop-player-fields, .drop-insights { grid-template-columns: 1fr; }
   .bettor-details { grid-template-columns: 1fr; }
+  .wager-details { grid-template-columns: 1fr; padding: 9px; }
   .drop-insights p { grid-column: auto; }
   .scoreboard { width: 100%; justify-self: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .chicken-buttons, .flock-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
