@@ -895,7 +895,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
     if (bet.paymentVerified) group.verifiedCount += 1;
     paymentGroups.set(key, group);
   }
-  const paymentBatches = Array.from(paymentGroups.values()).sort((a, b) => Number(a.verifiedCount === a.count) - Number(b.verifiedCount === b.count));
+  const paymentBatches = Array.from(paymentGroups.values()).sort((a, b) => {
+    const rank = (group: { count: number; submittedCount: number; verifiedCount: number }) => group.verifiedCount === group.count ? 2 : group.submittedCount === group.count ? 0 : 1;
+    return rank(a) - rank(b);
+  });
   const pendingPaymentBatches = paymentBatches.filter((group) => group.verifiedCount < group.count);
   const reportedSentBatches = pendingPaymentBatches.filter((group) => group.submittedCount === group.count);
   return (
@@ -916,12 +919,12 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         <div>
           <a href="#admin-event-setup">Event setup</a>
           {!isDropEvent && <a href="#admin-contestants">Contestants & races</a>}
-          {poolMode === "host_managed" && <a href="#admin-payments">Payments <b>{pendingPaymentBatches.length}</b></a>}
+          {poolMode === "host_managed" && <a href="#admin-payments">Payments{reportedSentBatches.length > 0 && <b>{reportedSentBatches.length}</b>}</a>}
           <a href="#admin-results">{poolMode === "host_managed" ? "Results & payouts" : "Results & settlement"}</a>
-          <a href="#admin-bet-management">Manage bets <b>{payload.bets.length.toLocaleString()}</b></a>
+          <a href="#admin-bet-management">Manage bets</a>
         </div>
       </nav>
-      {poolMode === "host_managed" && pendingPaymentBatches.length > 0 && <div className="notice payment-alert"><div><b>{pendingPaymentBatches.length} payment{pendingPaymentBatches.length === 1 ? " is" : "s are"} waiting for confirmation{reportedSentBatches.length > 0 ? ` · ${reportedSentBatches.length} reported sent` : ""}</b><span>Match each payment ID in Venmo, then confirm it so every covered bet counts.</span></div><a href="#admin-payments">Review & confirm payments</a></div>}
+      {poolMode === "host_managed" && reportedSentBatches.length > 0 && <div className="notice payment-alert"><div><b>{reportedSentBatches.length} payment{reportedSentBatches.length === 1 ? " is" : "s are"} ready for review</b><span>Match each payment ID in Venmo, then approve it so those bets count.</span></div><a href="#admin-payments">Review & approve</a></div>}
 
       <form id="admin-event-setup" className="grid-form admin-section-target" onSubmit={saveConfig}>
         <h3>Event setup</h3>
@@ -996,12 +999,13 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
 
       {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
       {payload.event.poolMode === "host_managed" && <section id="admin-payments" className="payment-batch-manager admin-section-target">
-        <div className="bet-manager-heading"><div><h3>Bettor payments</h3><p className="fine-print">Each row is one combined payment for that bettor’s current batch of bets. If they return after it is confirmed, their new bets get a new payment ID. Confirm one payment at a time after matching its ID in Venmo.</p></div><strong>{pendingPaymentBatches.length} pending</strong></div>
+        <div className="bet-manager-heading"><div><h3>Payment review & approval</h3><p className="fine-print">Payments reported as sent appear first. Match the payment ID in Venmo, then approve the whole batch of bets.</p></div><strong>{reportedSentBatches.length} to review</strong></div>
         {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="payment-batch-list">{paymentBatches.map((group) => {
           const verified = group.verifiedCount === group.count;
-          return <article className={`payment-batch-row ${verified ? "confirmed" : "pending"}`} key={group.paymentId || normalizeName(group.bettor)}>
+          const readyForReview = !verified && group.submittedCount === group.count;
+          return <article className={`payment-batch-row ${verified ? "confirmed" : readyForReview ? "pending ready-review" : "pending"}`} key={group.paymentId || normalizeName(group.bettor)}>
             <div><strong>{group.bettor}</strong><span className="payment-id-badge">{group.paymentId}</span><small>{group.venmo} · {group.count} bet{group.count === 1 ? "" : "s"}</small></div>
-            <div><strong>{money(group.total)}</strong><span>{verified ? "Payment confirmed" : group.submittedCount === group.count ? "Ready to verify — check Venmo" : "Waiting for bettor"}</span><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo confirmation" : `Confirm ${group.paymentId}`}</button></div>
+            <div><strong>{money(group.total)}</strong><span>{verified ? "Payment approved" : readyForReview ? "Ready to review — check Venmo" : "Waiting for bettor"}</span><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo approval" : readyForReview ? `Approve ${group.paymentId}` : `Confirm ${group.paymentId}`}</button></div>
           </article>;
         })}</div>}
       </section>}

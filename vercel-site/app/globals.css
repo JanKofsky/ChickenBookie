@@ -864,6 +864,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .payment-batch-list { display: grid; gap: 9px; }
 .payment-batch-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
 .payment-batch-row.pending { border-color: rgba(241, 174, 62, 0.7); }
+.payment-batch-row.ready-review { border-color: rgba(126, 226, 167, 0.85); box-shadow: 0 0 0 2px rgba(126, 226, 167, 0.12); }
 .payment-batch-row.confirmed { opacity: 0.72; }
 .payment-batch-row > div { display: grid; gap: 4px; }
 .payment-batch-row > div:last-child { justify-items: end; }
