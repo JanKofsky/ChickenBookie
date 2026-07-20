@@ -593,6 +593,14 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
   const displayName = pendingBets[0].bettor;
   const note = paymentMemo(payload.event.name, displayName, paymentId);
   const hostProfileUrl = payload.event.hostVenmoLink || "https://account.venmo.com/";
+  const venmoPaymentUrl = (() => {
+    const url = new URL(hostProfileUrl);
+    url.searchParams.set("txn", "pay");
+    url.searchParams.set("recipients", payload.event.hostVenmo.replace(/^@/, ""));
+    url.searchParams.set("amount", total.toFixed(2));
+    url.searchParams.set("note", note);
+    return url.toString();
+  })();
   async function copyPaymentField(label: string, value: string) {
     try {
       await navigator.clipboard.writeText(value);
@@ -611,8 +619,8 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
   }
   async function leaveForVenmo(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
-    await copyPaymentField("amount", total.toFixed(2));
-    if (await updateSubmitted(true)) window.location.assign(hostProfileUrl);
+    await copyPaymentField("note", note);
+    if (await updateSubmitted(true)) window.location.assign(venmoPaymentUrl);
   }
   async function updateSubmitted(submitted: boolean) {
     const response = await fetch("/api/bets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, paymentId, venmo: pendingBets[0].venmo, submitted }) });
@@ -635,14 +643,14 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <section className="pending-bet-cart"><header><span>Your pending bet cart</span><strong>{pendingBets.length} bet{pendingBets.length === 1 ? "" : "s"}</strong></header>{pendingBets.map((bet) => <div key={bet.id}><span><b>{describeBet(bet, payload.chickens, payload.races)}</b><small>Bet #{bet.id}</small></span><strong>{money(bet.stake)}</strong><button type="button" aria-label={`Remove bet ${bet.id}`} onClick={() => { void removeFromCart(bet); }}>Remove</button></div>)}{cartMessage && <p>{cartMessage}</p>}</section>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName} · Payment ID <span className="payment-id-badge">{paymentId}</span></small></div>
-    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
+    <a className="venmo-pay-link full-payment-link" href={venmoPaymentUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
     <div className="payment-helper-menu">
       <div><span>1. Host recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
       <div><span>3. Payment ID</span><strong className="payment-id-badge">{paymentId}</strong><button type="button" onClick={() => copyPaymentField("payment-id", paymentId)}>{copied === "payment-id" ? "Copied!" : "Copy"}</button></div>
       <div><span>4. Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
     </div>
-    <p>Click to open the host’s Venmo profile with your total copied. Paste the event note shown above, review everything before sending, and the host will verify receipt.</p>
+    <p>Click to open Venmo to the host and attempt to fill in the total and event note. The note is also copied as a fallback. Review the recipient, amount, and note before sending; the host will verify receipt.</p>
   </aside>;
 }
 
