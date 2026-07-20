@@ -83,7 +83,6 @@ export async function PATCH(request: NextRequest) {
       resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
       poolMode: body.poolMode === "host_managed" ? "host_managed" : "peer_to_peer",
       hostVenmo: String(body.hostVenmo ?? ""),
-      hostVenmoLink: String(body.hostVenmoLink ?? ""),
       dropMaxNumber: body.dropMaxNumber == null ? undefined : Number(body.dropMaxNumber),
       dropGridColumns: body.dropGridColumns == null ? undefined : Number(body.dropGridColumns),
       dropGridRows: body.dropGridRows == null ? undefined : Number(body.dropGridRows),

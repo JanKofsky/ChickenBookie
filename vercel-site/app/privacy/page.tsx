@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <h1>Privacy & Terms</h1>
         <h2>privacy disclosure</h2>
         <p className="muted">
-          Chicken Bookie stores event setup, chicken names, race details, pool entries, Venmo handles supplied by hosts and bettors, an official host Venmo profile link for host-maintained pools, payment reference IDs, bettor-submitted and host-confirmed payment statuses, results, and settlement math so race hosts can run their event.
+          Chicken Bookie stores event setup, chicken names, race details, pool entries, Venmo handles supplied by hosts and bettors, payment reference IDs, bettor-submitted and host-confirmed payment statuses, results, and settlement math so race hosts can run their event.
         </p>
         <p className="muted">
           Do not put sensitive personal information in event names, participant names, chicken names, or race details. Venmo handles, payment reference IDs, and payment-confirmation status are visible to people who can open the event. Payment, if any, happens outside Chicken Bookie between the people in the event.

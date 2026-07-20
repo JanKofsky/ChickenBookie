@@ -479,6 +479,7 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
   ]);
   const rawEvent = eventResult.rows[0];
   const dropGrid = resolveDropGrid(rawEvent.drop_max_number, rawEvent.drop_grid_columns, rawEvent.drop_grid_rows);
+  const eventHostVenmo = String(rawEvent.host_venmo ?? "");
   const event: EventRecord = {
     id: Number(rawEvent.id),
     code: rawEvent.code,
@@ -489,8 +490,8 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     resultMode: rawEvent.result_mode === "full_order" ? "full_order" : "winner",
     gameType: rawEvent.game_type === "chicken_drop" ? "chicken_drop" : "race",
     poolMode: rawEvent.pool_mode === "host_managed" ? "host_managed" : "peer_to_peer",
-    hostVenmo: String(rawEvent.host_venmo ?? ""),
-    hostVenmoLink: String(rawEvent.host_venmo_link ?? ""),
+    hostVenmo: eventHostVenmo,
+    hostVenmoLink: String(rawEvent.host_venmo_link ?? "") || (eventHostVenmo ? `https://account.venmo.com/u/${encodeURIComponent(eventHostVenmo)}` : ""),
     dropMaxNumber: dropGrid.total,
     dropGridColumns: dropGrid.columns,
     dropGridRows: dropGrid.rows,
@@ -842,21 +843,6 @@ export function normalizeVenmo(value: string) {
   return handle ? `@${handle}` : "";
 }
 
-function normalizeVenmoProfileLink(value: string) {
-  const raw = value.trim();
-  if (!raw) return "";
-  let profileUrl: URL;
-  try { profileUrl = new URL(raw); } catch { throw new Error("Paste the official profile link shared by Venmo."); }
-  const allowedHosts = new Set(["venmo.com", "www.venmo.com", "account.venmo.com"]);
-  if (profileUrl.protocol !== "https:" || !allowedHosts.has(profileUrl.hostname.toLowerCase())) throw new Error("The host profile link must be an official venmo.com link.");
-  const pathParts = profileUrl.pathname.split("/").filter(Boolean);
-  if (pathParts.length !== 2 || pathParts[0].toLowerCase() !== "u") throw new Error("Paste the direct Venmo profile link ending in /u/username.");
-  for (const unsafeKey of ["txn", "amount", "note", "recipients"]) {
-    if (profileUrl.searchParams.has(unsafeKey)) throw new Error("Use a Venmo profile-share link, not a prefilled payment link.");
-  }
-  return profileUrl.toString();
-}
-
 export async function updateEventConfig(input: {
   eventId: number;
   adminCode: string;
@@ -867,7 +853,6 @@ export async function updateEventConfig(input: {
   resultMode: ResultMode;
   poolMode: PoolMode;
   hostVenmo?: string;
-  hostVenmoLink?: string;
   dropMaxNumber?: number;
   dropGridColumns?: number;
   dropGridRows?: number;
@@ -886,15 +871,11 @@ export async function updateEventConfig(input: {
   if (!event.rowCount) throw new Error("Event not found.");
   const poolMode: PoolMode = input.poolMode === "host_managed" ? "host_managed" : "peer_to_peer";
   const hostVenmo = normalizeVenmo(input.hostVenmo ?? "");
-  const hostVenmoLink = normalizeVenmoProfileLink(input.hostVenmoLink ?? "");
-  if (hostVenmoLink && normalizeVenmo(decodeURIComponent(new URL(hostVenmoLink).pathname.split("/").filter(Boolean)[1] ?? "")).toLowerCase() !== hostVenmo.toLowerCase()) throw new Error("The Venmo profile link username must match the host Venmo username.");
+  const hostVenmoLink = hostVenmo ? `https://account.venmo.com/u/${encodeURIComponent(hostVenmo)}` : "";
   const betCount = Number((await sql`SELECT COUNT(*) AS count FROM bets WHERE event_id = ${input.eventId}`).rows[0]?.count ?? 0);
-  const existingHostVenmoLink = String(event.rows[0].host_venmo_link ?? "");
   const poolSettingsChanged = poolMode !== event.rows[0].pool_mode || hostVenmo !== String(event.rows[0].host_venmo ?? "");
-  const replacingSavedProfileLink = Boolean(existingHostVenmoLink) && hostVenmoLink !== existingHostVenmoLink;
-  if (betCount > 0 && (poolSettingsChanged || replacingSavedProfileLink)) throw new Error("Settlement type and host Venmo details are locked after the first bet.");
+  if (betCount > 0 && poolSettingsChanged) throw new Error("Settlement type and host Venmo are locked after the first bet.");
   if (poolMode === "host_managed" && !hostVenmo) throw new Error("Host Venmo is required for a host-maintained pool.");
-  if (poolMode === "host_managed" && !hostVenmoLink) throw new Error("Paste the host's official Venmo profile-share link so bettors can reach the correct profile.");
   if (poolMode === "host_managed" && !String(event.rows[0].admin_code ?? "")) throw new Error("Set an admin code when creating the event before switching to a host-maintained pool.");
 
   if (event.rows[0].game_type === "chicken_drop") {

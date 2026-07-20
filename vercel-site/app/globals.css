@@ -237,6 +237,9 @@ h1 {
 .venmo-input { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(7, 11, 8, 0.52); }
 .venmo-input > span { padding-left: 11px; color: rgba(222, 209, 182, 0.7); font-weight: 900; }
 .venmo-input input { border: 0; background: transparent; }
+.venmo-profile-check { display: inline-flex; width: fit-content; align-items: center; gap: 6px; margin-top: 3px; color: rgba(217, 240, 194, 0.86); font-size: 0.78rem; font-weight: 800; text-decoration: none; }
+.venmo-profile-check > span { display: inline-grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #fff; background: #3d95ce; font-size: 0.72rem; font-weight: 900; }
+.venmo-profile-check:hover { color: #fff3d8; text-decoration: underline; }
 .venmo-handle { display: inline-flex; align-items: center; gap: 5px; min-height: 0; margin: 0 5px; padding: 2px 6px; border: 1px solid rgba(222, 209, 182, 0.18); border-radius: 5px; background: rgba(222, 209, 182, 0.08); box-shadow: none; color: rgba(222, 209, 182, 0.68); font-family: inherit; font-size: 0.78em; font-weight: 700; line-height: 1.25; user-select: text; cursor: copy; }
 .venmo-handle small { padding-left: 5px; border-left: 1px solid rgba(222, 209, 182, 0.18); color: rgba(217, 240, 194, 0.72); font-size: 0.72em; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
 .venmo-handle:hover { background: rgba(222, 209, 182, 0.14); border-color: rgba(222, 209, 182, 0.28); }
@@ -875,7 +878,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .bet-manager-actions { display: flex; gap: 9px; align-items: center; }
 .bet-manager-actions > strong { color: var(--title-accent); white-space: nowrap; }
 .bet-manager-actions > button { width: auto; min-height: 34px; padding: 6px 9px; }
-.payment-batch-manager { margin-top: 18px; border-color: rgba(241, 174, 62, 0.28); background: rgba(255, 255, 255, 0.025); }
+.payment-batch-manager { margin-top: 18px; border-color: rgba(241, 174, 62, 0.28); background: rgba(7, 11, 8, 0.72); }
 .payment-batch-list { display: grid; gap: 9px; }
 .payment-batch-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
 .payment-batch-row.pending { border-color: rgba(241, 174, 62, 0.7); background: rgba(7, 11, 8, 0.46); }
@@ -887,6 +890,25 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .payment-batch-row > div { display: grid; gap: 4px; }
 .payment-batch-row > div:last-child { justify-items: end; }
 .payment-batch-row small, .payment-batch-row span { color: var(--muted); }
+.admin-table-wrap { grid-column: 1 / -1; overflow-x: auto; border: 1px solid rgba(255, 243, 216, 0.14); border-radius: 9px; background: rgba(7, 11, 8, 0.42); scrollbar-width: thin; }
+.admin-data-table { width: 100%; border-collapse: collapse; color: var(--ink); font-size: 0.86rem; text-align: left; }
+.payment-review-table { min-width: 780px; }
+.venmo-handle-table { min-width: 480px; }
+.bet-management-table { min-width: 980px; }
+.admin-data-table th { padding: 9px 10px; border-bottom: 1px solid rgba(255, 243, 216, 0.2); color: rgba(222, 209, 182, 0.78); background: rgba(7, 11, 8, 0.82); font-size: 0.68rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.admin-data-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255, 243, 216, 0.1); vertical-align: middle; }
+.admin-data-table tbody tr:last-child td { border-bottom: 0; }
+.admin-data-table tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+.admin-data-table tr.ready-review { background: rgba(126, 226, 167, 0.07); }
+.admin-data-table tr.pending { background: rgba(239, 173, 82, 0.045); }
+.admin-data-table tr.confirmed { color: rgba(255, 243, 216, 0.78); }
+.admin-data-table button { width: auto; min-height: 32px; padding: 5px 9px; font-size: 0.76rem; white-space: nowrap; }
+.admin-data-table .venmo-input { min-width: 210px; }
+.admin-data-table .venmo-input input { min-height: 36px; padding: 7px 9px; }
+.table-status { font-size: 0.78rem; font-weight: 850; white-space: nowrap; }
+.table-status.confirmed { color: #bfe8bf; }
+.table-status.ready { color: #a9e5bd; }
+.table-status.waiting { color: #efad52; }
 .bet-admin-list { display: grid; gap: 7px; margin-top: 12px; }
 .bet-admin-row {
   display: grid;
@@ -901,6 +923,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .bet-admin-row > div:first-child { display: grid; gap: 3px; min-width: 0; }
 .bet-admin-row > div:first-child span,
 .bet-admin-row > div:first-child small { color: var(--muted); overflow-wrap: anywhere; }
+.bet-admin-row .bet-payment-status.confirmed { color: #bfe8bf; font-weight: 850; }
+.bet-admin-row .bet-payment-status.unconfirmed { color: #efad52; font-weight: 850; }
 .bet-admin-row > div:last-child { display: flex; gap: 7px; align-items: center; }
 .bet-admin-row button { min-height: 34px; padding: 7px 10px; }
 .bet-admin-row .delete-row { width: auto; margin: 0; text-align: center; }
@@ -940,6 +964,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .pending-bet-cart > div > button { grid-column: 1 / -1; width: 100%; }
   .payment-batch-row { grid-template-columns: 1fr; }
   .payment-batch-row > div:last-child { justify-items: stretch; }
+  .admin-data-table { font-size: 0.8rem; }
+  .admin-data-table th,
+  .admin-data-table td { padding: 8px; }
   .payment-alert { align-items: stretch; flex-direction: column; }
   .event-danger-zone { align-items: stretch; flex-direction: column; }
   .bet-admin-row { grid-template-columns: 1fr; }
