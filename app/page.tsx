@@ -526,7 +526,7 @@ function Winners({ payload }: { payload: EventPayload }) {
   if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
   const hostManaged = payload.event.poolMode === "host_managed";
-  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who-pays-whom plan"}</h3><SettlementPaymentDirectory payments={payments} searchable={!hostManaged} /><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} showPayout={hostManaged} /></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who pays who plan"}</h3><SettlementPaymentDirectory payments={payments} searchable={!hostManaged} /><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} showPayout={hostManaged} /></section>;
 }
 
 function SettlementPaymentDirectory({ payments, searchable }: { payments: Array<{ from: string; fromVenmo: string; to: string; toVenmo: string; amount: number }>; searchable: boolean }) {
