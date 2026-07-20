@@ -234,18 +234,19 @@ h1 {
 .fine-print { margin: 8px 0 0; color: rgba(222, 209, 182, 0.74); font-size: 0.82rem; line-height: 1.45; }
 .grid-form, .bet-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
 .bet-form { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.bettor-details { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 7px 9px 9px; border: 1px dashed rgba(222, 209, 182, 0.22); border-radius: 8px; background: linear-gradient(90deg, rgba(222, 209, 182, 0.055), rgba(222, 209, 182, 0.025)); }
+.bettor-details { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin: 0; padding: 7px 9px 9px; border: 1px solid rgba(222, 209, 182, 0.14); border-radius: 8px; background: rgba(222, 209, 182, 0.04); }
 .bettor-details legend { padding: 0 5px; color: rgba(222, 209, 182, 0.58); font-size: 0.67rem; font-weight: 850; letter-spacing: 0.06em; text-transform: uppercase; }
 .bettor-details label,
 .drop-player-fields label { gap: 4px; color: rgba(222, 209, 182, 0.66); font-size: 0.76rem; }
 .bettor-details input,
 .drop-player-fields input { min-height: 36px; padding-block: 7px; color: rgba(255, 243, 216, 0.9); }
-.wager-details { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px, 0.75fr) minmax(280px, 1.55fr); gap: 10px; margin: 0; padding: 12px; border: 1px solid rgba(240, 217, 121, 0.48); border-radius: 11px; background: radial-gradient(circle at 8% 0%, rgba(240, 217, 121, 0.16), transparent 36%), linear-gradient(145deg, rgba(17, 39, 26, 0.96), rgba(7, 15, 10, 0.96)); box-shadow: inset 0 1px rgba(255, 243, 216, 0.08), 0 12px 28px rgba(0, 0, 0, 0.22); }
-.wager-details legend { padding: 4px 10px; border: 1px solid rgba(240, 217, 121, 0.38); border-radius: 999px; color: #172016; background: linear-gradient(135deg, #f5e59b, #d8ae55); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24); font-family: var(--font-puffy), system-ui, sans-serif; font-size: 0.78rem; font-weight: 950; letter-spacing: 0.05em; text-transform: uppercase; }
-.wager-details > label { align-content: start; padding: 10px; border: 1px solid rgba(255, 243, 216, 0.12); border-radius: 8px; color: var(--ink); background: rgba(4, 10, 7, 0.42); }
+.wager-details { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(180px, 0.75fr) minmax(280px, 1.55fr); gap: 16px; margin: 0; padding: 11px 12px 12px; border: 1px solid rgba(217, 240, 194, 0.25); border-radius: 9px; background-color: rgba(14, 31, 21, 0.96); background-image: linear-gradient(rgba(217, 240, 194, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(217, 240, 194, 0.025) 1px, transparent 1px); background-size: 24px 24px; }
+.wager-details legend { padding: 0 6px; color: var(--mustard-light); font-family: var(--font-puffy), system-ui, sans-serif; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.04em; text-transform: uppercase; }
+.wager-details > label { align-content: start; color: var(--ink); }
+.wager-details > label + label { padding-left: 16px; border-left: 1px solid rgba(217, 240, 194, 0.16); }
 .wager-step-label { display: flex; align-items: center; gap: 7px; font-weight: 900; }
-.wager-step-label > b { display: inline-grid; width: 23px; height: 23px; flex: 0 0 23px; place-items: center; border: 1px solid rgba(255, 248, 204, 0.7); border-radius: 50%; color: #11190f; background: linear-gradient(135deg, #ffeaa0, #c98b39); box-shadow: 0 3px 8px rgba(0, 0, 0, 0.28); font-size: 0.75rem; }
-.bet-amount-field input { min-height: 48px; border-color: rgba(240, 217, 121, 0.66); background: rgba(4, 10, 7, 0.68); box-shadow: inset 0 0 0 1px rgba(240, 217, 121, 0.08); font-size: 1.12rem; font-weight: 900; }
+.wager-step-label > b { min-width: 28px; padding: 2px 4px; border: 1px solid rgba(240, 217, 121, 0.38); border-radius: 3px; color: var(--mustard-light); background: rgba(240, 217, 121, 0.06); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.7rem; text-align: center; }
+.bet-amount-field input { min-height: 46px; border-color: rgba(217, 240, 194, 0.3); background: rgba(5, 13, 8, 0.72); box-shadow: none; font-size: 1.08rem; font-weight: 900; }
 .bet-amount-field > small { color: rgba(222, 209, 182, 0.72); font-size: 0.75rem; font-weight: 700; }
 .venmo-input { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(7, 11, 8, 0.52); }
 .venmo-input > span { padding-left: 11px; color: rgba(222, 209, 182, 0.7); font-weight: 900; }
@@ -271,13 +272,13 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .bet-type-help { display: grid; gap: 2px; padding: 6px 8px; border-left: 3px solid rgb(var(--bet-accent)); background: rgba(var(--bet-accent), 0.09); }
 .bet-type-help b { color: rgb(var(--bet-accent)); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; }
 .bet-type-help small { color: var(--ink); font-size: 0.8rem; font-weight: 750; line-height: 1.25; }
-.pick-details { grid-column: 1 / -1; display: grid; gap: 9px; margin: 0; padding: 10px 12px 12px; border: 1px solid rgba(143, 184, 116, 0.3); border-radius: 10px; background: linear-gradient(145deg, rgba(143, 184, 116, 0.1), rgba(7, 15, 10, 0.6)); }
+.pick-details { grid-column: 1 / -1; display: grid; gap: 9px; margin: 0; padding: 10px 12px 12px; border: 1px solid rgba(217, 240, 194, 0.25); border-radius: 9px; background-color: rgba(14, 31, 21, 0.96); background-image: linear-gradient(rgba(217, 240, 194, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(217, 240, 194, 0.025) 1px, transparent 1px); background-size: 24px 24px; }
 .pick-details legend { padding: 0 6px; color: var(--ink); font-weight: 900; }
 .pick-details > label { max-width: 440px; }
 .pick-details .chicken-buttons,
 .pick-details .pick-grid { margin: 0; }
-.bet-form > button[type="submit"] { grid-column: 1 / -1; justify-self: end; width: min(100%, 270px); min-height: 48px; border: 1px solid rgba(255, 238, 157, 0.72); background: linear-gradient(135deg, #dfad50, #9e5f27); box-shadow: inset 0 1px rgba(255, 250, 214, 0.38), 0 10px 22px rgba(0, 0, 0, 0.28); font-family: var(--font-puffy), system-ui, sans-serif; font-size: 1rem; letter-spacing: 0.025em; }
-.bet-form > button[type="submit"]:hover { background: linear-gradient(135deg, #f0ca6f, #b56d2d); transform: translateY(-1px); }
+.bet-form > button[type="submit"] { grid-column: 1 / -1; justify-self: end; width: min(100%, 270px); min-height: 46px; border: 1px solid rgba(255, 238, 157, 0.58); background: #b87531; box-shadow: none; font-family: var(--font-puffy), system-ui, sans-serif; font-size: 1rem; letter-spacing: 0.02em; }
+.bet-form > button[type="submit"]:hover { background: #ca8a3e; }
 .check-row { display: inline-flex; width: fit-content; grid-template-columns: none; align-items: center; gap: 8px; color: var(--muted); font-size: 0.92rem; }
 .check-row input { width: auto; min-height: auto; }
 .form-ok { color: #d9f0c2; font-weight: 850; }
@@ -330,7 +331,10 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .chicken-buttons { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
 .chicken-buttons button { min-height: 58px; color: var(--ink); background: rgba(8, 13, 9, 0.66); box-shadow: none; text-align: left; }
 .chicken-buttons button span { display: block; color: var(--title-accent); font-size: 0.75rem; }
-.chicken-buttons button.selected { color: var(--ink); background: var(--accent-pop); border-color: rgba(255, 243, 216, 0.72); box-shadow: 0 2px 0 rgba(70, 58, 22, 0.32); }
+.pick-details .chicken-buttons { padding: 8px; border-radius: 7px; background: rgba(5, 13, 8, 0.58); }
+.pick-details .chicken-buttons button { border-color: rgba(217, 240, 194, 0.16); background: #1b3424; }
+.pick-details .chicken-buttons button:hover { border-color: rgba(240, 217, 121, 0.55); background: #23432e; }
+.chicken-buttons button.selected { color: #172016; background: var(--mustard-light); border-color: var(--mustard-light); box-shadow: none; }
 .game-format-card,
 .drop-price-card {
   display: grid;
@@ -983,6 +987,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .hero-grid, .split, .grid-form, .bet-form, .pick-grid, .admin-unlock, .drop-player-fields, .drop-insights { grid-template-columns: 1fr; }
   .bettor-details { grid-template-columns: 1fr; }
   .wager-details { grid-template-columns: 1fr; padding: 9px; }
+  .wager-details > label + label { padding-top: 10px; padding-left: 0; border-top: 1px solid rgba(217, 240, 194, 0.16); border-left: 0; }
   .bet-form > button[type="submit"] { width: 100%; }
   .drop-insights p { grid-column: auto; }
   .scoreboard { width: 100%; justify-self: stretch; grid-template-columns: repeat(3, minmax(0, 1fr)); }
