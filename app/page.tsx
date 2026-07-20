@@ -642,7 +642,7 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
       <div><span>3. Payment ID</span><strong className="payment-id-badge">{paymentId}</strong><button type="button" onClick={() => copyPaymentField("payment-id", paymentId)}>{copied === "payment-id" ? "Copied!" : "Copy"}</button></div>
       <div><span>4. Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
     </div>
-    <p>Clicking Pay sends this batch to Coop Boss for verification and opens the host’s Venmo profile with your total copied. Your host will verify the actual receipt before the bets count.</p>
+    <p>Click to open the host’s Venmo profile with your total copied. Paste the event note shown above, review everything before sending, and the host will verify receipt.</p>
   </aside>;
 }
 
