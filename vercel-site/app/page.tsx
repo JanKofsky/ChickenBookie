@@ -654,11 +654,12 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     window.setTimeout(() => setCopied(""), 1400);
   }
   async function leaveForVenmo() {
+    const submittedUpdate = updateSubmitted(true);
     await copyPaymentField("note", note);
-    await updateSubmitted(true);
+    await submittedUpdate;
   }
   async function updateSubmitted(submitted: boolean) {
-    const response = await fetch("/api/bets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, paymentId, venmo: pendingBets[0].venmo, submitted }) });
+    const response = await fetch("/api/bets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, paymentId, venmo: pendingBets[0].venmo, submitted }), keepalive: true });
     const data = await response.json();
     if (!response.ok) { window.alert(friendlyError(data.error ?? "Could not update payment status.")); return false; }
     setPayload(data);
@@ -919,11 +920,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
     paymentGroups.set(key, group);
   }
   const paymentBatches = Array.from(paymentGroups.values()).sort((a, b) => {
-    const rank = (group: { count: number; submittedCount: number; verifiedCount: number }) => group.verifiedCount === group.count ? 2 : group.submittedCount === group.count ? 0 : 1;
+    const rank = (group: { count: number; submittedCount: number; verifiedCount: number }) => group.verifiedCount === group.count ? 2 : group.submittedCount > 0 ? 0 : 1;
     return rank(a) - rank(b);
   });
   const pendingPaymentBatches = paymentBatches.filter((group) => group.verifiedCount < group.count);
-  const reportedSentBatches = pendingPaymentBatches.filter((group) => group.submittedCount === group.count);
   return (
     <section className="panel coop-boss">
       <div className="coop-boss-heading"><h2>Coop Boss</h2>{!isTestEvent && <div className="admin-session-status"><span>Admin unlocked</span><button type="button" className="ghost-button" onClick={() => setUnlocked(false)}>Lock</button></div>}</div>
@@ -936,12 +936,12 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         <div>
           <a href="#admin-event-setup">Event setup</a>
           {!isDropEvent && <a href="#admin-contestants">Contestants & races</a>}
-          {poolMode === "host_managed" && <a href="#admin-payments">Payments{reportedSentBatches.length > 0 && <b>{reportedSentBatches.length}</b>}</a>}
+          {poolMode === "host_managed" && <a href="#admin-payments">Payments{pendingPaymentBatches.length > 0 && <b>{pendingPaymentBatches.length}</b>}</a>}
           <a href="#admin-bet-management">Bet management</a>
           <a href="#admin-results">Results</a>
         </div>
       </nav>
-      {poolMode === "host_managed" && reportedSentBatches.length > 0 && <div className="notice payment-alert"><div><b>{reportedSentBatches.length} payment{reportedSentBatches.length === 1 ? " is" : "s are"} ready for review</b><span>Match each payment ID in Venmo, then approve it so those bets count.</span></div><a href="#admin-payments">Review & approve</a></div>}
+      {poolMode === "host_managed" && pendingPaymentBatches.length > 0 && <div className="notice payment-alert"><div><b>{pendingPaymentBatches.length} payment{pendingPaymentBatches.length === 1 ? " needs" : "s need"} review</b><span>Match each payment ID in Venmo, then approve received payments.</span></div><a href="#admin-payments">Review payments</a></div>}
 
       <form id="admin-event-setup" className="grid-form admin-section-target coop-section coop-event-section" onSubmit={saveConfig}>
         <h3>Event setup</h3>
@@ -990,10 +990,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
       </form>
 
       {payload.event.poolMode === "host_managed" && <section id="admin-payments" className="payment-batch-manager admin-section-target coop-section">
-        <div className="bet-manager-heading"><div><h3>Payment review & approval</h3><p className="fine-print">Match the ID in Venmo, then approve the batch.</p></div><strong>{reportedSentBatches.length} to review</strong></div>
+        <div className="bet-manager-heading"><div><h3>Payment review & approval</h3><p className="fine-print">Match the ID in Venmo, then approve the batch.</p></div><strong>{pendingPaymentBatches.length} to review</strong></div>
         {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="admin-table-wrap"><table className="admin-data-table payment-review-table"><thead><tr><th>Bettor</th><th>Payment ID</th><th>Venmo</th><th>Bets</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{paymentBatches.map((group) => {
           const verified = group.verifiedCount === group.count;
-          const readyForReview = !verified && group.submittedCount === group.count;
+          const readyForReview = !verified && group.submittedCount > 0;
           return <tr className={verified ? "confirmed" : readyForReview ? "ready-review" : "pending"} key={group.paymentId || normalizeName(group.bettor)}><td><strong>{group.bettor}</strong></td><td><span className="payment-id-badge">{group.paymentId}</span></td><td>{group.venmo}</td><td>{group.count}</td><td><strong>{money(group.total)}</strong></td><td><span className={`table-status ${verified ? "confirmed" : readyForReview ? "ready" : "waiting"}`}>{verified ? "✓ Approved" : readyForReview ? "Ready to review" : "Waiting for bettor"}</span></td><td><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo" : readyForReview ? "Approve" : "Confirm"}</button></td></tr>;
         })}</tbody></table></div>}
       </section>}
