@@ -784,6 +784,28 @@ export async function markPaymentSubmitted(input: { eventId: number; paymentId: 
   return getEventPayload(input.eventId);
 }
 
+export async function removePendingBet(input: { eventId: number; betId: number; paymentId: string; venmo: string }) {
+  await ensureSchema();
+  const paymentId = input.paymentId.trim().toUpperCase();
+  const venmo = normalizeVenmo(input.venmo);
+  if (!paymentId || !venmo) throw new Error("Payment ID and bettor Venmo are required.");
+  const removed = await sql`
+    DELETE FROM bets b
+    USING bettors bo, events e
+    WHERE b.id = ${input.betId}
+      AND b.event_id = ${input.eventId}
+      AND b.payment_id = ${paymentId}
+      AND b.bettor_id = bo.id
+      AND b.event_id = e.id
+      AND lower(bo.venmo) = lower(${venmo})
+      AND e.pool_mode = 'host_managed'
+      AND b.payment_verified = FALSE
+      AND b.payment_submitted = FALSE
+    RETURNING b.id`;
+  if (!removed.rowCount) throw new Error("That bet can no longer be removed from this unpaid batch.");
+  return getEventPayload(input.eventId);
+}
+
 export async function verifyBettorPayments(input: { eventId: number; adminCode: string; paymentId: string; verified?: boolean }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addBet, markPaymentSubmitted } from "../../../lib/chickenBookie";
+import { addBet, markPaymentSubmitted, removePendingBet } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -37,6 +37,16 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not mark payment as sent.") }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const payload = await removePendingBet({ eventId: Number(body.eventId), betId: Number(body.betId), paymentId: String(body.paymentId ?? ""), venmo: String(body.venmo ?? "") });
+    return NextResponse.json(payload);
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not remove that bet from the unpaid batch.") }, { status: 400 });
   }
 }
 

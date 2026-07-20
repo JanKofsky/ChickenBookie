@@ -581,6 +581,7 @@ function VenmoHandle({ handle }: { handle: string }) {
 
 function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPayload; bettor: string; setPayload: (payload: EventPayload) => void }) {
   const [copied, setCopied] = useState("");
+  const [cartMessage, setCartMessage] = useState("");
   const normalizedBettor = normalizeName(bettor);
   if (!normalizedBettor) return null;
   const allPendingBets = payload.bets.filter((bet) => !bet.paymentVerified && normalizeName(bet.bettor) === normalizedBettor);
@@ -620,12 +621,21 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     setPayload(data);
     return true;
   }
+  async function removeFromCart(bet: Bet) {
+    setCartMessage(`Removing bet #${bet.id}...`);
+    const response = await fetch("/api/bets", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, betId: bet.id, paymentId, venmo: pendingBets[0].venmo }) });
+    const data = await response.json();
+    if (!response.ok) { setCartMessage(friendlyError(data.error ?? "Could not remove that bet.")); return; }
+    setPayload(data);
+    setCartMessage(`Bet #${bet.id} removed. Your total was updated.`);
+  }
   if (paymentSubmitted) return <aside className="host-payment-summary payment-congrats"><div><span className="payment-hatch" aria-hidden="true">🥚 → 🐣</span><span>Payment ID <span className="payment-id-badge">{paymentId}</span></span><h3>Egg-cellent! Payment is headed to the Coop Boss.</h3><p>Your host will verify the receipt before your covered bets count.</p><button type="button" className="payment-retry-link" onClick={() => { void updateSubmitted(false); }}>Payment didn’t go through? Try again</button></div></aside>;
   return <aside className="host-payment-summary" aria-live="polite">
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
+    <section className="pending-bet-cart"><header><span>Your pending bet cart</span><strong>{pendingBets.length} bet{pendingBets.length === 1 ? "" : "s"}</strong></header>{pendingBets.map((bet) => <div key={bet.id}><span><b>{describeBet(bet, payload.chickens, payload.races)}</b><small>Bet #{bet.id}</small></span><strong>{money(bet.stake)}</strong><button type="button" aria-label={`Remove bet ${bet.id}`} onClick={() => { void removeFromCart(bet); }}>Remove</button></div>)}{cartMessage && <p>{cartMessage}</p>}</section>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName} · Payment ID <span className="payment-id-badge">{paymentId}</span></small></div>
-    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} onClick={leaveForVenmo}>Send my full {money(total)} payment to the host ({payload.event.hostVenmo})</a>
+    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
     <div className="payment-helper-menu">
       <div><span>1. Host recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>

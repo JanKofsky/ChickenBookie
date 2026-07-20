@@ -793,6 +793,17 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .payment-flow-steps li.active > b { color: #07120c; background: #7ee2a7; }
 .payment-flow-steps span { display: grid; color: var(--ink); font-weight: 850; }
 .payment-flow-steps span strong { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+.pending-bet-cart { grid-column: 1 / -1; display: grid; gap: 7px; padding: 12px; border: 1px solid rgba(217, 240, 194, 0.3); border-radius: 10px; background: rgba(7, 11, 8, 0.42); }
+.pending-bet-cart header { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.pending-bet-cart header span { color: #d9f0c2; font-weight: 900; }
+.pending-bet-cart header strong { color: var(--muted); font-size: 0.8rem; }
+.pending-bet-cart > div { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+.pending-bet-cart > div > span { display: grid; gap: 2px; min-width: 0; }
+.pending-bet-cart > div > span b { overflow-wrap: anywhere; }
+.pending-bet-cart > div > span small { color: var(--muted); }
+.pending-bet-cart > div > strong { color: #d9f0c2; }
+.pending-bet-cart > div > button { min-height: 32px; padding: 6px 9px; color: #ffe6df; background: rgba(183, 68, 57, 0.36); box-shadow: none; }
+.pending-bet-cart > p { margin: 2px 0 0; color: var(--muted); font-size: 0.8rem; }
 .host-payment-summary > div span { color: var(--muted); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
 .host-payment-summary > div strong { color: #d9f0c2; font-size: 1.8rem; }
 .host-payment-summary > div small { color: var(--muted); }
@@ -902,6 +913,9 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .payment-flow-steps,
   .payment-helper-menu { grid-column: auto; }
   .payment-flow-steps { grid-template-columns: 1fr; }
+  .pending-bet-cart { grid-column: auto; }
+  .pending-bet-cart > div { grid-template-columns: minmax(0, 1fr) auto; }
+  .pending-bet-cart > div > button { grid-column: 1 / -1; width: 100%; }
   .payment-helper-menu > div { grid-template-columns: 1fr auto; }
   .payment-helper-menu > div span { grid-column: 1 / -1; }
   .payment-batch-row { grid-template-columns: 1fr; }
