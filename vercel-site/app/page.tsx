@@ -229,7 +229,7 @@ export default function Home() {
           {tab === "flock" && <Flock chickens={payload.chickens} races={payload.races} officialRule={payload.event.officialRule} />}
           {tab === "tickets" && <Tickets payload={payload} />}
           {tab === "winners" && <Winners payload={payload} />}
-          {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} initialAdminCode={createdAdminCode} />}
+          {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} initialAdminCode={createdAdminCode} onDeleted={leaveEvent} />}
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
         </>
       )}
@@ -274,7 +274,7 @@ function CreateEvent({ onCreated }: { onCreated: (payload: EventPayload, adminCo
     <label className="wide-field">Event format<select value={gameType} onChange={(event) => setGameType(event.target.value as GameType)}><option value="race">Chicken Race</option><option value="chicken_drop">Chicken Drop (aka Chicken Shit Bingo)</option></select></label>
     {gameType === "race" ? <>
       <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
-      <label>Copy event code (optional)<input value={copyCode} onChange={(event) => setCopyCode(event.target.value)} /></label>
+      <label>Copy another race setup (optional)<input autoComplete="off" value={copyCode} placeholder="Leave blank for a fresh flock" onChange={(event) => setCopyCode(event.target.value)} /><small className="field-note">Only enter a code when you intentionally want that event’s chicken names, photos, races, and rules.</small></label>
     </> : <>
       <label>Grid columns (across)<input type="number" min="1" max="500" step="1" value={dropGridColumns} onChange={(event) => setDropGridColumns(event.target.value)} /></label>
       <label>Grid rows (down)<input type="number" min="1" max="500" step="1" value={dropGridRows} onChange={(event) => setDropGridRows(event.target.value)} /></label>
@@ -395,6 +395,10 @@ function DropNumberGrid({ payload, selectedNumber = null, onSelect }: { payload:
   </div>;
 }
 
+function chickensForRace(race: Race, chickens: Chicken[]) {
+  return race.chickenIds.length ? chickens.filter((chicken) => race.chickenIds.includes(chicken.id)) : chickens;
+}
+
 function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (payload: EventPayload) => void }) {
   const [bettor, setBettor] = useState("");
   const [venmo, setVenmo] = useState("");
@@ -406,6 +410,15 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
   const availableBetTypes = payload.event.resultMode === "full_order" ? fullOrderBetTypes : simpleBetTypes;
   const needed = betType === "exact_ticket" || betType === "any_order_three" ? payload.races.length : betType === "exacta" ? 2 : betType === "trifecta" ? 3 : 1;
   const selectedPicks = picks.slice(0, needed);
+  const selectedRace = payload.races.find((item) => item.race === race) ?? payload.races[0];
+  const enteredChickenIds = new Set(payload.races.flatMap((item) => chickensForRace(item, payload.chickens).map((chicken) => chicken.id)));
+  const sweepChickenIds = new Set(payload.chickens.filter((chicken) => payload.races.every((item) => chickensForRace(item, payload.chickens).some((entry) => entry.id === chicken.id))).map((chicken) => chicken.id));
+  const pickerChickens = raceBetTypes.includes(betType) && selectedRace
+    ? chickensForRace(selectedRace, payload.chickens)
+    : betType === "sweep"
+      ? payload.chickens.filter((chicken) => sweepChickenIds.has(chicken.id))
+      : payload.chickens.filter((chicken) => enteredChickenIds.has(chicken.id));
+  const exactTicketOptions = betType === "exact_ticket" ? payload.races.map((item) => chickensForRace(item, payload.chickens)) : undefined;
   const resultsOfficial = Object.keys(payload.results).length > 0;
   const existingName = useMemo(() => {
     const normalized = normalizeName(bettor);
@@ -430,8 +443,8 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
     {payload.event.poolMode === "host_managed" && Number(stake) > 0 && <p className="fine-print">This {money(Number(stake))} bet will be added to your running unpaid total.</p>}
     <label>Bet type<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select></label>
-    {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => setRace(Number(event.target.value))}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
-    <ChickenPicker chickens={payload.chickens} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
+    {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => { setRace(Number(event.target.value)); setPicks([]); }}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
+    <ChickenPicker chickens={pickerChickens} optionsByIndex={exactTicketOptions} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
     <button type="submit">{payload.event.poolMode === "host_managed" ? "Add bet to my unpaid total" : "Add bet"}</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
   </form>{payload.event.poolMode === "host_managed" && <HostPaymentSummary payload={payload} bettor={bettor} setPayload={setPayload} />}</section>;
 }
@@ -445,7 +458,7 @@ function SettlementHelpTip({ payload }: { payload: EventPayload }) {
     <span className="help-tip-content" id={tipId}>
       <b>{isDropEvent ? "Chicken Drop" : "Chicken Race"} · {hostManaged ? "Host-maintained pool" : "Player-to-player settlement"}</b>
       {hostManaged
-        ? `Send ${isDropEvent ? "the fixed ticket price" : "each race-bet stake"} to ${payload.event.hostVenmo}. The ${isDropEvent ? "square" : "bet"} stays pending until the host confirms payment. After the official result, the host sends each bettor's full payout.`
+        ? `Send ${isDropEvent ? "the fixed ticket price" : "each race-bet stake"} to the host (${payload.event.hostVenmo}). The ${isDropEvent ? "square" : "bet"} stays pending until the host confirms payment. After the official result, the host sends each bettor's full payout.`
         : `Venmo is optional. After the official ${isDropEvent ? "winning square" : "race results"}, Chicken Bookie suggests direct player-to-player payments; players decide whether and how to settle.`}
       <small>{isDropEvent
         ? "Tickets on the winning square get their ticket price back and split the losing-square pool equally. If nobody picked it, all counted tickets are refunded."
@@ -454,10 +467,10 @@ function SettlementHelpTip({ payload }: { payload: EventPayload }) {
   </span>;
 }
 
-function ChickenPicker({ chickens, picks, setPicks, count, exact, races, labels }: { chickens: Chicken[]; picks: number[]; setPicks: (picks: number[]) => void; count: number; exact: boolean; races: Race[]; labels?: string[] }) {
+function ChickenPicker({ chickens, optionsByIndex, picks, setPicks, count, exact, races, labels }: { chickens: Chicken[]; optionsByIndex?: Chicken[][]; picks: number[]; setPicks: (picks: number[]) => void; count: number; exact: boolean; races: Race[]; labels?: string[] }) {
   if (exact) {
     const fields = labels ?? races.map((race) => race.name);
-    return <div className="pick-grid">{fields.slice(0, count).map((label, idx) => <label key={label}>{label}<select value={picks[idx] ?? ""} onChange={(event) => { const next = [...picks]; next[idx] = Number(event.target.value); setPicks(next); }}><option value="">Pick chicken</option>{chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}</div>;
+    return <div className="pick-grid">{fields.slice(0, count).map((label, idx) => <label key={label}>{label}<select value={picks[idx] ?? ""} onChange={(event) => { const next = [...picks]; next[idx] = Number(event.target.value); setPicks(next); }}><option value="">Pick chicken</option>{(optionsByIndex?.[idx] ?? chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}</div>;
   }
   return <div className="chicken-buttons">{chickens.map((chicken) => {
     const active = picks.includes(chicken.id);
@@ -502,7 +515,24 @@ function Winners({ payload }: { payload: EventPayload }) {
   if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
   const hostManaged = payload.event.poolMode === "host_managed";
-  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who-pays-whom plan"}</h3><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} showPayout={hostManaged} /></section>;
+  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who-pays-whom plan"}</h3><SettlementPaymentDirectory payments={payments} searchable={!hostManaged} /><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} showPayout={hostManaged} /></section>;
+}
+
+function SettlementPaymentDirectory({ payments, searchable }: { payments: Array<{ from: string; fromVenmo: string; to: string; toVenmo: string; amount: number }>; searchable: boolean }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [showAll, setShowAll] = useState(false);
+  const pageSize = 12;
+  const query = normalizeName(search).replace(/^@/, "");
+  const matching = query ? payments.filter((payment) => [payment.from, payment.fromVenmo, payment.to, payment.toVenmo].some((value) => normalizeName(value).replace(/^@/, "").includes(query))) : payments;
+  const pageCount = showAll ? 1 : Math.max(1, Math.ceil(matching.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const visible = showAll ? matching : matching.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+  return <div className="settlement-payment-directory">
+    {searchable && <div className="settlement-payment-search"><label>Find your payments<input type="search" value={search} placeholder="Type your name or Venmo" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matching.length} payment${matching.length === 1 ? "" : "s"} involving “${search.trim()}”` : `${payments.length} total payment${payments.length === 1 ? "" : "s"}`}</span><small>Search your name to see both what you pay and what you receive. Clear the search to return to the complete plan.</small>{payments.length > pageSize && <button type="button" className="ghost-button settlement-show-all" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show 12 at a time" : `Show all ${payments.length}`}</button>}</div>}
+    <div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : visible.length === 0 ? <p>No payments match that name or Venmo.</p> : visible.map((payment, idx) => <div className="payment" key={`${payment.from}-${payment.to}-${currentPage}-${idx}`}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div>
+    {pageCount > 1 && <nav className="bet-pagination settlement-payment-pages" aria-label="Settlement payment pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}
+  </div>;
 }
 
 function SettlementExplainer({ payload }: { payload: EventPayload }) {
@@ -514,8 +544,8 @@ function SettlementExplainer({ payload }: { payload: EventPayload }) {
     <div>
       <p><b>{isHostManaged ? "Host-maintained pool:" : "Player-to-player settlement:"}</b> {isHostManaged
         ? isDropEvent
-          ? "Players send the fixed ticket price to the host. Only squares whose payments the host confirms enter the pool. After the winning square is official, the host sends each player the full payout shown below."
-          : "Bettors send each race-bet stake to the host. Only bets whose payments the host confirms enter the pool. After race results are official, the host sends each bettor the full payout shown below."
+          ? `Players send the fixed ticket price to the host (${payload.event.hostVenmo}). Only squares whose payments the host confirms enter the pool. After the winning square is official, the host sends each player the full payout shown below.`
+          : `Bettors send each race-bet stake to the host (${payload.event.hostVenmo}). Only bets whose payments the host confirms enter the pool. After race results are official, the host sends each bettor's full payout shown below.`
         : isDropEvent
           ? "Venmo is not required and nobody prepays the site or host. After the winning square is official, the optional payment list shows how players could settle the Chicken Drop directly with one another."
           : "Venmo is not required and nobody prepays the site or host. After race results are official, the optional payment list shows how bettors could settle directly with one another."}</p>
@@ -595,9 +625,9 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName} · Payment ID <span className="payment-id-badge">{paymentId}</span></small></div>
-    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} onClick={leaveForVenmo}>Pay my full {money(total)} total to {payload.event.hostVenmo}</a>
+    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} onClick={leaveForVenmo}>Send my full {money(total)} payment to the host ({payload.event.hostVenmo})</a>
     <div className="payment-helper-menu">
-      <div><span>1. Recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
+      <div><span>1. Host recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
       <div><span>3. Payment ID</span><strong className="payment-id-badge">{paymentId}</strong><button type="button" onClick={() => copyPaymentField("payment-id", paymentId)}>{copied === "payment-id" ? "Copied!" : "Copy"}</button></div>
       <div><span>4. Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
@@ -670,7 +700,7 @@ function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: stri
   </div>;
 }
 
-function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: EventPayload; setPayload: (payload: EventPayload) => void; initialAdminCode?: string }) {
+function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { payload: EventPayload; setPayload: (payload: EventPayload) => void; initialAdminCode?: string; onDeleted: () => void }) {
   const isDropEvent = payload.event.gameType === "chicken_drop";
   const isTestEvent = payload.event.code === "test" || payload.event.code === "test-drop";
   const [adminCode, setAdminCode] = useState(initialAdminCode);
@@ -731,6 +761,13 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not delete bet.")); else { setPayload(data); setMessage("Bet deleted."); }
   }
+  async function removeEvent() {
+    if (!window.confirm(`Delete “${payload.event.name}” (${payload.event.code}) and every bet, result, chicken, and race in it? This cannot be undone.`)) return;
+    const response = await fetch("/api/events", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode }) });
+    const data = await response.json();
+    if (!response.ok) { setMessage(friendlyError(data.error ?? "Could not delete event.")); return; }
+    onDeleted();
+  }
   async function updatePaymentBatch(paymentId: string, bettor: string, count: number, total: number, verified: boolean) {
     const prompt = verified
       ? `Confirm payment ${paymentId} from ${bettor} for ${money(total)}? All ${count} covered bet${count === 1 ? "" : "s"} will start counting.`
@@ -776,7 +813,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
     try {
       const response = await fetch("/api/admin", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
       const data = await response.json().catch(() => ({ error: "Chicken photos are too large for this save. Try fewer or smaller photos." }));
-      if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save event settings.")); else { setPayload(data); setMessage("Event settings saved."); }
+      if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save event settings.")); else { setPayload(data); setChickens(data.chickens); setRaces(data.races); setMessage("Event settings saved."); }
     } catch {
       setMessage("Could not save event settings. If you added several photos, try saving fewer photos at a time.");
     }
@@ -799,6 +836,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
   const dropGridShapeLocked = payload.bets.length > 0 || payload.event.dropWinningNumber != null;
   const dropTicketPriceLocked = payload.bets.length > 0;
   const settlementTypeLocked = payload.bets.length > 0;
+  const raceStructureLocked = payload.bets.length > 0 || Object.keys(payload.results).length > 0;
   const configuredDropSections = (Number(dropGridColumns) || 0) * (Number(dropGridRows) || 0);
   const normalizedBetSearch = betSearch.trim().toLowerCase();
   const matchingBets = payload.bets.filter((bet) => !normalizedBetSearch || [
@@ -871,11 +909,15 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
         </> : <>
           <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
           <label className="wide-field">Race rules<textarea value={officialRule} placeholder="first to the marshmallow wins" onChange={(event) => setOfficialRule(event.target.value)} rows={3} /></label>
-          <div id="admin-contestants" className="wide-field admin-section-target admin-subsection-heading"><h3>Contestants & race card</h3><p className="fine-print">Edit race details, chicken names, notes, and photos.</p></div>
+          <div id="admin-contestants" className="wide-field admin-section-target admin-subsection-heading"><h3>Contestants & race card</h3><p className="fine-print">Start small and add only what you need. Adding and removing locks after the first bet or official result.</p></div>
           {races.map((race, idx) => <div className="admin-card" key={race.race}>
             <label>Race name<input value={race.name} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label>
             <label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label>
+            <label className="check-row race-roster-toggle"><input type="checkbox" disabled={raceStructureLocked} checked={race.chickenIds.length > 0} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, chickenIds: event.target.checked ? chickens.map((chicken) => chicken.id) : [] } : item))} /> Use a different flock for this race</label>
+            {race.chickenIds.length > 0 && <div className="race-roster-picker"><span>Chickens running in this race</span>{chickens.map((chicken) => <label className="check-row" key={chicken.id}><input type="checkbox" disabled={raceStructureLocked} checked={race.chickenIds.includes(chicken.id)} onChange={(event) => { const chickenIds = event.target.checked ? [...race.chickenIds, chicken.id] : race.chickenIds.filter((id) => id !== chicken.id); if (!chickenIds.length) return; setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, chickenIds } : item)); }} /> {chicken.name}</label>)}</div>}
+            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || races.length === 1} title="Delete race" aria-label={`Delete ${race.name}`} onClick={() => setRaces(races.filter((_, itemIdx) => itemIdx !== idx))}>🗑️</button>
           </div>)}
+          <button type="button" className="wide-field add-setup-row" disabled={raceStructureLocked} onClick={() => { const race = Math.max(0, ...races.map((item) => item.race)) + 1; setRaces([...races, { race, name: `Race ${race}`, description: "Add race details.", chickenIds: [] }]); }}>+ Add race</button>
           <h3>Flock notes</h3>
           {chickens.map((chicken, idx) => <div className="admin-card chicken-admin-card" key={chicken.id}>
             <ChickenPhoto chicken={chicken} preview />
@@ -883,9 +925,12 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
             <label>Coop note<textarea value={chicken.bio ?? ""} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, bio: event.target.value } : item))} rows={3} /></label>
             <label>Chicken photo<input type="file" accept="image/*" onChange={(event) => uploadChickenPhoto(chicken.id, event.target.files?.[0] ?? null)} /></label>
             {chicken.photoUrl && <button type="button" onClick={() => setChickens(chickens.map((item) => item.id === chicken.id ? { ...item, photoUrl: null } : item))}>Remove photo</button>}
+            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || chickens.length === 1} title="Delete chicken" aria-label={`Delete ${chicken.name}`} onClick={() => { const remaining = chickens.filter((_, itemIdx) => itemIdx !== idx); setChickens(remaining); setRaces(races.map((item) => { if (!item.chickenIds.length) return item; const chickenIds = item.chickenIds.filter((id) => id !== chicken.id); return { ...item, chickenIds: chickenIds.length ? chickenIds : remaining.map((entry) => entry.id) }; })); }}>🗑️</button>
           </div>)}
+          <button type="button" className="wide-field add-setup-row" disabled={raceStructureLocked} onClick={() => { const id = Math.min(0, ...chickens.map((item) => item.id)) - 1; setChickens([...chickens, { id, slot: chickens.length + 1, name: `Chicken ${chickens.length + 1}`, photoUrl: null, bio: "" }]); }}>+ Add chicken</button>
         </>}
         <button type="submit">Save event setup</button>
+        <div className="wide-field event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>🗑️ Delete event</button></div>
       </form>
 
       <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
@@ -895,8 +940,8 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
         <h4 className="wide-field">{isDropEvent ? "Official Chicken Drop result" : "Official race results"}</h4>
         {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
           <h3>{race.name}</h3>
-          {payload.chickens.map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
-        </div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{payload.chickens.map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
+          {chickensForRace(race, payload.chickens).map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
+        </div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
         <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
         {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
       </form>

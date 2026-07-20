@@ -1,7 +1,7 @@
 import { sql } from "./db";
 
 export type Chicken = { id: number; slot: number; name: string; photoUrl: string | null; bio: string };
-export type Race = { race: number; name: string; description: string };
+export type Race = { race: number; name: string; description: string; chickenIds: number[] };
 export type EventRecord = {
   id: number;
   code: string;
@@ -70,15 +70,17 @@ export const BET_TYPES: Record<BetType, string> = {
   drop_number: "Chicken Drop number"
 };
 
-const DEFAULT_CHICKENS = [
+const CORN_HUB_CHICKENS = [
   "Tilly", "Pepperoni", "Peanut", "Joan Rivers", "Jetcar Junior", "Maple Creamie",
   "Squish", "Booger", "Dirty Boi", "Guppy Troupe", "Sheryl Crow", "Jiminy Giant"
 ];
+const NEW_EVENT_CHICKENS = ["Chicken 1"];
 const DEFAULT_RACES: Race[] = [
-  { race: 1, name: "Race 1 - Barnyard Dash", description: "A clean sprint across the coop." },
-  { race: 2, name: "Race 2 - The Hay Bale Hustle", description: "A longer scoot with a little barnyard nonsense." },
-  { race: 3, name: "Race 3 - The Coop Gauntlet", description: "The big finale, with the most distractions." }
+  { race: 1, name: "Race 1 - Barnyard Dash", description: "A clean sprint across the coop.", chickenIds: [] },
+  { race: 2, name: "Race 2 - The Hay Bale Hustle", description: "A longer scoot with a little barnyard nonsense.", chickenIds: [] },
+  { race: 3, name: "Race 3 - The Coop Gauntlet", description: "The big finale, with the most distractions.", chickenIds: [] }
 ];
+const NEW_EVENT_RACES: Race[] = [{ race: 1, name: "Race 1", description: "Add race details.", chickenIds: [] }];
 const DEFAULT_CLOSE = "2026-07-18T17:30:00-04:00";
 const DEFAULT_TIMEZONE = "America/New_York";
 
@@ -183,6 +185,13 @@ export async function ensureSchema() {
       name TEXT NOT NULL,
       description TEXT NOT NULL,
       UNIQUE(event_id, race)
+    )`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS race_chickens (
+      event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+      race INTEGER NOT NULL,
+      chicken_id INTEGER NOT NULL REFERENCES chickens(id) ON DELETE CASCADE,
+      PRIMARY KEY(event_id, race, chicken_id)
     )`;
   await sql`
     CREATE TABLE IF NOT EXISTS bettors (
@@ -442,8 +451,8 @@ async function ensureDefaultEvent() {
     VALUES ('corn hub', 'The Great American Chicken Race', 'NekoFatty123!', ${DEFAULT_CLOSE}, ${DEFAULT_TIMEZONE}, 'first to the marshmallow wins', 'winner')
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
-  for (let i = 0; i < DEFAULT_CHICKENS.length; i += 1) {
-    await sql`INSERT INTO chickens (event_id, slot, name) VALUES (${eventId}, ${i + 1}, ${DEFAULT_CHICKENS[i]})`;
+  for (let i = 0; i < CORN_HUB_CHICKENS.length; i += 1) {
+    await sql`INSERT INTO chickens (event_id, slot, name) VALUES (${eventId}, ${i + 1}, ${CORN_HUB_CHICKENS[i]})`;
   }
   for (const race of DEFAULT_RACES) {
     await sql`INSERT INTO races (event_id, race, name, description) VALUES (${eventId}, ${race.race}, ${race.name}, ${race.description})`;
@@ -460,10 +469,11 @@ export async function getEventByCode(code: string) {
 }
 
 export async function getEventPayload(eventId: number): Promise<EventPayload> {
-  const [eventResult, chickensResult, racesResult, betsResult, resultsResult] = await Promise.all([
+  const [eventResult, chickensResult, racesResult, raceChickensResult, betsResult, resultsResult] = await Promise.all([
     sql`SELECT * FROM events WHERE id = ${eventId}`,
     sql`SELECT id, slot, name, photo_url, bio FROM chickens WHERE event_id = ${eventId} ORDER BY slot`,
     sql`SELECT race, name, description FROM races WHERE event_id = ${eventId} ORDER BY race`,
+    sql`SELECT race, chicken_id FROM race_chickens WHERE event_id = ${eventId} ORDER BY race, chicken_id`,
     sql`SELECT b.*, bo.name AS bettor, bo.venmo FROM bets b JOIN bettors bo ON bo.id = b.bettor_id WHERE b.event_id = ${eventId} ORDER BY b.created_at DESC, b.id DESC`,
     sql`SELECT race, chicken_id FROM results WHERE event_id = ${eventId}`
   ]);
@@ -488,7 +498,12 @@ export async function getEventPayload(eventId: number): Promise<EventPayload> {
     dropWinningNumber: rawEvent.drop_winning_number == null ? null : Number(rawEvent.drop_winning_number)
   };
   const chickens = chickensResult.rows.map((row) => ({ id: Number(row.id), slot: Number(row.slot), name: row.name, photoUrl: row.photo_url, bio: row.bio ?? "" })) as Chicken[];
-  const races = racesResult.rows.map((row) => ({ race: Number(row.race), name: row.name, description: row.description })) as Race[];
+  const raceChickenIds = new Map<number, number[]>();
+  for (const row of raceChickensResult.rows) {
+    const race = Number(row.race);
+    raceChickenIds.set(race, [...(raceChickenIds.get(race) ?? []), Number(row.chicken_id)]);
+  }
+  const races = racesResult.rows.map((row) => ({ race: Number(row.race), name: row.name, description: row.description, chickenIds: raceChickenIds.get(Number(row.race)) ?? [] })) as Race[];
   const bets = betsResult.rows.map(rowToBet);
   const results: Results = Object.fromEntries(resultsResult.rows.map((row) => [Number(row.race), [Number(row.chicken_id)]]));
   const placeRows = await sql`SELECT race, place, chicken_id FROM result_places WHERE event_id = ${eventId}`;
@@ -526,10 +541,12 @@ export async function createEvent(input: {
   const gameType: GameType = input.gameType === "chicken_drop" ? "chicken_drop" : "race";
   const poolMode: PoolMode = "peer_to_peer";
   const hostVenmo = "";
-  const copied = input.copyCode ? await getEventByCode(input.copyCode) : null;
+  const copyCode = input.copyCode?.trim() ?? "";
+  const copied = copyCode ? await getEventByCode(copyCode) : null;
+  if (copyCode && !copied) throw new Error("That copy event code was not found. Clear it to start with a fresh flock.");
   if (copied && copied.event.gameType !== gameType) throw new Error("Copy an event with the same game format.");
-  const sourceChickens = gameType === "race" ? copied?.chickens ?? DEFAULT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" })) : [];
-  const sourceRaces = gameType === "race" ? copied?.races ?? DEFAULT_RACES : [];
+  const sourceChickens = gameType === "race" ? copied?.chickens ?? NEW_EVENT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" })) : [];
+  const sourceRaces = gameType === "race" ? copied?.races ?? NEW_EVENT_RACES : [];
   const close = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   const resultMode = gameType === "race" ? copied?.event.resultMode ?? (input.resultMode === "full_order" ? "full_order" : "winner") : "winner";
   const bettingTimezone = copied?.event.bettingTimezone ?? DEFAULT_TIMEZONE;
@@ -549,9 +566,29 @@ export async function createEvent(input: {
     VALUES (${code}, ${input.name.trim()}, ${input.adminCode.trim()}, ${close}, ${bettingTimezone}, ${copied?.event.officialRule ?? defaultRule}, ${resultMode}, ${gameType}, ${poolMode}, ${hostVenmo}, ${dropMaxNumber}, ${dropGridColumns}, ${dropGridRows}, ${dropTicketPrice})
     RETURNING id`;
   const eventId = Number(event.rows[0].id);
-  for (const chicken of sourceChickens) await sql`INSERT INTO chickens (event_id, slot, name, photo_url, bio) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl}, ${chicken.bio ?? ""})`;
-  for (const race of sourceRaces) await sql`INSERT INTO races (event_id, race, name, description) VALUES (${eventId}, ${race.race}, ${race.name}, ${race.description})`;
+  const copiedChickenIds = new Map<number, number>();
+  for (const chicken of sourceChickens) {
+    const inserted = await sql`INSERT INTO chickens (event_id, slot, name, photo_url, bio) VALUES (${eventId}, ${chicken.slot}, ${chicken.name}, ${chicken.photoUrl}, ${chicken.bio ?? ""}) RETURNING id`;
+    copiedChickenIds.set(chicken.id, Number(inserted.rows[0].id));
+  }
+  for (const race of sourceRaces) {
+    await sql`INSERT INTO races (event_id, race, name, description) VALUES (${eventId}, ${race.race}, ${race.name}, ${race.description})`;
+    for (const oldChickenId of race.chickenIds ?? []) {
+      const chickenId = copiedChickenIds.get(oldChickenId);
+      if (chickenId) await sql`INSERT INTO race_chickens (event_id, race, chicken_id) VALUES (${eventId}, ${race.race}, ${chickenId})`;
+    }
+  }
   return getEventPayload(eventId);
+}
+
+export async function deleteEvent(input: { eventId: number; adminCode: string }) {
+  await ensureSchema();
+  await assertAdmin(input.eventId, input.adminCode);
+  const event = await sql`SELECT code FROM events WHERE id = ${input.eventId}`;
+  if (!event.rowCount) throw new Error("Event not found.");
+  if (["corn hub", "test", "test-drop"].includes(String(event.rows[0].code))) throw new Error("Built-in demo events cannot be deleted.");
+  await sql`DELETE FROM events WHERE id = ${input.eventId}`;
+  return { ok: true };
 }
 
 export async function addBet(input: { eventId: number; bettor: string; venmo?: string; betType: BetType; stake: number; race?: number | null; picks: number[]; dropNumber?: number | null }) {
@@ -586,7 +623,7 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
     if (!BET_TYPES[input.betType] || input.betType === "drop_number") throw new Error("Pick a real bet type for this race event.");
     const existingResults = await sql`SELECT 1 FROM results WHERE event_id = ${input.eventId} LIMIT 1`;
     if (existingResults.rowCount) throw new Error("Results are already official. Betting is closed.");
-    const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
+    const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId} ORDER BY race`;
     const raceNumbers = new Set(races.rows.map((row) => Number(row.race)));
     race = input.race == null ? null : Number(input.race);
     if (race != null && !raceNumbers.has(race)) throw new Error("Pick a real race for this event.");
@@ -597,6 +634,29 @@ export async function addBet(input: { eventId: number; bettor: string; venmo?: s
     if (new Set(picks).size !== picks.length) throw new Error("Pick different chickens for each slot.");
     if (picks.some((pick) => !chickenIds.has(pick))) throw new Error("Pick chickens from this event.");
     betType = input.betType;
+    const rosterRows = await sql`SELECT race, chicken_id FROM race_chickens WHERE event_id = ${input.eventId}`;
+    const roster = new Map<number, Set<number>>();
+    for (const row of rosterRows.rows) {
+      const raceNumber = Number(row.race);
+      if (!roster.has(raceNumber)) roster.set(raceNumber, new Set());
+      roster.get(raceNumber)?.add(Number(row.chicken_id));
+    }
+    const allowedForRace = (raceNumber: number) => roster.get(raceNumber) ?? chickenIds;
+    const raceBetTypes = new Set<BetType>(["race_winner", "race_place", "race_show", "exacta", "trifecta"]);
+    if (raceBetTypes.has(betType)) {
+      if (race == null) throw new Error("Pick a race.");
+      if (picks.some((pick) => !allowedForRace(race).has(pick))) throw new Error("Pick a chicken running in that race.");
+    } else if (betType === "exact_ticket") {
+      const orderedRaces = [...raceNumbers];
+      if (picks.length !== orderedRaces.length || picks.some((pick, index) => !allowedForRace(orderedRaces[index]).has(pick))) throw new Error("Pick an eligible winner for every race.");
+    } else if (betType === "sweep") {
+      if (![...raceNumbers].every((raceNumber) => allowedForRace(raceNumber).has(picks[0]))) throw new Error("A sweep chicken must run in every race.");
+    } else if (betType === "any_order_three") {
+      const orderedRaces = [...raceNumbers];
+      if (picks.length !== orderedRaces.length || !hasEligibleAssignment(picks, orderedRaces, allowedForRace)) throw new Error("Those chickens cannot cover every race with the current race rosters.");
+    } else if (picks.some((pick) => ![...raceNumbers].some((raceNumber) => allowedForRace(raceNumber).has(pick)))) {
+      throw new Error("Pick chickens entered in at least one race.");
+    }
   }
 
   const bettor = await sql`
@@ -639,16 +699,23 @@ export async function saveResults(input: { eventId: number; adminCode: string; r
   const races = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
   if (Object.keys(input.results).length !== races.rowCount) throw new Error("Pick a result for every race.");
   const fullOrderMode = event.rows[0]?.result_mode === "full_order";
-  const chickenCount = (await sql`SELECT COUNT(*) AS count FROM chickens WHERE event_id = ${input.eventId}`).rows[0]?.count;
   const chickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
   const chickenIds = new Set(chickenRows.rows.map((row) => Number(row.id)));
+  const rosterRows = await sql`SELECT race, chicken_id FROM race_chickens WHERE event_id = ${input.eventId}`;
+  const roster = new Map<number, Set<number>>();
+  for (const row of rosterRows.rows) {
+    const raceNumber = Number(row.race);
+    if (!roster.has(raceNumber)) roster.set(raceNumber, new Set());
+    roster.get(raceNumber)?.add(Number(row.chicken_id));
+  }
   const validatedResults: Array<{ race: number; places: number[] }> = [];
   for (const [race, result] of Object.entries(input.results)) {
     const places = Array.isArray(result) ? result.map(Number).filter(Boolean) : [];
     if (!places[0]) throw new Error("Pick a first-place chicken for every race.");
-    if (fullOrderMode && places.length !== Number(chickenCount)) throw new Error("Rank every chicken for every race.");
+    const allowed = roster.get(Number(race)) ?? chickenIds;
+    if (fullOrderMode && places.length !== allowed.size) throw new Error("Rank every chicken running in each race.");
     if (new Set(places).size !== places.length) throw new Error("Do not rank the same chicken twice in one race.");
-    if (places.some((place) => !chickenIds.has(place))) throw new Error("Pick chickens from this event.");
+    if (places.some((place) => !allowed.has(place))) throw new Error("Pick chickens running in that race.");
     validatedResults.push({ race: Number(race), places });
   }
   await removePendingBets();
@@ -783,7 +850,7 @@ export async function updateEventConfig(input: {
   dropGridRows?: number;
   dropTicketPrice?: number;
   chickens: Array<{ id: number; name: string; photoUrl?: string | null; bio?: string }>;
-  races: Array<{ race: number; name: string; description: string }>;
+  races: Array<{ race: number; name: string; description: string; chickenIds?: number[] }>;
 }) {
   await ensureSchema();
   await assertAdmin(input.eventId, input.adminCode);
@@ -847,6 +914,23 @@ export async function updateEventConfig(input: {
 
   if (!input.chickens.length || input.chickens.some((chicken) => !chicken.name.trim())) throw new Error("Every chicken needs a name.");
   if (!input.races.length || input.races.some((race) => !race.name.trim() || !race.description.trim())) throw new Error("Every race needs a name and details.");
+  const existingChickenRows = await sql`SELECT id FROM chickens WHERE event_id = ${input.eventId}`;
+  const existingRaceRows = await sql`SELECT race FROM races WHERE event_id = ${input.eventId}`;
+  const existingRosterRows = await sql`SELECT race, chicken_id FROM race_chickens WHERE event_id = ${input.eventId}`;
+  const existingChickenIds = new Set(existingChickenRows.rows.map((row) => Number(row.id)));
+  const existingRaceNumbers = new Set(existingRaceRows.rows.map((row) => Number(row.race)));
+  const retainedChickenIds = new Set(input.chickens.map((chicken) => chicken.id).filter((id) => existingChickenIds.has(id)));
+  const retainedRaceNumbers = new Set(input.races.map((race) => race.race).filter((race) => existingRaceNumbers.has(race)));
+  const existingRosters = new Map<number, number[]>();
+  for (const row of existingRosterRows.rows) existingRosters.set(Number(row.race), [...(existingRosters.get(Number(row.race)) ?? []), Number(row.chicken_id)]);
+  const rosterChanged = input.races.some((race) => {
+    const before = (existingRosters.get(race.race) ?? []).sort((a, b) => a - b).join(",");
+    const after = (race.chickenIds ?? []).filter((id) => existingChickenIds.has(id)).sort((a, b) => a - b).join(",");
+    return before !== after;
+  });
+  const structureChanged = input.chickens.length !== existingChickenIds.size || input.races.length !== existingRaceNumbers.size || retainedChickenIds.size !== existingChickenIds.size || retainedRaceNumbers.size !== existingRaceNumbers.size || rosterChanged;
+  const resultCount = Number((await sql`SELECT COUNT(*) AS count FROM results WHERE event_id = ${input.eventId}`).rows[0]?.count ?? 0);
+  if (structureChanged && (betCount > 0 || resultCount > 0)) throw new Error("Add or remove chickens and races before the first bet or official result.");
 
   await sql`
     UPDATE events
@@ -860,21 +944,48 @@ export async function updateEventConfig(input: {
         host_venmo_link = ${hostVenmoLink}
     WHERE id = ${input.eventId}`;
 
-  for (const chicken of input.chickens) {
-    await sql`
-      UPDATE chickens
-      SET name = ${chicken.name.trim()},
-          photo_url = ${chicken.photoUrl?.trim() || null},
-          bio = ${chicken.bio?.trim() ?? ""}
-      WHERE event_id = ${input.eventId} AND id = ${chicken.id}`;
+  for (const id of existingChickenIds) {
+    if (!retainedChickenIds.has(id)) await sql`DELETE FROM chickens WHERE event_id = ${input.eventId} AND id = ${id}`;
+  }
+  const savedChickenIds = new Map<number, number>();
+  for (let index = 0; index < input.chickens.length; index += 1) {
+    const chicken = input.chickens[index];
+    if (existingChickenIds.has(chicken.id)) {
+      await sql`
+        UPDATE chickens SET slot = ${index + 1}, name = ${chicken.name.trim()}, photo_url = ${chicken.photoUrl?.trim() || null}, bio = ${chicken.bio?.trim() ?? ""}
+        WHERE event_id = ${input.eventId} AND id = ${chicken.id}`;
+      savedChickenIds.set(chicken.id, chicken.id);
+    } else {
+      const inserted = await sql`
+      INSERT INTO chickens (event_id, slot, name, photo_url, bio)
+      VALUES (${input.eventId}, ${index + 1}, ${chicken.name.trim()}, ${chicken.photoUrl?.trim() || null}, ${chicken.bio?.trim() ?? ""}) RETURNING id`;
+      savedChickenIds.set(chicken.id, Number(inserted.rows[0].id));
+    }
   }
 
+  for (const race of existingRaceNumbers) {
+    if (!retainedRaceNumbers.has(race)) {
+      await sql`DELETE FROM race_chickens WHERE event_id = ${input.eventId} AND race = ${race}`;
+      await sql`DELETE FROM races WHERE event_id = ${input.eventId} AND race = ${race}`;
+    }
+  }
   for (const race of input.races) {
-    await sql`
+    if (existingRaceNumbers.has(race.race)) await sql`
       UPDATE races
       SET name = ${race.name.trim()},
           description = ${race.description.trim()}
       WHERE event_id = ${input.eventId} AND race = ${race.race}`;
+    else await sql`
+      INSERT INTO races (event_id, race, name, description)
+      VALUES (${input.eventId}, ${race.race}, ${race.name.trim()}, ${race.description.trim()})`;
+  }
+
+  await sql`DELETE FROM race_chickens WHERE event_id = ${input.eventId}`;
+  for (const race of input.races) {
+    const requestedIds = race.chickenIds ?? [];
+    const mappedIds = requestedIds.map((id) => savedChickenIds.get(id)).filter((id): id is number => id != null);
+    if (requestedIds.length && mappedIds.length !== requestedIds.length) throw new Error("Every custom race chicken must be in this event.");
+    for (const chickenId of mappedIds) await sql`INSERT INTO race_chickens (event_id, race, chicken_id) VALUES (${input.eventId}, ${race.race}, ${chickenId})`;
   }
 
   return getEventPayload(input.eventId);
@@ -913,11 +1024,11 @@ function rowToBet(row: Record<string, unknown>): Bet {
 
 export function makeSettlement(bets: Bet[], results: Results, chickens: Chicken[], races: Race[], hostVenmo?: string): Settlement | null {
   if (Object.keys(results).length !== races.length || bets.length < 2) return null;
-  const weights = betWeights(chickens.length, races.length);
   const winners = races.map((race) => results[race.race]?.[0]);
   const tickets = bets.map((bet) => {
     const won = isWinningBet(bet, results, winners);
-    const weight = weights[bet.betType] ?? 1;
+    const probability = betProbability(bet, chickens, races);
+    const weight = probability > 0 ? 1 / probability : 0;
     return { ...bet, won, weight, payoutWeight: won ? bet.stake * weight : 0, payout: 0, net: -bet.stake, result: won ? "Won" : "Lost", label: describeBet(bet, chickens, races) };
   }) as Settlement["tickets"];
   return finalizeSettlement(tickets, hostVenmo);
@@ -965,6 +1076,55 @@ function finalizeSettlement(tickets: Settlement["tickets"], hostVenmo?: string):
     ? people.filter((person) => person.payout > 0.004).map((person) => ({ from: "Pool host", fromVenmo: hostVenmo, to: person.bettor, toVenmo: person.venmo, amount: Math.round(person.payout * 100) / 100 }))
     : makePayments(people);
   return { tickets, people, payments };
+}
+
+function raceChickenSet(race: Race, chickens: Chicken[]) {
+  return new Set(race.chickenIds.length ? race.chickenIds : chickens.map((chicken) => chicken.id));
+}
+
+function hasEligibleAssignment(picks: number[], raceNumbers: number[], allowedForRace: (race: number) => Set<number>, index = 0, used = new Set<number>()): boolean {
+  if (index === raceNumbers.length) return true;
+  for (const pick of picks) {
+    if (!used.has(pick) && allowedForRace(raceNumbers[index]).has(pick)) {
+      used.add(pick);
+      if (hasEligibleAssignment(picks, raceNumbers, allowedForRace, index + 1, used)) return true;
+      used.delete(pick);
+    }
+  }
+  return false;
+}
+
+function eligibleAssignmentCount(picks: number[], races: Race[], chickens: Chicken[], index = 0, used = new Set<number>()): number {
+  if (index === races.length) return 1;
+  const allowed = raceChickenSet(races[index], chickens);
+  let count = 0;
+  for (const pick of picks) {
+    if (!used.has(pick) && allowed.has(pick)) {
+      used.add(pick);
+      count += eligibleAssignmentCount(picks, races, chickens, index + 1, used);
+      used.delete(pick);
+    }
+  }
+  return count;
+}
+
+function betProbability(bet: Bet, chickens: Chicken[], races: Race[]) {
+  const sizes = races.map((race) => Math.max(1, raceChickenSet(race, chickens).size));
+  const selectedRaceIndex = races.findIndex((race) => race.race === bet.race);
+  const selectedSize = sizes[selectedRaceIndex] ?? Math.max(chickens.length, 1);
+  if (bet.betType === "race_winner") return 1 / selectedSize;
+  if (bet.betType === "race_place") return Math.min(2, selectedSize) / selectedSize;
+  if (bet.betType === "race_show") return Math.min(3, selectedSize) / selectedSize;
+  if (bet.betType === "exacta") return selectedSize > 1 ? 1 / (selectedSize * (selectedSize - 1)) : 0;
+  if (bet.betType === "trifecta") return selectedSize > 2 ? 1 / (selectedSize * (selectedSize - 1) * (selectedSize - 2)) : 0;
+  const denominator = sizes.reduce((product, size) => product * size, 1);
+  if (bet.betType === "exact_ticket" || bet.betType === "sweep") return 1 / denominator;
+  if (bet.betType === "any_win") {
+    const pick = Number(bet.chicken1);
+    return 1 - races.reduce((miss, race, index) => raceChickenSet(race, chickens).has(pick) ? miss * (1 - 1 / sizes[index]) : miss, 1);
+  }
+  if (bet.betType === "any_order_three") return eligibleAssignmentCount(bet.picks, races, chickens) / denominator;
+  return 1;
 }
 
 function isWinningBet(bet: Bet, results: Results, winners: Array<number | undefined>) {

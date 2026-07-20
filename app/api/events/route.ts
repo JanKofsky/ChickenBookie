@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createEvent } from "../../../lib/chickenBookie";
+import { createEvent, deleteEvent } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -32,6 +32,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(payload);
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error, "Could not create event.") }, { status: 400 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    return NextResponse.json(await deleteEvent({ eventId: Number(body.eventId), adminCode: String(body.adminCode ?? "") }));
+  } catch (error) {
+    return NextResponse.json({ error: errorMessage(error, "Could not delete event.") }, { status: 400 });
   }
 }
 
