@@ -762,6 +762,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
   const [bettors, setBettors] = useState(() => Array.from(new Map(payload.bets.map((bet) => [normalizeName(bet.bettor), { name: bet.bettor, venmo: bet.venmo }])).values()));
   const [betSearch, setBetSearch] = useState("");
   const [betPage, setBetPage] = useState(0);
+  const [showAllAdminBets, setShowAllAdminBets] = useState(false);
   const [message, setMessage] = useState("");
   const pendingHostBets = poolMode === "host_managed" ? payload.bets.filter((bet) => !bet.paymentVerified) : [];
   async function unlock(event: FormEvent) {
@@ -880,10 +881,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
   const matchingBets = payload.bets.filter((bet) => !normalizedBetSearch || [
     String(bet.id), `#${bet.id}`, bet.paymentId, bet.bettor, bet.venmo, bet.betType, describeBet(bet, payload.chickens, payload.races), String(bet.stake), bet.paymentVerified ? "confirmed" : bet.paymentSubmitted ? "sent submitted ready verify" : "pending"
   ].join(" ").toLowerCase().includes(normalizedBetSearch));
-  const betsPerPage = 25;
-  const betPageCount = Math.max(1, Math.ceil(matchingBets.length / betsPerPage));
+  const betsPerPage = 12;
+  const betPageCount = showAllAdminBets ? 1 : Math.max(1, Math.ceil(matchingBets.length / betsPerPage));
   const currentBetPage = Math.min(betPage, betPageCount - 1);
-  const visibleBets = matchingBets.slice(currentBetPage * betsPerPage, (currentBetPage + 1) * betsPerPage);
+  const visibleBets = showAllAdminBets ? matchingBets : matchingBets.slice(currentBetPage * betsPerPage, (currentBetPage + 1) * betsPerPage);
   const paymentGroups = new Map<string, { paymentId: string; bettor: string; venmo: string; count: number; total: number; submittedCount: number; verifiedCount: number }>();
   for (const bet of payload.bets) {
     if (payload.event.poolMode !== "host_managed") continue;
@@ -904,7 +905,6 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
   return (
     <section className="panel">
       <h2>Coop Boss</h2>
-      <p className="muted admin-intro">Everything for running this event is organized below. Use this menu to jump straight to the job you need.</p>
       {isTestEvent && <div className="notice">Demo admin is already unlocked. The admin code is blank.</div>}
       {!isTestEvent && <form className="admin-unlock" onSubmit={unlock}>
         <label>Admin code<input type={showAdminCode ? "text" : "password"} placeholder="admin code here" value={adminCode} onChange={(event) => setAdminCode(event.target.value)} /></label>
@@ -915,20 +915,20 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
       {payload.bets.length === 0 && <div className="notice"><b>Finish setup before sharing:</b> choose the settlement type below, review the event details and contestants, then press <b>Save event setup</b>.</div>}
 
       <nav className="admin-section-nav" aria-label="Coop Boss sections">
-        <span>Coop Boss dashboard · choose a section</span>
+        <span>Jump to</span>
         <div>
           <a href="#admin-event-setup">Event setup</a>
           {!isDropEvent && <a href="#admin-contestants">Contestants & races</a>}
           {poolMode === "host_managed" && <a href="#admin-payments">Payments{reportedSentBatches.length > 0 && <b>{reportedSentBatches.length}</b>}</a>}
-          <a href="#admin-results">{poolMode === "host_managed" ? "Results & payouts" : "Results & settlement"}</a>
-          <a href="#admin-bet-management">Manage bets</a>
+          <a href="#admin-bet-management">Bet management</a>
+          <a href="#admin-results">Results</a>
         </div>
       </nav>
       {poolMode === "host_managed" && reportedSentBatches.length > 0 && <div className="notice payment-alert"><div><b>{reportedSentBatches.length} payment{reportedSentBatches.length === 1 ? " is" : "s are"} ready for review</b><span>Match each payment ID in Venmo, then approve it so those bets count.</span></div><a href="#admin-payments">Review & approve</a></div>}
 
       <form id="admin-event-setup" className="grid-form admin-section-target" onSubmit={saveConfig}>
         <h3>Event setup</h3>
-        <p className="fine-print wide-field">Update the event name, deadline, rules, and settlement method here.</p>
+        <p className="fine-print wide-field">Update event details and settlement.</p>
         <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
         <label>Settlement type<select disabled={settlementTypeLocked} value={poolMode} onChange={(event) => setPoolMode(event.target.value as PoolMode)}><option value="peer_to_peer">Player-to-player settlement (optional)</option><option value="host_managed">Host-maintained pool</option></select></label>
         {poolMode === "host_managed" && <>
@@ -950,13 +950,13 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         </> : <>
           <label>Race result style<select value={resultMode} onChange={(event) => setResultMode(event.target.value as "winner" | "full_order")}><option value="winner">only track the winner</option><option value="full_order">rank the whole flock</option></select></label>
           <label className="wide-field">Race rules<textarea value={officialRule} placeholder="first to the marshmallow wins" onChange={(event) => setOfficialRule(event.target.value)} rows={3} /></label>
-          <div id="admin-contestants" className="wide-field admin-section-target admin-subsection-heading"><h3>Contestants & race card</h3><p className="fine-print">Start small and add only what you need. Adding and removing locks after the first bet or official result.</p></div>
+          <div id="admin-contestants" className="wide-field admin-section-target admin-subsection-heading"><h3>Contestants & race card</h3><p className="fine-print">Add only what you need. Locked after betting or results begin.</p></div>
           {races.map((race, idx) => <div className="admin-card" key={race.race}>
             <label>Race name<input value={race.name} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, name: event.target.value } : item))} /></label>
             <label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label>
             <label className="check-row race-roster-toggle"><input type="checkbox" disabled={raceStructureLocked} checked={race.chickenIds.length > 0} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, chickenIds: event.target.checked ? chickens.map((chicken) => chicken.id) : [] } : item))} /> Use a different flock for this race</label>
             {race.chickenIds.length > 0 && <div className="race-roster-picker"><span>Chickens running in this race</span>{chickens.map((chicken) => <label className="check-row" key={chicken.id}><input type="checkbox" disabled={raceStructureLocked} checked={race.chickenIds.includes(chicken.id)} onChange={(event) => { const chickenIds = event.target.checked ? [...race.chickenIds, chicken.id] : race.chickenIds.filter((id) => id !== chicken.id); if (!chickenIds.length) return; setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, chickenIds } : item)); }} /> {chicken.name}</label>)}</div>}
-            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || races.length === 1} title="Delete race" aria-label={`Delete ${race.name}`} onClick={() => setRaces(races.filter((_, itemIdx) => itemIdx !== idx))}>🗑️</button>
+            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || races.length === 1} title="Delete race" aria-label={`Delete ${race.name}`} onClick={() => setRaces(races.filter((_, itemIdx) => itemIdx !== idx))}>🗑️ Delete race</button>
           </div>)}
           <button type="button" className="wide-field add-setup-row" disabled={raceStructureLocked} onClick={() => { const race = Math.max(0, ...races.map((item) => item.race)) + 1; setRaces([...races, { race, name: `Race ${race}`, description: "Add race details.", chickenIds: [] }]); }}>+ Add race</button>
           <h3>Flock notes</h3>
@@ -966,28 +966,24 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
             <label>Coop note<textarea value={chicken.bio ?? ""} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, bio: event.target.value } : item))} rows={3} /></label>
             <label>Chicken photo<input type="file" accept="image/*" onChange={(event) => uploadChickenPhoto(chicken.id, event.target.files?.[0] ?? null)} /></label>
             {chicken.photoUrl && <button type="button" onClick={() => setChickens(chickens.map((item) => item.id === chicken.id ? { ...item, photoUrl: null } : item))}>Remove photo</button>}
-            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || chickens.length === 1} title="Delete chicken" aria-label={`Delete ${chicken.name}`} onClick={() => { const remaining = chickens.filter((_, itemIdx) => itemIdx !== idx); setChickens(remaining); setRaces(races.map((item) => { if (!item.chickenIds.length) return item; const chickenIds = item.chickenIds.filter((id) => id !== chicken.id); return { ...item, chickenIds: chickenIds.length ? chickenIds : remaining.map((entry) => entry.id) }; })); }}>🗑️</button>
+            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || chickens.length === 1} title="Delete chicken" aria-label={`Delete ${chicken.name}`} onClick={() => { const remaining = chickens.filter((_, itemIdx) => itemIdx !== idx); setChickens(remaining); setRaces(races.map((item) => { if (!item.chickenIds.length) return item; const chickenIds = item.chickenIds.filter((id) => id !== chicken.id); return { ...item, chickenIds: chickenIds.length ? chickenIds : remaining.map((entry) => entry.id) }; })); }}>🗑️ Delete chicken</button>
           </div>)}
           <button type="button" className="wide-field add-setup-row" disabled={raceStructureLocked} onClick={() => { const id = Math.min(0, ...chickens.map((item) => item.id)) - 1; setChickens([...chickens, { id, slot: chickens.length + 1, name: `Chicken ${chickens.length + 1}`, photoUrl: null, bio: "" }]); }}>+ Add chicken</button>
         </>}
         <button type="submit">Save event setup</button>
-        <div className="wide-field event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>🗑️ Delete event</button></div>
       </form>
 
-      <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
-        <h3>{poolMode === "host_managed" ? "Results & payouts" : "Results & settlement"}</h3>
-        <p className="fine-print wide-field">{isDropEvent ? "Enter the official winning square. Chicken Bookie will identify matching tickets and calculate the split or refunds." : `Enter each official race result. Chicken Bookie will score every bet type and calculate the ${poolMode === "host_managed" ? "host payouts" : "optional settlement plan"}.`}</p>
-        {poolMode === "host_managed" && pendingHostBets.length > 0 && <div className="notice error wide-field"><b>Payment check required:</b> {pendingHostBets.length} unverified bet{pendingHostBets.length === 1 ? "" : "s"} will be permanently removed if you save winners now. <a href="#admin-payments">Review and confirm payments first.</a></div>}
-        <h4 className="wide-field">{isDropEvent ? "Official Chicken Drop result" : "Official race results"}</h4>
-        {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
-          <h3>{race.name}</h3>
-          {chickensForRace(race, payload.chickens).map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
-        </div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
-        <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
-        {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
-      </form>
-
-      <div id="admin-bet-management" className="admin-management-section admin-section-target">
+      {payload.event.poolMode === "host_managed" && <section id="admin-payments" className="payment-batch-manager admin-section-target">
+        <div className="bet-manager-heading"><div><h3>Payment review & approval</h3><p className="fine-print">Match the ID in Venmo, then approve the batch.</p></div><strong>{reportedSentBatches.length} to review</strong></div>
+        {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="payment-batch-list">{paymentBatches.map((group) => {
+          const verified = group.verifiedCount === group.count;
+          const readyForReview = !verified && group.submittedCount === group.count;
+          return <article className={`payment-batch-row ${verified ? "confirmed" : readyForReview ? "pending ready-review" : "pending"}`} key={group.paymentId || normalizeName(group.bettor)}>
+            <div><strong>{group.bettor}</strong><span className="payment-id-badge">{group.paymentId}</span><small>{group.venmo} · {group.count} bet{group.count === 1 ? "" : "s"}</small></div>
+            <div><strong>{money(group.total)}</strong><span>{verified ? "Payment approved" : readyForReview ? "Ready to review — check Venmo" : "Waiting for bettor"}</span><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo approval" : readyForReview ? `Approve ${group.paymentId}` : `Confirm ${group.paymentId}`}</button></div>
+          </article>;
+        })}</div>}
+      </section>}
       {bettors.length > 0 && <form className="grid-form" onSubmit={saveBettors}>
         <h3>Bettor Venmo handles</h3>
         {bettors.map((bettor, idx) => <div className="admin-card bettor-admin-card" key={normalizeName(bettor.name)}>
@@ -998,20 +994,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
       </form>}
 
       {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
-      {payload.event.poolMode === "host_managed" && <section id="admin-payments" className="payment-batch-manager admin-section-target">
-        <div className="bet-manager-heading"><div><h3>Payment review & approval</h3><p className="fine-print">Payments reported as sent appear first. Match the payment ID in Venmo, then approve the whole batch of bets.</p></div><strong>{reportedSentBatches.length} to review</strong></div>
-        {paymentBatches.length === 0 ? <p className="muted">Payment rows will appear after bettors add bets.</p> : <div className="payment-batch-list">{paymentBatches.map((group) => {
-          const verified = group.verifiedCount === group.count;
-          const readyForReview = !verified && group.submittedCount === group.count;
-          return <article className={`payment-batch-row ${verified ? "confirmed" : readyForReview ? "pending ready-review" : "pending"}`} key={group.paymentId || normalizeName(group.bettor)}>
-            <div><strong>{group.bettor}</strong><span className="payment-id-badge">{group.paymentId}</span><small>{group.venmo} · {group.count} bet{group.count === 1 ? "" : "s"}</small></div>
-            <div><strong>{money(group.total)}</strong><span>{verified ? "Payment approved" : readyForReview ? "Ready to review — check Venmo" : "Waiting for bettor"}</span><button type="button" className={verified ? "ghost-button" : ""} onClick={() => updatePaymentBatch(group.paymentId, group.bettor, group.count, group.total, !verified)}>{verified ? "Undo approval" : readyForReview ? `Approve ${group.paymentId}` : `Confirm ${group.paymentId}`}</button></div>
-          </article>;
-        })}</div>}
-      </section>}
+      <div id="admin-bet-management" className="admin-management-section admin-section-target">
       <section className="bet-manager">
-        <div className="bet-manager-heading"><div><h3>Manage bets{payload.event.poolMode === "host_managed" ? " & payments" : ""}</h3><p className="fine-print">Showing at most {betsPerPage} at once instead of loading all {payload.bets.length.toLocaleString()} bets.</p></div><strong>{matchingBets.length.toLocaleString()} match{matchingBets.length === 1 ? "" : "es"}</strong></div>
-        <label>Search by bettor, payment ID, bet ID, pick, amount, Venmo, or status<input type="search" value={betSearch} placeholder="e.g. A1B2C3D4, Avery, #142, pending" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); }} /></label>
+        <div className="bet-manager-heading"><h3>Bet management</h3><div className="bet-manager-actions"><strong>{matchingBets.length.toLocaleString()} bet{matchingBets.length === 1 ? "" : "s"}</strong>{matchingBets.length > betsPerPage && <button type="button" className="ghost-button" onClick={() => { setShowAllAdminBets(!showAllAdminBets); setBetPage(0); }}>{showAllAdminBets ? "Show less" : "Show all"}</button>}</div></div>
+        <label>Search bets<input type="search" value={betSearch} placeholder="Name, payment ID, bet ID, pick, or status" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); setShowAllAdminBets(false); }} /></label>
         {visibleBets.length === 0 ? <p className="muted">No bets match that search.</p> : <div className="bet-admin-list">{visibleBets.map((bet) => <article className="bet-admin-row" key={bet.id}>
           <div><strong>#{bet.id} · {bet.bettor}</strong><span>{describeBet(bet, payload.chickens, payload.races)}</span><small>{money(bet.stake)}{bet.venmo ? ` · ${bet.venmo}` : ""}{payload.event.poolMode === "host_managed" ? <> · <span className="payment-id-badge">{bet.paymentId}</span> · {bet.paymentVerified ? "payment confirmed" : bet.paymentSubmitted ? "sent for verification" : "payment pending"}</> : ""}</small></div>
           <div><button className="delete-row" type="button" onClick={() => removeBet(bet.id)}>Delete</button></div>
@@ -1019,6 +1005,20 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         {betPageCount > 1 && <nav className="bet-pagination" aria-label="Bet manager pages"><button type="button" disabled={currentBetPage === 0} onClick={() => setBetPage(Math.max(0, currentBetPage - 1))}>Previous</button><span>Page {currentBetPage + 1} of {betPageCount}</span><button type="button" disabled={currentBetPage >= betPageCount - 1} onClick={() => setBetPage(Math.min(betPageCount - 1, currentBetPage + 1))}>Next</button></nav>}
       </section>
       </div>
+
+      <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
+        <h3>Results</h3>
+        <p className="fine-print wide-field">{isDropEvent ? "Enter the official winning square." : "Enter the official race results."}</p>
+        {poolMode === "host_managed" && pendingHostBets.length > 0 && <div className="notice error wide-field"><b>Payment check required:</b> {pendingHostBets.length} unverified bet{pendingHostBets.length === 1 ? "" : "s"} will be permanently removed if you save winners now. <a href="#admin-payments">Review and confirm payments first.</a></div>}
+        <h4 className="wide-field">{isDropEvent ? "Official Chicken Drop result" : "Official race results"}</h4>
+        {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
+          <h3>{race.name}</h3>
+          {chickensForRace(race, payload.chickens).map((_, idx) => <label key={idx}>Place {idx + 1}<select value={results[race.race]?.[idx] ?? ""} onChange={(event) => { const next = [...(results[race.race] ?? [])]; next[idx] = Number(event.target.value); setResults({ ...results, [race.race]: next }); }}><option value="">Pick chicken</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
+        </div> : <label key={race.race}>{race.name}<select value={results[race.race]?.[0] ?? ""} onChange={(event) => setResults({ ...results, [race.race]: [Number(event.target.value)] })}><option value="">Pick winner</option>{chickensForRace(race, payload.chickens).map((chicken) => <option key={chicken.id} value={chicken.id}>{chicken.name}</option>)}</select></label>)}
+        <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
+        {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
+      </form>
+      <div className="event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>🗑️ Delete event</button></div>
     </section>
   );
 }
