@@ -11,6 +11,8 @@ export type EventRecord = {
   bettingTimezone: string;
   officialRule: string;
   resultMode: ResultMode;
+  poolMode: PoolMode;
+  hostVenmo?: string;
   gameType: GameType;
   poolMode: PoolMode;
   hostVenmo: string;
@@ -700,8 +702,15 @@ export async function updateEventConfig(input: {
   const resultMode = input.resultMode === "full_order" ? "full_order" : "winner";
   const bettingTimezone = input.bettingTimezone.trim() || DEFAULT_TIMEZONE;
   if (!input.bettingCloseAt.trim() || Number.isNaN(Date.parse(input.bettingCloseAt))) throw new Error("Bets open until needs a real date and time.");
-  const event = await sql`SELECT game_type, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
+  const event = await sql`SELECT game_type, pool_mode, host_venmo, admin_code, drop_max_number, drop_grid_columns, drop_grid_rows, drop_ticket_price, drop_winning_number FROM events WHERE id = ${input.eventId}`;
   if (!event.rowCount) throw new Error("Event not found.");
+  const poolMode: PoolMode = input.poolMode === "host_managed" ? "host_managed" : "peer_to_peer";
+  const hostVenmo = normalizeVenmo(input.hostVenmo ?? "");
+  const betCount = Number((await sql`SELECT COUNT(*) AS count FROM bets WHERE event_id = ${input.eventId}`).rows[0]?.count ?? 0);
+  const poolSettingsChanged = poolMode !== event.rows[0].pool_mode || hostVenmo !== String(event.rows[0].host_venmo ?? "");
+  if (betCount > 0 && poolSettingsChanged) throw new Error("Settlement type and host Venmo are locked after the first bet.");
+  if (poolMode === "host_managed" && !hostVenmo) throw new Error("Host Venmo is required for a host-maintained pool.");
+  if (poolMode === "host_managed" && !String(event.rows[0].admin_code ?? "")) throw new Error("Set an admin code when creating the event before switching to a host-maintained pool.");
 
   if (event.rows[0].game_type === "chicken_drop") {
     const currentGrid = resolveDropGrid(event.rows[0].drop_max_number, event.rows[0].drop_grid_columns, event.rows[0].drop_grid_rows);
@@ -730,6 +739,8 @@ export async function updateEventConfig(input: {
           betting_timezone = ${bettingTimezone},
           official_rule = ${input.officialRule.trim()},
           result_mode = 'winner',
+          pool_mode = ${poolMode},
+          host_venmo = ${hostVenmo},
           drop_max_number = ${dropMaxNumber},
           drop_grid_columns = ${dropGridColumns},
           drop_grid_rows = ${dropGridRows},
@@ -747,7 +758,9 @@ export async function updateEventConfig(input: {
         betting_close_at = ${input.bettingCloseAt.trim()},
         betting_timezone = ${bettingTimezone},
         official_rule = ${input.officialRule.trim()},
-        result_mode = ${resultMode}
+        result_mode = ${resultMode},
+        pool_mode = ${poolMode},
+        host_venmo = ${hostVenmo}
     WHERE id = ${input.eventId}`;
 
   for (const chicken of input.chickens) {

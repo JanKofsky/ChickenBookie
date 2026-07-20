@@ -597,6 +597,8 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   const [bettingCloseAt, setBettingCloseAt] = useState(dateTimeInputValue(payload.event.bettingCloseAt, payload.event.bettingTimezone));
   const [officialRule, setOfficialRule] = useState(payload.event.officialRule);
   const [resultMode, setResultMode] = useState(payload.event.resultMode);
+  const [poolMode, setPoolMode] = useState<PoolMode>(payload.event.poolMode);
+  const [hostVenmo, setHostVenmo] = useState(payload.event.hostVenmo.replace(/^@/, ""));
   const [dropGridColumns, setDropGridColumns] = useState(String(payload.event.dropGridColumns));
   const [dropGridRows, setDropGridRows] = useState(String(payload.event.dropGridRows));
   const [dropTicketPrice, setDropTicketPrice] = useState(String(payload.event.dropTicketPrice));
@@ -604,6 +606,8 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   const [chickens, setChickens] = useState(payload.chickens);
   const [races, setRaces] = useState(payload.races);
   const [bettors, setBettors] = useState(() => Array.from(new Map(payload.bets.map((bet) => [normalizeName(bet.bettor), { name: bet.bettor, venmo: bet.venmo }])).values()));
+  const [betSearch, setBetSearch] = useState("");
+  const [betPage, setBetPage] = useState(0);
   const [message, setMessage] = useState("");
   async function unlock(event: FormEvent) {
     event.preventDefault(); setMessage("");
@@ -618,6 +622,8 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not save results.")); else { setPayload(data); setMessage(isDropEvent ? "Official drop saved." : "Winners saved."); }
   }
   async function removeBet(betId: number) {
+    const bet = payload.bets.find((item) => item.id === betId);
+    if (!bet || !window.confirm(`Delete bet #${bet.id} from ${bet.bettor} for ${money(bet.stake)}? This cannot be undone.`)) return;
     const response = await fetch("/api/admin", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode, betId }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not delete bet.")); else { setPayload(data); setMessage("Bet deleted."); }
@@ -654,7 +660,7 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
       return;
     }
     setChickens(compactChickens);
-    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
+    const body = JSON.stringify({ eventId: payload.event.id, adminCode, name: eventName, bettingCloseAt: zonedDateTimeToIso(bettingCloseAt, bettingTimezone), bettingTimezone, officialRule, resultMode, poolMode, hostVenmo, dropGridColumns: Number(dropGridColumns), dropGridRows: Number(dropGridRows), dropTicketPrice: Number(dropTicketPrice), chickens: compactChickens, races });
     if (body.length > 4_000_000) {
       setMessage("Chicken photos are still too large to save together. Remove one photo or upload smaller images.");
       return;
@@ -685,7 +691,16 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
   }
   const dropGridShapeLocked = payload.bets.length > 0 || payload.event.dropWinningNumber != null;
   const dropTicketPriceLocked = payload.bets.length > 0;
+  const settlementTypeLocked = payload.bets.length > 0;
   const configuredDropSections = (Number(dropGridColumns) || 0) * (Number(dropGridRows) || 0);
+  const normalizedBetSearch = betSearch.trim().toLowerCase();
+  const matchingBets = payload.bets.filter((bet) => !normalizedBetSearch || [
+    String(bet.id), `#${bet.id}`, bet.bettor, bet.venmo, bet.betType, describeBet(bet, payload.chickens, payload.races), String(bet.stake), bet.paymentVerified ? "confirmed" : "pending"
+  ].join(" ").toLowerCase().includes(normalizedBetSearch));
+  const betsPerPage = 25;
+  const betPageCount = Math.max(1, Math.ceil(matchingBets.length / betsPerPage));
+  const currentBetPage = Math.min(betPage, betPageCount - 1);
+  const visibleBets = matchingBets.slice(currentBetPage * betsPerPage, (currentBetPage + 1) * betsPerPage);
   return (
     <section className="panel">
       <h2>Coop Boss</h2>
@@ -700,7 +715,9 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
       <form className="grid-form" onSubmit={saveConfig}>
         <h3>Event setup</h3>
         <div className="game-format-card wide-field"><span>Event format</span><strong>{isDropEvent ? "Chicken Drop" : "Chicken Race"}</strong></div>
-        <div className="game-format-card wide-field"><span>Settlement type</span><strong>{payload.event.poolMode === "host_managed" ? `Host-maintained pool · ${payload.event.hostVenmo}` : "Player-to-player settlement · optional, no Venmo required"}</strong></div>
+        <label>Settlement type<select disabled={settlementTypeLocked} value={poolMode} onChange={(event) => setPoolMode(event.target.value as PoolMode)}><option value="peer_to_peer">Player-to-player settlement (optional)</option><option value="host_managed">Host-maintained pool</option></select></label>
+        {poolMode === "host_managed" && <label>Host Venmo<div className="venmo-input"><span>@</span><input required disabled={settlementTypeLocked} value={hostVenmo} placeholder="host username" onChange={(event) => setHostVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>}
+        <p className="fine-print wide-field">{settlementTypeLocked ? "Settlement type and host Venmo are locked after the first bet so nobody’s payment terms change." : "You can choose or change settlement here until the first bet is submitted. Host-maintained pools require a host Venmo and a nonblank admin code."}</p>
         <label>Event name<input value={eventName} onChange={(event) => setEventName(event.target.value)} /></label>
         <label>Bets open until<input type="datetime-local" value={bettingCloseAt} onChange={(event) => setBettingCloseAt(event.target.value)} /></label>
         <label>Timezone<select value={bettingTimezone} onChange={(event) => setBettingTimezone(event.target.value)}>{TIME_ZONES.map((zone) => <option key={zone.value} value={zone.value}>{zone.label}</option>)}</select></label>
@@ -751,19 +768,16 @@ function CoopBoss({ payload, setPayload }: { payload: EventPayload; setPayload: 
         <button type="submit">Save Venmo handles</button>
       </form>}
 
-      {payload.event.poolMode === "host_managed" && <div className="grid-form">
-        <h3>Host payment confirmations</h3>
-        <p className="fine-print wide-field">Confirm only after the payment appears in the host's Venmo account. Chicken Bookie does not connect to or read Venmo transactions.</p>
-        {payload.bets.length === 0 ? <p className="muted">No submitted bets yet.</p> : payload.bets.map((bet) => <div className="admin-card bettor-admin-card" key={bet.id}>
-          <strong>#{bet.id} · {bet.bettor} · {money(bet.stake)}</strong>
-          <span>{bet.venmo} · {bet.paymentVerified ? "payment confirmed" : "payment pending"}</span>
-          <button type="button" onClick={() => setPaymentVerified(bet.id, !bet.paymentVerified)}>{bet.paymentVerified ? "Mark payment pending" : "Confirm payment received"}</button>
-        </div>)}
-      </div>}
-
       {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
-      <h3>Delete accidental bet</h3>
-      {payload.bets.length === 0 ? <p className="muted">No accidental bets to delete.</p> : payload.bets.map((bet) => <button className="delete-row" type="button" key={bet.id} onClick={() => removeBet(bet.id)}>Delete #{bet.id} - {bet.bettor}{isDropEvent && bet.dropNumber != null ? <> - square #{bet.dropNumber}</> : null} - {money(bet.stake)}</button>)}
+      <section className="bet-manager">
+        <div className="bet-manager-heading"><div><h3>Manage bets{payload.event.poolMode === "host_managed" ? " & payments" : ""}</h3><p className="fine-print">Showing at most {betsPerPage} at once instead of loading all {payload.bets.length.toLocaleString()} bets.</p></div><strong>{matchingBets.length.toLocaleString()} match{matchingBets.length === 1 ? "" : "es"}</strong></div>
+        <label>Search by bettor, bet ID, pick, amount, Venmo, or payment status<input type="search" value={betSearch} placeholder="e.g. Avery, #142, pending" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); }} /></label>
+        {visibleBets.length === 0 ? <p className="muted">No bets match that search.</p> : <div className="bet-admin-list">{visibleBets.map((bet) => <article className="bet-admin-row" key={bet.id}>
+          <div><strong>#{bet.id} · {bet.bettor}</strong><span>{describeBet(bet, payload.chickens, payload.races)}</span><small>{money(bet.stake)}{bet.venmo ? ` · ${bet.venmo}` : ""}{payload.event.poolMode === "host_managed" ? ` · ${bet.paymentVerified ? "payment confirmed" : "payment pending"}` : ""}</small></div>
+          <div>{payload.event.poolMode === "host_managed" && <button type="button" className="ghost-button" onClick={() => setPaymentVerified(bet.id, !bet.paymentVerified)}>{bet.paymentVerified ? "Mark pending" : "Confirm paid"}</button>}<button className="delete-row" type="button" onClick={() => removeBet(bet.id)}>Delete</button></div>
+        </article>)}</div>}
+        {betPageCount > 1 && <nav className="bet-pagination" aria-label="Bet manager pages"><button type="button" disabled={currentBetPage === 0} onClick={() => setBetPage(Math.max(0, currentBetPage - 1))}>Previous</button><span>Page {currentBetPage + 1} of {betPageCount}</span><button type="button" disabled={currentBetPage >= betPageCount - 1} onClick={() => setBetPage(Math.min(betPageCount - 1, currentBetPage + 1))}>Next</button></nav>}
+      </section>
     </section>
   );
 }
