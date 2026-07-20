@@ -134,6 +134,10 @@ function friendlyError(message: string) {
   return message;
 }
 
+function LoadingFlock() {
+  return <div className="loading-flock" role="status" aria-live="polite"><div className="loading-runway" aria-hidden="true"><i /><i /><i /></div><span>Loading the coop...</span></div>;
+}
+
 export default function Home() {
   const [eventCode, setEventCode] = useState("");
   const [payload, setPayload] = useState<EventPayload | null>(null);
@@ -227,7 +231,7 @@ export default function Home() {
       </header>
 
       {error && <div className="notice error">{error}</div>}
-      {loading && <div className="notice">Loading the coop...</div>}
+      {loading && <LoadingFlock />}
       {!payload ? <div className="setup-panel"><CreateEvent onCreated={openCreated} /></div> : (
         <>
           <div className="tabs" role="tablist">
@@ -462,9 +466,8 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
   if (resultsOfficial) return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div><p className="muted">Results are official, so betting is closed for this event.</p><p className="fine-print">Coop Boss can reopen betting only by clearing the winners and setting a new future close time.</p></section>;
   return <section className="panel"><div className="panel-title-row"><h2>Betting Coop</h2><SettlementHelpTip payload={payload} /></div>{payload.event.poolMode === "host_managed" ? <div className="notice">1. Place your bet(s). 2. Pay the host. 3. Done—your bets become active after host verification.</div> : <p className="fine-print">Chicken Bookie tracks Cluck Bucks and settlement math; it does not collect, hold, process, or transfer money.</p>}<form className="bet-form" onSubmit={submit}>
     <fieldset className="bettor-details"><legend>Who are you?</legend><label>Name<input value={bettor} onChange={(event) => setBettor(event.target.value)} />{existingName && <small className="field-note">Grouped with your previous bets</small>}</label><label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label></fieldset>
-    <fieldset className="wager-details"><legend>Bet slip</legend><label className="bet-amount-field"><span className="wager-step-label"><b>01</b>Bet amount</span><input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /><small>{Number(stake) > 0 ? `${money(Number(stake))} in Cluck Bucks${payload.event.poolMode === "host_managed" ? " · added to your unpaid total" : ""}` : "Enter your Cluck Bucks"}</small></label><label className="bet-type-field"><span className="wager-step-label"><b>02</b>What are you betting on?</span><select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select><span className="bet-type-help"><b>{BET_TYPE_CATEGORY[betType]}</b><small>{BET_TYPE_HELP[betType]}</small></span></label></fieldset>
-    <fieldset className="pick-details"><legend><span className="wager-step-label"><b>03</b>Select your pick</span></legend>{raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => { setRace(Number(event.target.value)); setPicks([]); }}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}<ChickenPicker chickens={pickerChickens} optionsByIndex={exactTicketOptions} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} /></fieldset>
-    <button type="submit">Add bet</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
+    <fieldset className="wager-details"><legend>Bet slip</legend><label className="bet-amount-field"><span className="wager-step-label"><b>01</b>Bet amount</span><input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /><small>{Number(stake) > 0 ? `${money(Number(stake))} in Cluck Bucks${payload.event.poolMode === "host_managed" ? " · added to your unpaid total" : ""}` : "Enter your Cluck Bucks"}</small></label><label className="bet-type-field"><span className="wager-step-label"><b>02</b>What are you betting on?</span><select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select><span className="bet-type-help"><b>{BET_TYPE_CATEGORY[betType]}</b><small>{BET_TYPE_HELP[betType]}</small></span></label><section className="pick-details"><h3 className="wager-step-label"><b>03</b>Select your pick</h3>{raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => { setRace(Number(event.target.value)); setPicks([]); }}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}<ChickenPicker chickens={pickerChickens} optionsByIndex={exactTicketOptions} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} /></section><button type="submit">Add bet</button></fieldset>
+    {message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
   </form>{payload.event.poolMode === "host_managed" && <HostPaymentSummary payload={payload} bettor={bettor} setPayload={setPayload} />}</section>;
 }
 
