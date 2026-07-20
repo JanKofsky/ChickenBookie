@@ -252,6 +252,14 @@ h1 {
 .hidden-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .field-note { color: rgba(217, 240, 194, 0.78); font-size: 0.78rem; font-weight: 700; line-height: 1.25; }
+.bet-type-field { --bet-accent: 127, 202, 145; gap: 6px; padding: 9px; border: 1px solid rgba(var(--bet-accent), 0.42); border-radius: 9px; background: rgba(var(--bet-accent), 0.07); }
+.bet-type-field[data-bet-kind="exact"] { --bet-accent: 240, 184, 87; }
+.bet-type-field[data-bet-kind="multi"] { --bet-accent: 115, 176, 232; }
+.bet-type-field[data-bet-kind="drop"] { --bet-accent: 211, 140, 222; }
+.bet-type-field select { border-color: rgba(var(--bet-accent), 0.65); background-color: rgba(7, 11, 8, 0.88); }
+.bet-type-help { display: grid; gap: 2px; padding: 6px 8px; border-left: 3px solid rgb(var(--bet-accent)); background: rgba(var(--bet-accent), 0.09); }
+.bet-type-help b { color: rgb(var(--bet-accent)); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.bet-type-help small { color: var(--ink); font-size: 0.8rem; font-weight: 750; line-height: 1.25; }
 .check-row { display: inline-flex; width: fit-content; grid-template-columns: none; align-items: center; gap: 8px; color: var(--muted); font-size: 0.92rem; }
 .check-row input { width: auto; min-height: auto; }
 .form-ok { color: #d9f0c2; font-weight: 850; }

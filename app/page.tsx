@@ -28,6 +28,18 @@ const BET_TYPE_HELP: Record<BetType, string> = {
   any_order_three: "Pick the race winners; the race order does not matter.",
   drop_number: "Pick the winning Chicken Drop number."
 };
+const BET_TYPE_CATEGORY: Record<BetType, string> = {
+  race_winner: "Single-race bet",
+  race_place: "Single-race bet",
+  race_show: "Single-race bet",
+  exacta: "Exact-order bet",
+  trifecta: "Exact-order bet",
+  sweep: "Multi-race bet",
+  exact_ticket: "Multi-race bet",
+  any_win: "Multi-race bet",
+  any_order_three: "Multi-race bet",
+  drop_number: "Chicken Drop bet"
+};
 const simpleBetTypes: BetType[] = ["race_winner", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const fullOrderBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta", "any_win", "any_order_three", "exact_ticket", "sweep"];
 const raceBetTypes: BetType[] = ["race_winner", "race_place", "race_show", "exacta", "trifecta"];
@@ -454,7 +466,7 @@ function Betting({ payload, setPayload }: { payload: EventPayload; setPayload: (
     <label>Venmo {payload.event.poolMode === "host_managed" ? "(required)" : "(optional)"}<div className="venmo-input"><span>@</span><input required={payload.event.poolMode === "host_managed"} value={venmo} placeholder={existingVenmo.replace(/^@/, "") || "username"} onChange={(event) => setVenmo(event.target.value.replace(/^@+/, ""))} /></div></label>
     <label>Cluck Bucks<input type="number" min="1" step="1" inputMode="decimal" value={stake} onChange={(event) => setStake(event.target.value)} /></label>
     {payload.event.poolMode === "host_managed" && Number(stake) > 0 && <p className="fine-print">This {money(Number(stake))} bet will be added to your running unpaid total.</p>}
-    <label>What are you betting on?<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select><small className="field-note bet-type-help">{BET_TYPE_HELP[betType]}</small></label>
+    <label className="bet-type-field" data-bet-kind={raceBetTypes.slice(3).includes(betType) ? "exact" : raceBetTypes.includes(betType) ? "single" : betType === "drop_number" ? "drop" : "multi"}>What are you betting on?<select value={betType} onChange={(event) => { setBetType(event.target.value as BetType); setPicks([]); }}>{availableBetTypes.map((key) => <option key={key} value={key}>{BET_TYPES[key]}</option>)}</select><span className="bet-type-help"><b>{BET_TYPE_CATEGORY[betType]}</b><small>{BET_TYPE_HELP[betType]}</small></span></label>
     {raceBetTypes.includes(betType) && <label>Race<select value={race} onChange={(event) => { setRace(Number(event.target.value)); setPicks([]); }}>{payload.races.map((race) => <option key={race.race} value={race.race}>{race.name}</option>)}</select></label>}
     <ChickenPicker chickens={pickerChickens} optionsByIndex={exactTicketOptions} picks={selectedPicks} setPicks={setPicks} count={needed} exact={betType === "exact_ticket" || betType === "exacta" || betType === "trifecta"} races={payload.races} labels={betType === "exacta" ? ["1st place", "2nd place"] : betType === "trifecta" ? ["1st place", "2nd place", "3rd place"] : undefined} />
     <button type="submit">Add bet</button>{message && <p className={message.includes("added") || message.includes("submitted") ? "form-ok" : "form-error"}>{message}</p>}
