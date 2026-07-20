@@ -469,6 +469,14 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   color: #9a5b00;
   font-weight: 700;
 }
+.ticket-memo-wrap { position: relative; display: block; width: fit-content; margin-top: 5px; }
+.ticket-memo-trigger { min-height: 28px; padding: 4px 8px; border-color: rgba(240, 217, 121, 0.42); border-radius: 6px; background: rgba(240, 217, 121, 0.10); box-shadow: none; color: var(--mustard-light); font-size: 0.68rem; }
+.ticket-memo-detail { position: absolute; z-index: 30; bottom: calc(100% + 7px); left: 0; display: none; width: min(360px, 78vw); gap: 4px; padding: 10px 12px; border: 1px solid rgba(240, 217, 121, 0.58); border-radius: 8px; background: rgba(13, 20, 15, 0.98); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.48); color: var(--ink); }
+.ticket-memo-detail small { color: var(--muted); }
+.ticket-memo-detail b { color: var(--mustard-light); font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 0.78rem; text-align: left; overflow-wrap: anywhere; }
+.ticket-memo-wrap:hover .ticket-memo-detail,
+.ticket-memo-wrap:focus-within .ticket-memo-detail,
+.ticket-memo-wrap.open .ticket-memo-detail { display: grid; }
 .ticket-row > * { overflow-wrap: anywhere; }
 .ticket-row b { text-align: right; }
 .ticket-head {
@@ -883,6 +891,7 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket-row { grid-template-columns: minmax(70px, 0.72fr) minmax(0, 1.5fr) minmax(68px, 0.62fr); gap: 6px; padding: 9px 8px; font-size: 0.88rem; }
   .ticket-head { font-size: 0.62rem; letter-spacing: 0.04em; }
   .ticket-row b { text-align: right; }
+  .ticket-memo-detail { position: fixed; right: 10px; bottom: 12px; left: 10px; width: auto; }
   .stat-bar { grid-template-columns: 1fr; gap: 5px; }
   .stat-bar b { text-align: left; white-space: normal; }
   .ledger-axis-head { display: none; }

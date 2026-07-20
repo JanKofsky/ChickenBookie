@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useId, useMemo, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Bet, BetType, Chicken, EventPayload, GameType, PoolMode, Race, Results } from "../lib/chickenBookie";
 
@@ -93,6 +93,8 @@ const pickedChickenIds = (bet: Bet) => {
   return ids.map(Number).filter(Boolean);
 };
 const normalizeName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+const paymentMemoPart = (value: string, fallback: string) => value.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 60) || fallback;
+const paymentMemo = (eventName: string, bettor: string, paymentId: string) => `${paymentMemoPart(eventName, "event")}_${paymentMemoPart(bettor, "bettor")}_${paymentId}`;
 const countedBets = (payload: EventPayload) => payload.bets.filter((bet) => bet.paymentVerified);
 const isResultsOfficial = (payload: EventPayload) => payload.event.gameType === "chicken_drop"
   ? payload.event.dropWinningNumber != null
@@ -225,7 +227,7 @@ export default function Home() {
           {tab === "bet" && (payload.event.gameType === "chicken_drop" ? <DropBetting payload={payload} setPayload={setPayload} /> : <Betting payload={payload} setPayload={setPayload} />)}
           {tab === "numbers" && <DropNumberBoard payload={payload} />}
           {tab === "flock" && <Flock chickens={payload.chickens} races={payload.races} officialRule={payload.event.officialRule} />}
-          {tab === "tickets" && <Tickets bets={payload.bets} chickens={payload.chickens} races={payload.races} />}
+          {tab === "tickets" && <Tickets payload={payload} />}
           {tab === "winners" && <Winners payload={payload} />}
           {tab === "boss" && <CoopBoss payload={payload} setPayload={setPayload} initialAdminCode={createdAdminCode} />}
           {tab === "merch" && <section className="panel"><h2>Merch</h2><p className="muted">Chicken Bookie merch is warming up in the coop.</p></section>}
@@ -476,8 +478,14 @@ function Flock({ chickens, races, officialRule }: { chickens: Chicken[]; races: 
   return <section className="split"><div className="panel"><h2>Starting Flock</h2><div className="flock-grid">{chickens.map((chicken) => <div className="bird" key={chicken.id}><ChickenPhoto chicken={chicken} /><span>#{chicken.slot}</span><strong>{chicken.name}</strong>{chicken.bio && <p>{chicken.bio}</p>}</div>)}</div></div><div className="panel"><h2>Race card</h2><article className="race-card race-rules-card"><h3>race rules</h3><p>{officialRule}</p></article>{races.map((race) => <article className="race-card" key={race.race}><span>Race {race.race}</span><h3>{race.name}</h3><p>{race.description}</p></article>)}</div></section>;
 }
 
-function Tickets({ bets, chickens, races }: { bets: Bet[]; chickens: Chicken[]; races: Race[] }) {
-  return <section className="panel"><h2>Ticket Board</h2><ChickenStatsPanel bets={bets.filter((bet) => bet.paymentVerified)} chickens={chickens} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className={`ticket-row${bet.paymentVerified ? "" : " pending-ticket"}`} key={bet.id}><strong>{bet.bettor}{!bet.paymentVerified && <small className="field-note">payment pending</small>}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+function Tickets({ payload }: { payload: EventPayload }) {
+  const { bets, chickens, races } = payload;
+  return <section className="panel"><h2>Ticket Board</h2><ChickenStatsPanel bets={bets.filter((bet) => bet.paymentVerified)} chickens={chickens} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{bets.map((bet) => <div className={`ticket-row${bet.paymentVerified ? "" : " pending-ticket"}`} key={bet.id}><strong>{bet.bettor}{!bet.paymentVerified && <small className="field-note">payment pending</small>}{payload.event.poolMode === "host_managed" && !bet.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.name, bet.bettor, bet.paymentId)} />}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</div>}</section>;
+}
+
+function PaymentMemoTip({ memo }: { memo: string }) {
+  const [open, setOpen] = useState(false);
+  return <span className={`ticket-memo-wrap${open ? " open" : ""}`}><button type="button" className="ticket-memo-trigger" aria-expanded={open} onClick={() => setOpen(!open)}>Payment memo</button><span className="ticket-memo-detail" role="tooltip"><small>Use this exact Venmo memo</small><b>{memo}</b></span></span>;
 }
 
 function ChickenStatsPanel({ bets, chickens }: { bets: Bet[]; chickens: Chicken[] }) {
@@ -551,8 +559,7 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
   const pendingBets = allPendingBets.filter((bet) => bet.paymentId === paymentId);
   const total = pendingBets.reduce((sum, bet) => sum + Number(bet.stake), 0);
   const displayName = pendingBets[0].bettor;
-  const memoPart = (value: string, fallback: string) => value.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 60) || fallback;
-  const note = `${memoPart(payload.event.name, "event")}_${memoPart(displayName, "bettor")}_${paymentId}`;
+  const note = paymentMemo(payload.event.name, displayName, paymentId);
   const hostProfileUrl = payload.event.hostVenmoLink || "https://account.venmo.com/";
   async function copyPaymentField(label: string, value: string) {
     try {
@@ -570,11 +577,16 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
     setCopied(label);
     window.setTimeout(() => setCopied(""), 1400);
   }
+  async function leaveForVenmo(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    await copyPaymentField("amount", total.toFixed(2));
+    window.location.assign(hostProfileUrl);
+  }
   return <aside className="host-payment-summary" aria-live="polite">
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName} · Payment ID <span className="payment-id-badge">{paymentId}</span></small></div>
-    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} target="_blank" rel="noreferrer" onClick={() => { void copyPaymentField("amount", total.toFixed(2)); }}>Pay my full {money(total)} total to {payload.event.hostVenmo}</a>
+    <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} onClick={leaveForVenmo}>Pay my full {money(total)} total to {payload.event.hostVenmo}</a>
     <div className="payment-helper-menu">
       <div><span>1. Recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
