@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useId, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Bet, BetType, Chicken, EventPayload, GameType, PoolMode, Race, Results } from "../lib/chickenBookie";
 
@@ -508,16 +508,29 @@ function Tickets({ payload }: { payload: EventPayload }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
   const [showAll, setShowAll] = useState(false);
-  const pageSize = 12;
+  const groupsPerPage = 8;
   const confirmedBets = bets.filter((bet) => bet.paymentVerified);
   const pendingCount = bets.length - confirmedBets.length;
   const query = normalizeName(search).replace(/^@/, "");
-  const orderedBets = [...bets].sort((a, b) => Number(b.paymentVerified) - Number(a.paymentVerified));
+  const orderedBets = [...bets].sort((a, b) => Number(b.paymentVerified) - Number(a.paymentVerified) || a.bettor.localeCompare(b.bettor) || a.id - b.id);
   const matchingBets = query ? orderedBets.filter((bet) => [bet.bettor, bet.venmo, bet.paymentId, BET_TYPES[bet.betType], describeBet(bet, chickens, races), money(bet.stake), bet.paymentVerified ? "confirmed" : "pending"].some((value) => normalizeName(String(value)).replace(/^@/, "").includes(query))) : orderedBets;
-  const pageCount = showAll ? 1 : Math.max(1, Math.ceil(matchingBets.length / pageSize));
+  const groupMap = new Map<string, { bettor: string; paymentVerified: boolean; paymentId: string; bets: Bet[] }>();
+  for (const bet of matchingBets) {
+    const key = `${bet.paymentVerified ? "confirmed" : `pending:${bet.paymentId}`}:${normalizeName(bet.bettor)}`;
+    const group = groupMap.get(key) ?? { bettor: bet.bettor, paymentVerified: bet.paymentVerified, paymentId: bet.paymentId, bets: [] };
+    group.bets.push(bet);
+    groupMap.set(key, group);
+  }
+  const groupedBets = Array.from(groupMap.values());
+  const pageCount = showAll ? 1 : Math.max(1, Math.ceil(groupedBets.length / groupsPerPage));
   const currentPage = Math.min(page, pageCount - 1);
-  const visibleBets = showAll ? matchingBets : matchingBets.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-  return <section className="panel"><h2>Ticket Board</h2>{payload.event.poolMode === "host_managed" && <div className="ticket-count-summary"><strong>{confirmedBets.length} confirmed bet{confirmedBets.length === 1 ? "" : "s"} count</strong>{pendingCount > 0 && <span>{pendingCount} pending</span>}</div>}<ChickenStatsPanel bets={confirmedBets} chickens={chickens} confirmedOnly={payload.event.poolMode === "host_managed"} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <><div className="ticket-directory-controls"><label>Search tickets<input type="search" value={search} placeholder="Name, chicken, ID, or status" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matchingBets.length} found` : `${bets.length} total`}</span>{bets.length > pageSize && <button type="button" className="ghost-button" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show less" : "Show all"}</button>}</div><div className="ticket-table"><div className="ticket-row ticket-head"><span>Name</span><span>Win condition</span><span>Cluck Bucks</span></div>{visibleBets.length === 0 ? <p className="muted">No tickets found.</p> : visibleBets.map((bet) => <div className={`ticket-row${bet.paymentVerified ? "" : " pending-ticket"}`} key={bet.id}><strong>{bet.bettor}{!bet.paymentVerified && <small className="field-note">Pending</small>}{payload.event.poolMode === "host_managed" && !bet.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.name, bet.bettor, bet.paymentId)} />}</strong><span>{BET_TYPES[bet.betType]} - {describeBet(bet, chickens, races)}</span><b>{!bet.paymentVerified && <small>Pending</small>}{money(bet.stake)}</b></div>)}</div>{pageCount > 1 && <nav className="bet-pagination" aria-label="Ticket Board pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}</>}</section>;
+  const visibleGroups = showAll ? groupedBets : groupedBets.slice(currentPage * groupsPerPage, (currentPage + 1) * groupsPerPage);
+  return <section className="panel"><h2>Ticket Board</h2>{payload.event.poolMode === "host_managed" && <div className="ticket-count-summary"><strong>{confirmedBets.length} confirmed bet{confirmedBets.length === 1 ? "" : "s"} count</strong>{pendingCount > 0 && <span>{pendingCount} pending</span>}</div>}<ChickenStatsPanel bets={confirmedBets} chickens={chickens} confirmedOnly={payload.event.poolMode === "host_managed"} />{bets.length === 0 ? <p className="muted">No bets yet.</p> : <><div className="ticket-directory-controls"><label>Search tickets<input type="search" value={search} placeholder="Name, chicken, ID, or status" onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><span>{query ? `${matchingBets.length} found` : `${bets.length} total`}</span>{groupedBets.length > groupsPerPage && <button type="button" className="ghost-button" onClick={() => { setShowAll(!showAll); setPage(0); }}>{showAll ? "Show less" : "Show all"}</button>}</div><div className="ticket-groups">{visibleGroups.length === 0 ? <p className="muted">No tickets found.</p> : visibleGroups.map((group, groupIndex) => {
+    const total = group.bets.reduce((sum, bet) => sum + Number(bet.stake), 0);
+    const showConfirmedHeading = payload.event.poolMode === "host_managed" && group.paymentVerified && groupIndex === 0;
+    const showPendingHeading = !group.paymentVerified && (groupIndex === 0 || visibleGroups[groupIndex - 1].paymentVerified);
+    return <div className="ticket-group-wrap" key={`${group.paymentVerified}:${group.paymentId}:${normalizeName(group.bettor)}`}>{showConfirmedHeading && <h3 className="ticket-section-heading">Confirmed</h3>}{showPendingHeading && <h3 className="ticket-section-heading pending-section-heading">Pending</h3>}<section className={`ticket-group${group.paymentVerified ? "" : " pending-ticket"}`}><header><div><strong>{group.bettor}</strong>{!group.paymentVerified && <span>Pending</span>}</div><b>{group.bets.length} bet{group.bets.length === 1 ? "" : "s"} · {money(total)}</b>{payload.event.poolMode === "host_managed" && !group.paymentVerified && <PaymentMemoTip memo={paymentMemo(payload.event.name, group.bettor, group.paymentId)} />}</header><div className="ticket-row ticket-head"><span>Bet type</span><span>Pick</span><span>Amount</span></div>{group.bets.map((bet) => <div className="ticket-row" key={bet.id}><strong>{BET_TYPES[bet.betType]}</strong><span>{describeBet(bet, chickens, races)}</span><b>{money(bet.stake)}</b></div>)}</section></div>;
+  })}</div>{pageCount > 1 && <nav className="bet-pagination" aria-label="Ticket Board pages"><button type="button" disabled={currentPage === 0} onClick={() => setPage(Math.max(0, currentPage - 1))}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}>Next</button></nav>}</>}</section>;
 }
 
 function PaymentMemoTip({ memo }: { memo: string }) {
@@ -642,10 +655,9 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     setCopied(label);
     window.setTimeout(() => setCopied(""), 1400);
   }
-  async function leaveForVenmo(event: MouseEvent<HTMLAnchorElement>) {
-    event.preventDefault();
+  async function leaveForVenmo() {
     await copyPaymentField("note", note);
-    if (await updateSubmitted(true)) window.location.assign(venmoPaymentUrl);
+    await updateSubmitted(true);
   }
   async function updateSubmitted(submitted: boolean) {
     const response = await fetch("/api/bets", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, paymentId, venmo: pendingBets[0].venmo, submitted }) });
@@ -669,7 +681,7 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
     <section className="pending-bet-cart"><header><span>Your pending bet cart</span><strong>{pendingBets.length} bet{pendingBets.length === 1 ? "" : "s"}</strong></header>{pendingBets.map((bet) => <div key={bet.id}><span><b>{describeBet(bet, payload.chickens, payload.races)}</b><small>Bet #{bet.id}</small></span><strong>{money(bet.stake)}</strong><button type="button" aria-label={`Remove bet ${bet.id}`} onClick={() => { void removeFromCart(bet); }}>Remove</button></div>)}{cartMessage && <p>{cartMessage}</p>}</section>
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
-    <a className="venmo-pay-link full-payment-link" href={venmoPaymentUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
+    <a className="venmo-pay-link full-payment-link" href={venmoPaymentUrl} target="_blank" rel="noreferrer" onClick={() => { void leaveForVenmo(); }}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
     {memoEditor}
     <p>Click to pay in Venmo. If the recipient, amount, or memo doesn’t fill in automatically, enter it manually. Your host will verify receipt.</p>
   </aside>;
