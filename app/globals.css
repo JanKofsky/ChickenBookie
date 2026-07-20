@@ -720,6 +720,20 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .host-payment-summary > div span { color: var(--muted); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; }
 .host-payment-summary > div strong { color: #d9f0c2; font-size: 1.8rem; }
 .host-payment-summary > div small { color: var(--muted); }
+.payment-helper-menu { display: grid; gap: 8px; }
+.payment-helper-menu > div {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(7, 11, 8, 0.42);
+}
+.payment-helper-menu > div span { font-size: 0.68rem; }
+.payment-helper-menu > div strong { color: var(--ink); font-size: 0.86rem; overflow-wrap: anywhere; }
+.payment-helper-menu > div button { min-height: 30px; padding: 5px 9px; }
 .venmo-pay-link {
   display: block;
   padding: 12px 16px;
@@ -779,6 +793,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .admin-section-nav { top: 4px; margin-inline: -3px; }
   .host-payment-summary { grid-template-columns: 1fr; }
   .host-payment-summary > p { grid-column: auto; }
+  .payment-helper-menu > div { grid-template-columns: 1fr auto; }
+  .payment-helper-menu > div span { grid-column: 1 / -1; }
   .bet-admin-row { grid-template-columns: 1fr; }
   .bet-admin-row > div:last-child { justify-content: flex-end; flex-wrap: wrap; }
   .ticket { grid-template-columns: 1fr; }

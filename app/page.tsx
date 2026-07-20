@@ -541,19 +541,39 @@ function VenmoHandle({ handle }: { handle: string }) {
 }
 
 function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor: string }) {
+  const [copied, setCopied] = useState("");
   const normalizedBettor = normalizeName(bettor);
   if (!normalizedBettor) return null;
   const pendingBets = payload.bets.filter((bet) => !bet.paymentVerified && normalizeName(bet.bettor) === normalizedBettor);
   if (!pendingBets.length) return null;
   const total = pendingBets.reduce((sum, bet) => sum + Number(bet.stake), 0);
   const displayName = pendingBets[0].bettor;
-  const hostUsername = payload.event.hostVenmo.replace(/^@/, "");
   const note = `${payload.event.name} (${payload.event.code}) - ${pendingBets.length} bet${pendingBets.length === 1 ? "" : "s"} for ${displayName}`;
-  const paymentUrl = `https://venmo.com/u/${encodeURIComponent(hostUsername)}?txn=pay&amount=${total.toFixed(2)}&note=${encodeURIComponent(note)}&audience=private`;
+  async function copyPaymentField(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const field = document.createElement("textarea");
+      field.value = value;
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      document.execCommand("copy");
+      field.remove();
+    }
+    setCopied(label);
+    window.setTimeout(() => setCopied(""), 1400);
+  }
   return <aside className="host-payment-summary" aria-live="polite">
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
-    <a className="venmo-pay-link" href={paymentUrl} target="_blank" rel="noreferrer">Pay {money(total)} to {payload.event.hostVenmo} in Venmo</a>
-    <p>Venmo should open with the host, total, and event note filled in. Review everything before sending. Chicken Bookie cannot read Venmo transactions; the host confirms the group after receiving it.</p>
+    <div className="payment-helper-menu">
+      <div><span>1. Recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
+      <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
+      <div><span>3. Payment note</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
+      <a className="venmo-pay-link" href="https://account.venmo.com/" target="_blank" rel="noreferrer">Open Venmo</a>
+    </div>
+    <p>In Venmo, choose Pay/Request and paste these details. Confirm the recipient yourself before sending. Chicken Bookie cannot read Venmo transactions; the host confirms the group after receiving it.</p>
   </aside>;
 }
 
