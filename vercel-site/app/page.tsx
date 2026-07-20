@@ -493,7 +493,8 @@ function Winners({ payload }: { payload: EventPayload }) {
   if (countedBets(payload).length < 2) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">Oh cluck, not enough confirmed bets yet. Add at least two counted tickets before the feed bucket math is worth settling.</p></section>;
   if (!payload.settlement) return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><p className="muted">{payload.event.gameType === "chicken_drop" ? "The Coop Boss needs to enter the official drop number before settlement is shown." : "The Coop Boss needs to enter every race winner before settlement is shown."}</p></section>;
   const payments = [...payload.settlement.payments].sort((a, b) => a.from.localeCompare(b.from) || a.to.localeCompare(b.to) || b.amount - a.amount);
-  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{payload.event.poolMode === "host_managed" ? "Host payout checklist" : "Who pays whom"}</h3><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>Payout overview</h3><SettlementLedger people={payload.settlement.people} /></section>;
+  const hostManaged = payload.event.poolMode === "host_managed";
+  return <section className="panel"><h2>Winner's Circle</h2><SettlementExplainer payload={payload} /><WinnerCallout payload={payload} /><h3>{hostManaged ? "Host payout checklist" : "Optional who-pays-whom plan"}</h3><div className="payment-list">{payments.length === 0 ? <p>No payments needed.</p> : payments.map((payment, idx) => <div className="payment" key={idx}><span><b>{payment.from}</b> pays <b>{payment.to}</b>{payment.toVenmo && <VenmoHandle handle={payment.toVenmo} />}</span><strong>{money(payment.amount)}</strong></div>)}</div><h3>{hostManaged ? "Host payout overview" : "Settlement overview"}</h3><SettlementLedger people={payload.settlement.people} showPayout={hostManaged} /></section>;
 }
 
 function SettlementExplainer({ payload }: { payload: EventPayload }) {
@@ -510,11 +511,11 @@ function SettlementExplainer({ payload }: { payload: EventPayload }) {
         : isDropEvent
           ? "Venmo is not required and nobody prepays the site or host. After the winning square is official, the optional payment list shows how players could settle the Chicken Drop directly with one another."
           : "Venmo is not required and nobody prepays the site or host. After race results are official, the optional payment list shows how bettors could settle directly with one another."}</p>
-      <p><b>{isDropEvent ? "Chicken Drop payout math:" : "Chicken Race payout math:"}</b> {isDropEvent
+      <p><b>{isDropEvent ? "Chicken Drop" : "Chicken Race"} {isHostManaged ? "payout" : "settlement"} math:</b> {isDropEvent
         ? "Every counted ticket on the winning square gets its ticket price back, then those tickets split the losing-square pool equally. If nobody picked the winning square, every counted ticket is refunded."
         : "Each winning ticket gets its stake back, then winning tickets share the losing-ticket pool based on bet difficulty. If no ticket wins, every counted bet is refunded."}</p>
       {isHostManaged && pendingCount > 0 && <p><b>{pendingCount} payment-pending bet{pendingCount === 1 ? " is" : "s are"} excluded</b> from bet counts, pool totals, boards, and payouts until the host confirms receipt.</p>}
-      {payload.settlement && <p><b>Payout overview:</b> Each bar is net P/L (profit or loss), and the right column shows total payout plus return percentage. Hover over a bar for the original stake and full details.</p>}
+      {payload.settlement && <p><b>{isHostManaged ? "Host payout overview:" : "Settlement overview:"}</b> Each bar is net P/L (profit or loss), and the right column shows return percentage{isHostManaged ? " plus the amount the host pays" : ""}. Hover over a bar for the original stake and full details.</p>}
     </div>
   </details>;
 }
@@ -594,7 +595,7 @@ function WinnerCallout({ payload }: { payload: EventPayload }) {
   })}</div></div>;
 }
 
-function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }> }) {
+function SettlementLedger({ people, showPayout }: { people: Array<{ bettor: string; staked: number; payout: number; net: number }>; showPayout: boolean }) {
   const rows = people.map((person) => ({ ...person, earningsPct: person.staked > 0 ? (person.net / person.staked) * 100 : 0 }))
     .sort((a, b) => b.net - a.net || b.earningsPct - a.earningsPct || a.bettor.localeCompare(b.bettor));
   const rawMaxAxis = Math.max(1, ...rows.map((person) => Math.abs(person.net)));
@@ -609,7 +610,7 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
     return "var(--loss-mid)";
   };
   return <div className="ledger-graph">
-    <p className="fine-print"><b>Net P/L</b> means net profit or loss. Return percentage and payout are on the right; hover for the original stake and full details.</p>
+    <p className="fine-print"><b>Net P/L</b> means net profit or loss. The return percentage is on the right{showPayout ? ", with the amount paid by the host underneath" : ""}; hover for the original stake and full details.</p>
     <div className="ledger-axis-head"><span>Bettor</span><div className="ledger-ticks">{axisTicks.map((tick, idx) => <b key={tick} style={{ left: `${idx * 25}%` }}>{tick === 0 ? "$0" : money(tick)}</b>)}</div><span>Return</span></div>
     <div className="ledger-plot">
       <div className="ledger-labels">{rows.map((person) => <strong key={person.bettor}>{person.bettor}</strong>)}</div>
@@ -619,14 +620,15 @@ function SettlementLedger({ people }: { people: Array<{ bettor: string; staked: 
         const profitLossWidth = Math.max(2, (Math.abs(person.net) / maxAxis) * 50);
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
         const netLabel = `${person.net >= 0 ? "+" : ""}${money(person.net)}`;
-        return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}, payout ${money(person.payout)}, P/L ${netLabel}, earning ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}, payout ${money(person.payout)}, profit loss ${netLabel}, earning ${pctLabel}`}>
+        const detailLabel = showPayout ? `, host payout ${money(person.payout)}` : "";
+        return <div className="ledger-axis" key={person.bettor} title={`${person.bettor}: stake ${money(person.staked)}${detailLabel}, P/L ${netLabel}, return ${pctLabel}`} aria-label={`${person.bettor} staked ${money(person.staked)}${detailLabel}, profit loss ${netLabel}, return ${pctLabel}`}>
           <i className={person.net >= 0 ? "profit-loss-layer positive" : "profit-loss-layer"} style={person.net >= 0 ? { left: "50%", width: `${profitLossWidth}%`, background: netColor(person.earningsPct) } : { left: `${50 - profitLossWidth}%`, width: `${profitLossWidth}%`, background: netColor(person.earningsPct) }} />
           <b className={person.net >= 0 ? "ledger-bar-label positive" : "ledger-bar-label"}>{netLabel}</b>
         </div>;
       })}</div>
       <div className="ledger-results">{rows.map((person) => {
         const pctLabel = `${person.earningsPct >= 0 ? "+" : ""}${Math.round(person.earningsPct)}%`;
-        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{pctLabel} <span>Payout {money(person.payout)}</span></b>;
+        return <b className={person.net >= 0 ? "ledger-net positive" : "ledger-net"} key={person.bettor}>{pctLabel}{showPayout && <span>Host pays {money(person.payout)}</span>}</b>;
       })}</div>
     </div>
   </div>;
@@ -783,7 +785,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
         <div>
           <a href="#admin-event-setup">Event setup</a>
           {!isDropEvent && <a href="#admin-contestants">Contestants & races</a>}
-          <a href="#admin-results">Results & payouts</a>
+          <a href="#admin-results">{poolMode === "host_managed" ? "Results & payouts" : "Results & settlement"}</a>
           <a href="#admin-bet-management">Bets & payments <b>{payload.bets.length.toLocaleString()}</b></a>
         </div>
       </nav>
@@ -827,8 +829,8 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
       </form>
 
       <form id="admin-results" className="grid-form result-entry admin-section-target" onSubmit={save}>
-        <h3>Results & payouts</h3>
-        <p className="fine-print wide-field">{isDropEvent ? "Enter the official winning square. Chicken Bookie will identify matching tickets and calculate the split or refunds." : "Enter each official race result. Chicken Bookie will score every bet type and calculate the payout guidance."}</p>
+        <h3>{poolMode === "host_managed" ? "Results & payouts" : "Results & settlement"}</h3>
+        <p className="fine-print wide-field">{isDropEvent ? "Enter the official winning square. Chicken Bookie will identify matching tickets and calculate the split or refunds." : `Enter each official race result. Chicken Bookie will score every bet type and calculate the ${poolMode === "host_managed" ? "host payouts" : "optional settlement plan"}.`}</p>
         <h4 className="wide-field">{isDropEvent ? "Official Chicken Drop result" : "Official race results"}</h4>
         {isDropEvent ? <label>Winning number<input type="number" min="1" max={payload.event.dropMaxNumber} step="1" value={dropWinningNumber} onChange={(event) => setDropWinningNumber(event.target.value)} /></label> : payload.races.map((race) => resultMode === "full_order" ? <div className="admin-card" key={race.race}>
           <h3>{race.name}</h3>
