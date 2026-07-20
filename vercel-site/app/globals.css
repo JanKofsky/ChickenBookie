@@ -462,6 +462,10 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
 .ticket-count-summary { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 8px 0 12px; padding: 10px 12px; border: 1px solid rgba(217, 240, 194, 0.28); border-radius: 9px; background: rgba(217, 240, 194, 0.07); }
 .ticket-count-summary strong { color: #d9f0c2; }
 .ticket-count-summary span { color: var(--mustard-light); font-weight: 850; }
+.ticket-directory-controls { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 10px; align-items: end; margin: 16px 0 10px; padding: 12px; border: 1px solid rgba(217, 240, 194, 0.2); border-radius: 10px; background: rgba(7, 11, 8, 0.38); }
+.ticket-directory-controls label { margin: 0; }
+.ticket-directory-controls > span { color: var(--muted); font-weight: 850; }
+.ticket-directory-controls > button { min-height: 40px; width: auto; }
 .ticket-row {
   display: grid;
   grid-template-columns: minmax(120px, 0.9fr) minmax(220px, 2fr) minmax(96px, 0.55fr);
@@ -932,6 +936,8 @@ label { display: grid; gap: 6px; color: var(--muted); font-weight: 850; }
   .ticket { grid-template-columns: 1fr; }
   .ticket b { text-align: left; }
   .ticket-table { gap: 5px; }
+  .ticket-directory-controls { grid-template-columns: 1fr; align-items: stretch; }
+  .ticket-directory-controls > button { width: 100%; }
   .ticket-row { grid-template-columns: minmax(70px, 0.72fr) minmax(0, 1.5fr) minmax(68px, 0.62fr); gap: 6px; padding: 9px 8px; font-size: 0.88rem; }
   .ticket-head { font-size: 0.62rem; letter-spacing: 0.04em; }
   .ticket-row b { text-align: right; }
