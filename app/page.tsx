@@ -545,11 +545,14 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
   const [copied, setCopied] = useState("");
   const normalizedBettor = normalizeName(bettor);
   if (!normalizedBettor) return null;
-  const pendingBets = payload.bets.filter((bet) => !bet.paymentVerified && normalizeName(bet.bettor) === normalizedBettor);
-  if (!pendingBets.length) return null;
+  const allPendingBets = payload.bets.filter((bet) => !bet.paymentVerified && normalizeName(bet.bettor) === normalizedBettor);
+  if (!allPendingBets.length) return null;
+  const paymentId = allPendingBets[0].paymentId;
+  const pendingBets = allPendingBets.filter((bet) => bet.paymentId === paymentId);
   const total = pendingBets.reduce((sum, bet) => sum + Number(bet.stake), 0);
   const displayName = pendingBets[0].bettor;
-  const note = `${payload.event.name} (${payload.event.code}) - ${pendingBets.length} bet${pendingBets.length === 1 ? "" : "s"} for ${displayName}`;
+  const memoPart = (value: string, fallback: string) => value.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 60) || fallback;
+  const note = `${memoPart(payload.event.name, "event")}_${memoPart(displayName, "bettor")}_${paymentId}`;
   const hostProfileUrl = payload.event.hostVenmoLink || "https://account.venmo.com/";
   async function copyPaymentField(label: string, value: string) {
     try {
@@ -570,14 +573,15 @@ function HostPaymentSummary({ payload, bettor }: { payload: EventPayload; bettor
   return <aside className="host-payment-summary" aria-live="polite">
     <header className="host-payment-heading"><h3>Pay once when you are finished betting</h3><p>You can keep adding bets. This total updates automatically, so there is no need to pay after each one.</p></header>
     <ol className="payment-flow-steps"><li className="done"><b>1</b><span>Add bets<strong>{pendingBets.length} ready</strong></span></li><li className="active"><b>2</b><span>Pay once<strong>{money(total)}</strong></span></li><li><b>3</b><span>Host confirms<strong>All together</strong></span></li></ol>
-    <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
+    <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName} · Payment ID <span className="payment-id-badge">{paymentId}</span></small></div>
     <a className="venmo-pay-link full-payment-link" href={hostProfileUrl} target="_blank" rel="noreferrer" onClick={() => { void copyPaymentField("amount", total.toFixed(2)); }}>Pay my full {money(total)} total to {payload.event.hostVenmo}</a>
     <div className="payment-helper-menu">
       <div><span>1. Recipient</span><strong>{payload.event.hostVenmo}</strong><button type="button" onClick={() => copyPaymentField("recipient", payload.event.hostVenmo)}>{copied === "recipient" ? "Copied!" : "Copy"}</button></div>
       <div><span>2. Amount</span><strong>{money(total)}</strong><button type="button" onClick={() => copyPaymentField("amount", total.toFixed(2))}>{copied === "amount" ? "Copied!" : "Copy"}</button></div>
-      <div><span>3. Payment note</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
+      <div><span>3. Payment ID</span><strong className="payment-id-badge">{paymentId}</strong><button type="button" onClick={() => copyPaymentField("payment-id", paymentId)}>{copied === "payment-id" ? "Copied!" : "Copy"}</button></div>
+      <div><span>4. Venmo memo</span><strong>{note}</strong><button type="button" onClick={() => copyPaymentField("note", note)}>{copied === "note" ? "Copied!" : "Copy"}</button></div>
     </div>
-    <p>You’ll be redirected to the host’s Venmo profile with your full total copied for easy pasting. Copy the event note above, review everything in Venmo, and then send. Your host will verify payment.</p>
+    <p>You’ll be redirected to the host’s Venmo profile with your full total copied for easy pasting. Copy the Venmo memo above, review everything in Venmo, and then send. Your host will match the payment ID and verify payment.</p>
   </aside>;
 }
 
@@ -696,13 +700,13 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not update payment status."));
     else { setPayload(data); setMessage(verified ? "Payment confirmed; bet now counts." : "Payment marked pending; bet no longer counts."); }
   }
-  async function confirmBettorPayments(bettor: string, count: number, total: number) {
-    if (!window.confirm(`Confirm that ${bettor} paid ${money(total)} for ${count} pending bet${count === 1 ? "" : "s"}? All of them will start counting.`)) return;
-    setMessage(`Confirming ${count} bets for ${bettor}...`);
-    const response = await fetch("/api/admin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_bettor_payments", eventId: payload.event.id, adminCode, bettor }) });
+  async function confirmPaymentBatch(paymentId: string, bettor: string, count: number, total: number) {
+    if (!window.confirm(`Confirm payment ${paymentId} from ${bettor} for ${money(total)}? All ${count} covered bet${count === 1 ? "" : "s"} will start counting.`)) return;
+    setMessage(`Confirming payment ${paymentId} for ${bettor}...`);
+    const response = await fetch("/api/admin", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verify_bettor_payments", eventId: payload.event.id, adminCode, paymentId }) });
     const data = await response.json();
     if (!response.ok) setMessage(friendlyError(data.error ?? "Could not confirm the grouped payment."));
-    else { setPayload(data); setMessage(`${count} bets confirmed for ${bettor}; they now count.`); }
+    else { setPayload(data); setMessage(`Payment ${paymentId} confirmed; ${count} bet${count === 1 ? "" : "s"} for ${bettor} now count.`); }
   }
   async function clearWinners() {
     const response = await fetch("/api/results", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ eventId: payload.event.id, adminCode }) });
@@ -764,7 +768,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
   const configuredDropSections = (Number(dropGridColumns) || 0) * (Number(dropGridRows) || 0);
   const normalizedBetSearch = betSearch.trim().toLowerCase();
   const matchingBets = payload.bets.filter((bet) => !normalizedBetSearch || [
-    String(bet.id), `#${bet.id}`, bet.bettor, bet.venmo, bet.betType, describeBet(bet, payload.chickens, payload.races), String(bet.stake), bet.paymentVerified ? "confirmed" : "pending"
+    String(bet.id), `#${bet.id}`, bet.paymentId, bet.bettor, bet.venmo, bet.betType, describeBet(bet, payload.chickens, payload.races), String(bet.stake), bet.paymentVerified ? "confirmed" : "pending"
   ].join(" ").toLowerCase().includes(normalizedBetSearch));
   const betsPerPage = 25;
   const betPageCount = Math.max(1, Math.ceil(matchingBets.length / betsPerPage));
@@ -773,7 +777,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
   const pendingPaymentGroups = new Map<string, { count: number; total: number }>();
   for (const bet of payload.bets) {
     if (bet.paymentVerified) continue;
-    const key = normalizeName(bet.bettor);
+    const key = bet.paymentId || normalizeName(bet.bettor);
     const group = pendingPaymentGroups.get(key) ?? { count: 0, total: 0 };
     group.count += 1;
     group.total += Number(bet.stake);
@@ -868,10 +872,10 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "" }: { payload: Eve
       {message && <p className={message.includes("saved") || message.includes("deleted") || message.includes("cleared") || message.includes("confirmed") || message.includes("no longer counts") ? "form-ok" : "form-error"}>{message}</p>}
       <section className="bet-manager">
         <div className="bet-manager-heading"><div><h3>Manage bets{payload.event.poolMode === "host_managed" ? " & payments" : ""}</h3><p className="fine-print">Showing at most {betsPerPage} at once instead of loading all {payload.bets.length.toLocaleString()} bets.</p></div><strong>{matchingBets.length.toLocaleString()} match{matchingBets.length === 1 ? "" : "es"}</strong></div>
-        <label>Search by bettor, bet ID, pick, amount, Venmo, or payment status<input type="search" value={betSearch} placeholder="e.g. Avery, #142, pending" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); }} /></label>
-        {visibleBets.length === 0 ? <p className="muted">No bets match that search.</p> : <div className="bet-admin-list">{visibleBets.map((bet) => { const pendingGroup = pendingPaymentGroups.get(normalizeName(bet.bettor)); return <article className="bet-admin-row" key={bet.id}>
-          <div><strong>#{bet.id} · {bet.bettor}</strong><span>{describeBet(bet, payload.chickens, payload.races)}</span><small>{money(bet.stake)}{bet.venmo ? ` · ${bet.venmo}` : ""}{payload.event.poolMode === "host_managed" ? ` · ${bet.paymentVerified ? "payment confirmed" : "payment pending"}` : ""}</small></div>
-          <div>{payload.event.poolMode === "host_managed" && (bet.paymentVerified ? <button type="button" className="ghost-button" onClick={() => setPaymentVerified(bet.id, false)}>Mark pending</button> : <button type="button" className="ghost-button" onClick={() => confirmBettorPayments(bet.bettor, pendingGroup?.count ?? 1, pendingGroup?.total ?? Number(bet.stake))}>Confirm all {pendingGroup?.count ?? 1} · {money(pendingGroup?.total ?? Number(bet.stake))}</button>)}<button className="delete-row" type="button" onClick={() => removeBet(bet.id)}>Delete</button></div>
+        <label>Search by bettor, payment ID, bet ID, pick, amount, Venmo, or status<input type="search" value={betSearch} placeholder="e.g. CB-A1B2C3D4, Avery, #142, pending" onChange={(event) => { setBetSearch(event.target.value); setBetPage(0); }} /></label>
+        {visibleBets.length === 0 ? <p className="muted">No bets match that search.</p> : <div className="bet-admin-list">{visibleBets.map((bet) => { const pendingGroup = pendingPaymentGroups.get(bet.paymentId || normalizeName(bet.bettor)); return <article className="bet-admin-row" key={bet.id}>
+          <div><strong>#{bet.id} · {bet.bettor}</strong><span>{describeBet(bet, payload.chickens, payload.races)}</span><small>{money(bet.stake)}{bet.venmo ? ` · ${bet.venmo}` : ""}{payload.event.poolMode === "host_managed" ? <> · <span className="payment-id-badge">{bet.paymentId}</span> · {bet.paymentVerified ? "payment confirmed" : "payment pending"}</> : ""}</small></div>
+          <div>{payload.event.poolMode === "host_managed" && (bet.paymentVerified ? <button type="button" className="ghost-button" onClick={() => setPaymentVerified(bet.id, false)}>Mark pending</button> : <button type="button" className="ghost-button" onClick={() => confirmPaymentBatch(bet.paymentId, bet.bettor, pendingGroup?.count ?? 1, pendingGroup?.total ?? Number(bet.stake))}>Confirm {bet.paymentId} · {pendingGroup?.count ?? 1} bet{(pendingGroup?.count ?? 1) === 1 ? "" : "s"} · {money(pendingGroup?.total ?? Number(bet.stake))}</button>)}<button className="delete-row" type="button" onClick={() => removeBet(bet.id)}>Delete</button></div>
         </article>; })}</div>}
         {betPageCount > 1 && <nav className="bet-pagination" aria-label="Bet manager pages"><button type="button" disabled={currentBetPage === 0} onClick={() => setBetPage(Math.max(0, currentBetPage - 1))}>Previous</button><span>Page {currentBetPage + 1} of {betPageCount}</span><button type="button" disabled={currentBetPage >= betPageCount - 1} onClick={() => setBetPage(Math.min(betPageCount - 1, currentBetPage + 1))}>Next</button></nav>}
       </section>
