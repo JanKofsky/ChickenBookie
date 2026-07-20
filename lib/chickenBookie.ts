@@ -496,8 +496,6 @@ export async function createEvent(input: {
   copyCode?: string;
   resultMode?: ResultMode;
   gameType?: GameType;
-  poolMode?: PoolMode;
-  hostVenmo?: string;
   dropMaxNumber?: number;
   dropGridColumns?: number;
   dropGridRows?: number;
@@ -506,13 +504,12 @@ export async function createEvent(input: {
   await ensureSchema();
   const code = normalizeCode(input.code);
   if (!code || !input.name.trim()) throw new Error("Event name and event code are required.");
+  if (!input.adminCode.trim()) throw new Error("An admin code is required so you can finish setup in Coop Boss.");
   const existing = await sql`SELECT id FROM events WHERE code = ${code} LIMIT 1`;
   if (existing.rowCount) throw new Error("That event code is already taken. Try another one.");
   const gameType: GameType = input.gameType === "chicken_drop" ? "chicken_drop" : "race";
-  const poolMode: PoolMode = input.poolMode === "host_managed" ? "host_managed" : "peer_to_peer";
-  const hostVenmo = normalizeVenmo(input.hostVenmo ?? "");
-  if (poolMode === "host_managed" && !hostVenmo) throw new Error("Host Venmo is required for a host-maintained pool.");
-  if (poolMode === "host_managed" && !input.adminCode.trim()) throw new Error("An admin code is required so only the host can confirm payments.");
+  const poolMode: PoolMode = "peer_to_peer";
+  const hostVenmo = "";
   const copied = input.copyCode ? await getEventByCode(input.copyCode) : null;
   if (copied && copied.event.gameType !== gameType) throw new Error("Copy an event with the same game format.");
   const sourceChickens = gameType === "race" ? copied?.chickens ?? DEFAULT_CHICKENS.map((name, idx) => ({ id: idx + 1, slot: idx + 1, name, photoUrl: null, bio: "" })) : [];
@@ -658,6 +655,27 @@ export async function verifyBetPayment(input: { eventId: number; adminCode: stri
   if (!event.rowCount || event.rows[0].pool_mode !== "host_managed") throw new Error("Payment confirmation is only used for host-maintained pools.");
   const updated = await sql`UPDATE bets SET payment_verified = ${input.verified} WHERE event_id = ${input.eventId} AND id = ${input.betId} RETURNING id`;
   if (!updated.rowCount) throw new Error("Bet not found.");
+  return getEventPayload(input.eventId);
+}
+
+export async function verifyBettorPayments(input: { eventId: number; adminCode: string; bettor: string }) {
+  await ensureSchema();
+  await assertAdmin(input.eventId, input.adminCode);
+  const bettor = input.bettor.trim().replace(/\s+/g, " ");
+  if (!bettor) throw new Error("Bettor name is required.");
+  const event = await sql`SELECT pool_mode FROM events WHERE id = ${input.eventId}`;
+  if (!event.rowCount || event.rows[0].pool_mode !== "host_managed") throw new Error("Payment confirmation is only used for host-maintained pools.");
+  const updated = await sql`
+    UPDATE bets b
+    SET payment_verified = TRUE
+    FROM bettors bo
+    WHERE b.bettor_id = bo.id
+      AND b.event_id = ${input.eventId}
+      AND bo.event_id = ${input.eventId}
+      AND lower(bo.name) = lower(${bettor})
+      AND b.payment_verified = FALSE
+    RETURNING b.id`;
+  if (!updated.rowCount) throw new Error("No pending bets found for that bettor.");
   return getEventPayload(input.eventId);
 }
 

@@ -7,7 +7,7 @@ Chicken Bookie is a private, event-code-based scorekeeping app for two gloriousl
 
 The app records picks in Cluck Bucks, calculates a shared-pool settlement, and produces a simplified “who pays whom” plan. It does not create player accounts and does not collect, hold, process, or transfer money.
 
-Each event chooses one settlement type: optional **player-to-player settlement guidance**, where Venmo is not required and players decide whether and how to pay one another after the event, or a **host-maintained pool**. For a host-maintained pool, the host supplies a Venmo handle and protected admin code at setup; bettors must supply their own Venmo handle and send each stake to the host. Submitted tickets remain payment pending—and are excluded from totals, boards, projections, and settlement—until the host confirms receipt in Coop Boss. Chicken Bookie records that manual confirmation but does not access Venmo transaction data.
+After creating an event, the administrator chooses its settlement type in Coop Boss: optional **player-to-player settlement guidance**, where Venmo is not required and players decide whether and how to pay one another after the event, or a **host-maintained pool**. For a host-maintained pool, the host supplies a Venmo handle in Coop Boss and bettors supply their own Venmo handle. A bettor can submit several tickets and then open one prefilled Venmo payment for the combined pending total. Submitted tickets remain payment pending—and are excluded from totals, boards, projections, and settlement—until the host confirms receipt for that bettor's group in Coop Boss. Chicken Bookie records that manual confirmation but does not access Venmo transaction data.
 
 ## Current production architecture
 
@@ -27,8 +27,10 @@ An administrator creates an event with:
 - An event name.
 - A shareable event code.
 - A game format.
-- An optional admin code.
+- A required admin code.
 - Format-specific settings.
+
+The creator is then taken directly to the unlocked Coop Boss dashboard to select settlement, review setup and contestants, and save before sharing the event.
 
 Players open the event with its code. They do not need an account. A player enters a display name and may add a Venmo handle; the handle is required in host-maintained pools. Chicken Bookie automatically normalizes it to include one leading `@`.
 
@@ -119,14 +121,16 @@ In each “X pays Y” row, only the payee’s Venmo handle is shown. The handle
 The administrator can:
 
 - Unlock an event with its admin code.
+- Choose player-to-player or host-maintained settlement before the first bet.
 - Edit the event name, close time, timezone, and rules.
 - Edit race metadata, chicken names, chicken bios, and chicken photos for race events.
 - Set the Chicken Drop board’s columns, rows, and fixed ticket cost before betting begins.
 - Record, replace, or clear official results.
 - Add or correct bettor Venmo handles.
+- Confirm one combined host payment for all of a bettor's pending tickets.
 - Delete accidental tickets.
 
-Admin codes are not displayed after creation and there is no recovery flow. Blank admin codes are supported for intentionally open demos.
+Admin codes are not displayed after creation and there is no recovery flow. Only intentionally open built-in demos use blank admin codes.
 
 ## Database model
 

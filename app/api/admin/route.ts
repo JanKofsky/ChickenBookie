@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAdmin, deleteBet, updateBettors, updateEventConfig, verifyBetPayment } from "../../../lib/chickenBookie";
+import { checkAdmin, deleteBet, updateBettors, updateEventConfig, verifyBetPayment, verifyBettorPayments } from "../../../lib/chickenBookie";
 
 export const runtime = "nodejs";
 
@@ -47,6 +47,14 @@ export async function PUT(request: NextRequest) {
         adminCode: String(body.adminCode ?? ""),
         betId: Number(body.betId),
         verified: body.verified !== false
+      });
+      return NextResponse.json(payload);
+    }
+    if (body.action === "verify_bettor_payments") {
+      const payload = await verifyBettorPayments({
+        eventId: Number(body.eventId),
+        adminCode: String(body.adminCode ?? ""),
+        bettor: String(body.bettor ?? "")
       });
       return NextResponse.json(payload);
     }

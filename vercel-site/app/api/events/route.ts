@@ -23,8 +23,6 @@ export async function POST(request: NextRequest) {
       adminCode: String(body.adminCode ?? ""),
       resultMode: body.resultMode === "full_order" ? "full_order" : "winner",
       gameType: body.gameType === "chicken_drop" ? "chicken_drop" : "race",
-      poolMode: body.poolMode === "host_managed" ? "host_managed" : "peer_to_peer",
-      hostVenmo: String(body.hostVenmo ?? ""),
       dropMaxNumber: body.dropMaxNumber == null ? undefined : Number(body.dropMaxNumber),
       dropGridColumns: body.dropGridColumns == null ? undefined : Number(body.dropGridColumns),
       dropGridRows: body.dropGridRows == null ? undefined : Number(body.dropGridRows),
