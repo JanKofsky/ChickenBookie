@@ -219,8 +219,7 @@ export default function Home() {
           {payload && (
             <div className="scoreboard">
               <Stat label="Event code" value={payload.event.code} highlight />
-              <Stat label="Counted bets" value={String(countedBets(payload).length)} />
-              {payload.event.poolMode === "host_managed" && <Stat label="Payment pending" value={String(payload.bets.length - countedBets(payload).length)} />}
+              <Stat label="Bets" value={String(countedBets(payload).length)} />
               <Stat label="Cluck bucket" value={money(totalPool)} />
             </div>
           )}
