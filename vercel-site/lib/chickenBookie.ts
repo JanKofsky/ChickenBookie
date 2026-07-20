@@ -747,10 +747,12 @@ export async function updateEventConfig(input: {
   const hostVenmoLink = normalizeVenmoProfileLink(input.hostVenmoLink ?? "");
   if (hostVenmoLink && normalizeVenmo(decodeURIComponent(new URL(hostVenmoLink).pathname.split("/").filter(Boolean)[1] ?? "")).toLowerCase() !== hostVenmo.toLowerCase()) throw new Error("The Venmo profile link username must match the host Venmo username.");
   const betCount = Number((await sql`SELECT COUNT(*) AS count FROM bets WHERE event_id = ${input.eventId}`).rows[0]?.count ?? 0);
-  const poolSettingsChanged = poolMode !== event.rows[0].pool_mode || hostVenmo !== String(event.rows[0].host_venmo ?? "") || hostVenmoLink !== String(event.rows[0].host_venmo_link ?? "");
-  if (betCount > 0 && poolSettingsChanged) throw new Error("Settlement type and host Venmo are locked after the first bet.");
+  const existingHostVenmoLink = String(event.rows[0].host_venmo_link ?? "");
+  const poolSettingsChanged = poolMode !== event.rows[0].pool_mode || hostVenmo !== String(event.rows[0].host_venmo ?? "");
+  const replacingSavedProfileLink = Boolean(existingHostVenmoLink) && hostVenmoLink !== existingHostVenmoLink;
+  if (betCount > 0 && (poolSettingsChanged || replacingSavedProfileLink)) throw new Error("Settlement type and host Venmo details are locked after the first bet.");
   if (poolMode === "host_managed" && !hostVenmo) throw new Error("Host Venmo is required for a host-maintained pool.");
-  if (poolMode === "host_managed" && betCount === 0 && !hostVenmoLink) throw new Error("Paste the host's official Venmo profile-share link so bettors can reach the correct profile.");
+  if (poolMode === "host_managed" && !hostVenmoLink) throw new Error("Paste the host's official Venmo profile-share link so bettors can reach the correct profile.");
   if (poolMode === "host_managed" && !String(event.rows[0].admin_code ?? "")) throw new Error("Set an admin code when creating the event before switching to a host-maintained pool.");
 
   if (event.rows[0].game_type === "chicken_drop") {
