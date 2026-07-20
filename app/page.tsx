@@ -956,7 +956,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
             <label>Race details<textarea value={race.description} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, description: event.target.value } : item))} rows={3} /></label>
             <label className="check-row race-roster-toggle"><input type="checkbox" disabled={raceStructureLocked} checked={race.chickenIds.length > 0} onChange={(event) => setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, chickenIds: event.target.checked ? chickens.map((chicken) => chicken.id) : [] } : item))} /> Use a different flock for this race</label>
             {race.chickenIds.length > 0 && <div className="race-roster-picker"><span>Chickens running in this race</span>{chickens.map((chicken) => <label className="check-row" key={chicken.id}><input type="checkbox" disabled={raceStructureLocked} checked={race.chickenIds.includes(chicken.id)} onChange={(event) => { const chickenIds = event.target.checked ? [...race.chickenIds, chicken.id] : race.chickenIds.filter((id) => id !== chicken.id); if (!chickenIds.length) return; setRaces(races.map((item, itemIdx) => itemIdx === idx ? { ...item, chickenIds } : item)); }} /> {chicken.name}</label>)}</div>}
-            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || races.length === 1} title="Delete race" aria-label={`Delete ${race.name}`} onClick={() => setRaces(races.filter((_, itemIdx) => itemIdx !== idx))}>🗑️ Delete race</button>
+            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || races.length === 1} title="Delete race" aria-label={`Delete ${race.name}`} onClick={() => setRaces(races.filter((_, itemIdx) => itemIdx !== idx))}>Delete race</button>
           </div>)}
           <button type="button" className="wide-field add-setup-row" disabled={raceStructureLocked} onClick={() => { const race = Math.max(0, ...races.map((item) => item.race)) + 1; setRaces([...races, { race, name: `Race ${race}`, description: "Add race details.", chickenIds: [] }]); }}>+ Add race</button>
           <h3>Flock notes</h3>
@@ -966,7 +966,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
             <label>Coop note<textarea value={chicken.bio ?? ""} onChange={(event) => setChickens(chickens.map((item, itemIdx) => itemIdx === idx ? { ...item, bio: event.target.value } : item))} rows={3} /></label>
             <label>Chicken photo<input type="file" accept="image/*" onChange={(event) => uploadChickenPhoto(chicken.id, event.target.files?.[0] ?? null)} /></label>
             {chicken.photoUrl && <button type="button" onClick={() => setChickens(chickens.map((item) => item.id === chicken.id ? { ...item, photoUrl: null } : item))}>Remove photo</button>}
-            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || chickens.length === 1} title="Delete chicken" aria-label={`Delete ${chicken.name}`} onClick={() => { const remaining = chickens.filter((_, itemIdx) => itemIdx !== idx); setChickens(remaining); setRaces(races.map((item) => { if (!item.chickenIds.length) return item; const chickenIds = item.chickenIds.filter((id) => id !== chicken.id); return { ...item, chickenIds: chickenIds.length ? chickenIds : remaining.map((entry) => entry.id) }; })); }}>🗑️ Delete chicken</button>
+            <button type="button" className="trash-icon-button" disabled={raceStructureLocked || chickens.length === 1} title="Delete chicken" aria-label={`Delete ${chicken.name}`} onClick={() => { const remaining = chickens.filter((_, itemIdx) => itemIdx !== idx); setChickens(remaining); setRaces(races.map((item) => { if (!item.chickenIds.length) return item; const chickenIds = item.chickenIds.filter((id) => id !== chicken.id); return { ...item, chickenIds: chickenIds.length ? chickenIds : remaining.map((entry) => entry.id) }; })); }}>Delete chicken</button>
           </div>)}
           <button type="button" className="wide-field add-setup-row" disabled={raceStructureLocked} onClick={() => { const id = Math.min(0, ...chickens.map((item) => item.id)) - 1; setChickens([...chickens, { id, slot: chickens.length + 1, name: `Chicken ${chickens.length + 1}`, photoUrl: null, bio: "" }]); }}>+ Add chicken</button>
         </>}
@@ -1018,7 +1018,7 @@ function CoopBoss({ payload, setPayload, initialAdminCode = "", onDeleted }: { p
         <button type="submit">{isDropEvent ? "Save official drop" : "Save results"}</button>
         {(isDropEvent ? payload.event.dropWinningNumber != null : Object.keys(payload.results).length > 0) && <button type="button" onClick={clearWinners}>Clear results</button>}
       </form>
-      <div className="event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>🗑️ Delete event</button></div>
+      <div className="event-danger-zone"><span><b>Delete this event</b><small>Removes all bets, payments, contestants, races, and results.</small></span><button type="button" className="trash-event-button" onClick={removeEvent}>Delete event</button></div>
     </section>
   );
 }
