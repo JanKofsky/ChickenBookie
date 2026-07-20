@@ -658,7 +658,7 @@ function HostPaymentSummary({ payload, bettor, setPayload }: { payload: EventPay
     <div><span>Your unpaid total</span><strong>{money(total)}</strong><small>{pendingBets.length} pending bet{pendingBets.length === 1 ? "" : "s"} for {displayName}</small></div>
     <a className="venmo-pay-link full-payment-link" href={venmoPaymentUrl} onClick={leaveForVenmo}>Send {money(total)} to the host ({payload.event.hostVenmo})</a>
     {memoEditor}
-    <p>Click to open Venmo to the host and attempt to fill in the total and event note. The note is also copied as a fallback. Review the recipient, amount, and note before sending; the host will verify receipt.</p>
+    <p>Click to pay in Venmo. If the recipient, amount, or memo doesn’t fill in automatically, enter it manually. Your host will verify receipt.</p>
   </aside>;
 }
 
